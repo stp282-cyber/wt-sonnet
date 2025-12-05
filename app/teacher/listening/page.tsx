@@ -16,6 +16,8 @@ import {
     Box,
     FileInput,
     Badge,
+    Textarea,
+    NumberInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -25,67 +27,77 @@ import {
     IconTrash,
     IconDownload,
     IconUpload,
-    IconFileSpreadsheet,
+    IconHeadphones,
+    IconPlayerPlay,
 } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 
-interface Word {
-    no: number;
-    english: string;
-    korean: string;
+interface ListeningQuestion {
+    id?: string;
+    question_no: number;
+    question_text: string;
+    choices: string[];
+    correct_answer: number;
+    script: string;
     major_unit?: string;
     minor_unit?: string;
-    unit_name?: string;
 }
 
-interface Wordbook {
+interface ListeningTest {
     id: string;
     title: string;
-    word_count: number;
-    words: Word[];
+    question_count: number;
+    questions: ListeningQuestion[];
     created_at: string;
 }
 
-export default function WordbooksPage() {
-    const [wordbooks, setWordbooks] = useState<Wordbook[]>([
+export default function ListeningPage() {
+    const [listeningTests, setListeningTests] = useState<ListeningTest[]>([
         {
             id: '1',
-            title: '중학 영단어 1000',
-            word_count: 50,
-            words: [
-                { no: 1, english: 'apple', korean: '사과', major_unit: '1단원', minor_unit: '1-1', unit_name: '과일' },
-                { no: 2, english: 'banana', korean: '바나나', major_unit: '1단원', minor_unit: '1-1', unit_name: '과일' },
+            title: '중학 듣기 평가 1',
+            question_count: 10,
+            questions: [
+                {
+                    id: '1',
+                    question_no: 1,
+                    question_text: 'What is the man doing?',
+                    choices: ['Reading a book', 'Watching TV', 'Cooking dinner', 'Playing games'],
+                    correct_answer: 2,
+                    script: 'The man is cooking dinner in the kitchen.',
+                    major_unit: '1단원',
+                    minor_unit: '1-1',
+                },
             ],
             created_at: '2024-01-01',
         },
     ]);
 
     const [modalOpened, setModalOpened] = useState(false);
-    const [wordModalOpened, setWordModalOpened] = useState(false);
-    const [selectedWordbook, setSelectedWordbook] = useState<Wordbook | null>(null);
-    const [editingWord, setEditingWord] = useState<Word | null>(null);
+    const [questionModalOpened, setQuestionModalOpened] = useState(false);
+    const [selectedTest, setSelectedTest] = useState<ListeningTest | null>(null);
+    const [editingQuestion, setEditingQuestion] = useState<ListeningQuestion | null>(null);
 
-    const wordbookForm = useForm({
+    const questionForm = useForm({
         initialValues: {
-            title: '',
-        },
-        validate: {
-            title: (value) => (!value ? '단어장 제목을 입력해주세요' : null),
-        },
-    });
-
-    const wordForm = useForm({
-        initialValues: {
-            no: 0,
-            english: '',
-            korean: '',
+            question_no: 0,
+            question_text: '',
+            choice1: '',
+            choice2: '',
+            choice3: '',
+            choice4: '',
+            correct_answer: 1,
+            script: '',
             major_unit: '',
             minor_unit: '',
-            unit_name: '',
         },
         validate: {
-            english: (value) => (!value ? '영어 단어를 입력해주세요' : null),
-            korean: (value) => (!value ? '한글 뜻을 입력해주세요' : null),
+            question_text: (value) => (!value ? '문제를 입력해주세요' : null),
+            choice1: (value) => (!value ? '보기 1을 입력해주세요' : null),
+            choice2: (value) => (!value ? '보기 2를 입력해주세요' : null),
+            choice3: (value) => (!value ? '보기 3를 입력해주세요' : null),
+            choice4: (value) => (!value ? '보기 4를 입력해주세요' : null),
+            script: (value) => (!value ? '스크립트를 입력해주세요' : null),
         },
     });
 
@@ -94,34 +106,42 @@ export default function WordbooksPage() {
         const template = [
             {
                 'No.': 1,
-                '교재명': '중학 영단어',
+                '교재명': '중학 듣기',
                 '대단원': '1단원',
                 '소단원': '1-1',
-                '단원명': '과일',
                 '번호': 1,
-                '영어': 'apple',
-                '한글': '사과',
+                '문제': 'What is the man doing?',
+                '보기1': 'Reading a book',
+                '보기2': 'Watching TV',
+                '보기3': 'Cooking dinner',
+                '보기4': 'Playing games',
+                '정답': 3,
+                '스크립트': 'The man is cooking dinner in the kitchen.',
             },
             {
                 'No.': 2,
-                '교재명': '중학 영단어',
+                '교재명': '중학 듣기',
                 '대단원': '1단원',
                 '소단원': '1-1',
-                '단원명': '과일',
                 '번호': 2,
-                '영어': 'banana',
-                '한글': '바나나',
+                '문제': 'Where are they going?',
+                '보기1': 'To the park',
+                '보기2': 'To the library',
+                '보기3': 'To the mall',
+                '보기4': 'To the school',
+                '정답': 1,
+                '스크립트': 'They are going to the park to play soccer.',
             },
         ];
 
         const ws = XLSX.utils.json_to_sheet(template);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, '단어장 템플릿');
-        XLSX.writeFile(wb, '단어장_템플릿.xlsx');
+        XLSX.utils.book_append_sheet(wb, ws, '듣기 템플릿');
+        XLSX.writeFile(wb, '듣기문제_템플릿.xlsx');
 
         notifications.show({
             title: '템플릿 다운로드 완료',
-            message: '단어장 템플릿이 다운로드되었습니다.',
+            message: '듣기 문제 템플릿이 다운로드되었습니다.',
             color: 'blue',
         });
     };
@@ -139,31 +159,32 @@ export default function WordbooksPage() {
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-                const words: Word[] = jsonData.map((row: any, index) => ({
-                    no: row['번호'] || index + 1,
-                    english: row['영어'] || '',
-                    korean: row['한글'] || '',
+                const questions: ListeningQuestion[] = jsonData.map((row: any, index) => ({
+                    question_no: row['번호'] || index + 1,
+                    question_text: row['문제'] || '',
+                    choices: [row['보기1'] || '', row['보기2'] || '', row['보기3'] || '', row['보기4'] || ''],
+                    correct_answer: (row['정답'] || 1) - 1,
+                    script: row['스크립트'] || '',
                     major_unit: row['대단원'] || '',
                     minor_unit: row['소단원'] || '',
-                    unit_name: row['단원명'] || '',
                 }));
 
-                const newWordbook: Wordbook = {
+                const newTest: ListeningTest = {
                     id: Date.now().toString(),
-                    title: jsonData[0]?.['교재명'] || '새 단어장',
-                    word_count: words.length,
-                    words: words,
+                    title: jsonData[0]?.['교재명'] || '새 듣기 시험',
+                    question_count: questions.length,
+                    questions: questions,
                     created_at: new Date().toISOString(),
                 };
 
-                setWordbooks([...wordbooks, newWordbook]);
+                setListeningTests([...listeningTests, newTest]);
 
-                // localStorage에 저장하여 커리큘럼 페이지에서 참조 가능하도록
-                localStorage.setItem('wordbooks', JSON.stringify([...wordbooks, newWordbook]));
+                // localStorage에 저장
+                localStorage.setItem('listeningTests', JSON.stringify([...listeningTests, newTest]));
 
                 notifications.show({
                     title: 'Excel 업로드 완료',
-                    message: `${words.length}개의 단어가 등록되었습니다.`,
+                    message: `${questions.length}개의 문제가 등록되었습니다.`,
                     color: 'green',
                 });
             } catch (error) {
@@ -177,73 +198,93 @@ export default function WordbooksPage() {
         reader.readAsArrayBuffer(file);
     };
 
-    // 단어장 Excel 다운로드
-    const handleDownloadWordbook = (wordbook: Wordbook) => {
-        const data = wordbook.words.map((word) => ({
-            'No.': word.no,
-            '교재명': wordbook.title,
-            '대단원': word.major_unit || '',
-            '소단원': word.minor_unit || '',
-            '단원명': word.unit_name || '',
-            '번호': word.no,
-            '영어': word.english,
-            '한글': word.korean,
+    // 듣기 시험 Excel 다운로드
+    const handleDownloadTest = (test: ListeningTest) => {
+        const data = test.questions.map((q) => ({
+            'No.': q.question_no,
+            '교재명': test.title,
+            '대단원': q.major_unit || '',
+            '소단원': q.minor_unit || '',
+            '번호': q.question_no,
+            '문제': q.question_text,
+            '보기1': q.choices[0],
+            '보기2': q.choices[1],
+            '보기3': q.choices[2],
+            '보기4': q.choices[3],
+            '정답': q.correct_answer + 1,
+            '스크립트': q.script,
         }));
 
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, wordbook.title);
-        XLSX.writeFile(wb, `${wordbook.title}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, test.title);
+        XLSX.writeFile(wb, `${test.title}.xlsx`);
 
         notifications.show({
             title: '다운로드 완료',
-            message: `${wordbook.title}이(가) 다운로드되었습니다.`,
+            message: `${test.title}이(가) 다운로드되었습니다.`,
             color: 'blue',
         });
     };
 
-    // 단어장 삭제
-    const handleDeleteWordbook = (wordbook: Wordbook) => {
-        if (confirm(`${wordbook.title}을(를) 삭제하시겠습니까?`)) {
-            setWordbooks(wordbooks.filter((w) => w.id !== wordbook.id));
+    // 듣기 시험 삭제
+    const handleDeleteTest = (test: ListeningTest) => {
+        if (confirm(`${test.title}을(를) 삭제하시겠습니까?`)) {
+            setListeningTests(listeningTests.filter((t) => t.id !== test.id));
             notifications.show({
-                title: '단어장 삭제 완료',
-                message: `${wordbook.title}이(가) 삭제되었습니다.`,
+                title: '듣기 시험 삭제 완료',
+                message: `${test.title}이(가) 삭제되었습니다.`,
                 color: 'red',
             });
         }
     };
 
-    // 단어 추가/수정
-    const handleWordSubmit = (values: typeof wordForm.values) => {
-        if (!selectedWordbook) return;
+    // 문제 추가/수정
+    const handleQuestionSubmit = (values: typeof questionForm.values) => {
+        if (!selectedTest) return;
 
-        const updatedWordbook = { ...selectedWordbook };
+        const updatedTest = { ...selectedTest };
+        const choices = [values.choice1, values.choice2, values.choice3, values.choice4];
 
-        if (editingWord) {
+        if (editingQuestion) {
             // 수정
-            updatedWordbook.words = updatedWordbook.words.map((w) =>
-                w.no === editingWord.no ? { ...values } : w
+            updatedTest.questions = updatedTest.questions.map((q) =>
+                q.question_no === editingQuestion.question_no
+                    ? {
+                        ...q,
+                        question_text: values.question_text,
+                        choices,
+                        correct_answer: values.correct_answer - 1,
+                        script: values.script,
+                        major_unit: values.major_unit,
+                        minor_unit: values.minor_unit,
+                    }
+                    : q
             );
         } else {
             // 추가
-            const newWord: Word = {
-                ...values,
-                no: updatedWordbook.words.length + 1,
+            const newQuestion: ListeningQuestion = {
+                question_no: updatedTest.questions.length + 1,
+                question_text: values.question_text,
+                choices,
+                correct_answer: values.correct_answer - 1,
+                script: values.script,
+                major_unit: values.major_unit,
+                minor_unit: values.minor_unit,
             };
-            updatedWordbook.words.push(newWord);
+            updatedTest.questions.push(newQuestion);
         }
 
-        updatedWordbook.word_count = updatedWordbook.words.length;
+        updatedTest.question_count = updatedTest.questions.length;
 
-        setWordbooks(wordbooks.map((w) => (w.id === selectedWordbook.id ? updatedWordbook : w)));
-        setSelectedWordbook(updatedWordbook);
-        setWordModalOpened(false);
-        wordForm.reset();
+        setListeningTests(listeningTests.map((t) => (t.id === selectedTest.id ? updatedTest : t)));
+        setSelectedTest(updatedTest);
+        setQuestionModalOpened(false);
+        questionForm.reset();
 
         notifications.show({
-            title: editingWord ? '단어 수정 완료' : '단어 추가 완료',
-            message: `${values.english}이(가) ${editingWord ? '수정' : '추가'}되었습니다.`,
+            title: editingQuestion ? '문제 수정 완료' : '문제 추가 완료',
+            message: `문제가 ${editingQuestion ? '수정' : '추가'}되었습니다.`,
             color: 'green',
         });
     };
@@ -254,10 +295,10 @@ export default function WordbooksPage() {
                 <Group justify="space-between" mb={30}>
                     <Box>
                         <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                            📚 단어장 관리
+                            🎧 듣기 문제 관리
                         </Title>
                         <Text c="dimmed" size="lg">
-                            단어장 등록, Excel 업로드/다운로드, 개별 단어 수정
+                            듣기 문제 등록, Excel 업로드/다운로드, 개별 문제 수정
                         </Text>
                     </Box>
                     <Group>
@@ -311,8 +352,8 @@ export default function WordbooksPage() {
                     <Table highlightOnHover>
                         <Table.Thead>
                             <Table.Tr style={{ borderBottom: '3px solid black' }}>
-                                <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>단어장 제목</Table.Th>
-                                <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>단어 수</Table.Th>
+                                <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>듣기 시험 제목</Table.Th>
+                                <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>문제 수</Table.Th>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>등록일</Table.Th>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem', textAlign: 'right' }}>
                                     관리
@@ -320,17 +361,17 @@ export default function WordbooksPage() {
                             </Table.Tr>
                         </Table.Thead>
                         <Table.Tbody>
-                            {wordbooks.length === 0 ? (
+                            {listeningTests.length === 0 ? (
                                 <Table.Tr>
                                     <Table.Td colSpan={4} style={{ textAlign: 'center', padding: '3rem' }}>
                                         <Text size="lg" c="dimmed">
-                                            등록된 단어장이 없습니다. Excel 파일을 업로드해주세요.
+                                            등록된 듣기 시험이 없습니다. Excel 파일을 업로드해주세요.
                                         </Text>
                                     </Table.Td>
                                 </Table.Tr>
                             ) : (
-                                wordbooks.map((wordbook) => (
-                                    <Table.Tr key={wordbook.id}>
+                                listeningTests.map((test) => (
+                                    <Table.Tr key={test.id}>
                                         <Table.Td
                                             style={{
                                                 fontSize: '1rem',
@@ -339,11 +380,11 @@ export default function WordbooksPage() {
                                                 color: '#7950f2',
                                             }}
                                             onClick={() => {
-                                                setSelectedWordbook(wordbook);
+                                                setSelectedTest(test);
                                                 setModalOpened(true);
                                             }}
                                         >
-                                            📖 {wordbook.title}
+                                            🎧 {test.title}
                                         </Table.Td>
                                         <Table.Td>
                                             <Badge
@@ -352,11 +393,11 @@ export default function WordbooksPage() {
                                                 size="lg"
                                                 style={{ border: '2px solid black' }}
                                             >
-                                                {wordbook.word_count}개
+                                                {test.question_count}개
                                             </Badge>
                                         </Table.Td>
                                         <Table.Td style={{ fontSize: '1rem' }}>
-                                            {new Date(wordbook.created_at).toLocaleDateString('ko-KR')}
+                                            {new Date(test.created_at).toLocaleDateString('ko-KR')}
                                         </Table.Td>
                                         <Table.Td>
                                             <Group justify="flex-end" gap="xs">
@@ -364,7 +405,7 @@ export default function WordbooksPage() {
                                                     variant="filled"
                                                     color="blue"
                                                     size="lg"
-                                                    onClick={() => handleDownloadWordbook(wordbook)}
+                                                    onClick={() => handleDownloadTest(test)}
                                                     style={{ border: '2px solid black' }}
                                                 >
                                                     <IconDownload size={18} />
@@ -373,7 +414,7 @@ export default function WordbooksPage() {
                                                     variant="filled"
                                                     color="red"
                                                     size="lg"
-                                                    onClick={() => handleDeleteWordbook(wordbook)}
+                                                    onClick={() => handleDeleteTest(test)}
                                                     style={{ border: '2px solid black' }}
                                                 >
                                                     <IconTrash size={18} />
@@ -387,13 +428,13 @@ export default function WordbooksPage() {
                     </Table>
                 </Paper>
 
-                {/* 단어 목록 모달 */}
+                {/* 문제 목록 모달 */}
                 <Modal
                     opened={modalOpened}
                     onClose={() => setModalOpened(false)}
                     title={
                         <Title order={3} style={{ fontWeight: 900 }}>
-                            📖 {selectedWordbook?.title}
+                            🎧 {selectedTest?.title}
                         </Title>
                     }
                     size="xl"
@@ -407,13 +448,13 @@ export default function WordbooksPage() {
                     <Stack gap="md">
                         <Group justify="space-between">
                             <Text size="lg" fw={700}>
-                                총 {selectedWordbook?.word_count}개의 단어
+                                총 {selectedTest?.question_count}개의 문제
                             </Text>
                             <button
                                 onClick={() => {
-                                    setEditingWord(null);
-                                    wordForm.reset();
-                                    setWordModalOpened(true);
+                                    setEditingQuestion(null);
+                                    questionForm.reset();
+                                    setQuestionModalOpened(true);
                                 }}
                                 style={{
                                     background: '#FFD93D',
@@ -431,7 +472,7 @@ export default function WordbooksPage() {
                                 }}
                             >
                                 <IconPlus size={16} />
-                                단어 추가
+                                문제 추가
                             </button>
                         </Group>
 
@@ -439,21 +480,25 @@ export default function WordbooksPage() {
                             <Table.Thead>
                                 <Table.Tr>
                                     <Table.Th>No.</Table.Th>
-                                    <Table.Th>영어</Table.Th>
-                                    <Table.Th>한글</Table.Th>
+                                    <Table.Th>문제</Table.Th>
+                                    <Table.Th>정답</Table.Th>
                                     <Table.Th>단원</Table.Th>
                                     <Table.Th style={{ textAlign: 'right' }}>관리</Table.Th>
                                 </Table.Tr>
                             </Table.Thead>
                             <Table.Tbody>
-                                {selectedWordbook?.words.map((word) => (
-                                    <Table.Tr key={word.no}>
-                                        <Table.Td>{word.no}</Table.Td>
-                                        <Table.Td style={{ fontWeight: 600 }}>{word.english}</Table.Td>
-                                        <Table.Td>{word.korean}</Table.Td>
+                                {selectedTest?.questions.map((question) => (
+                                    <Table.Tr key={question.question_no}>
+                                        <Table.Td>{question.question_no}</Table.Td>
+                                        <Table.Td style={{ fontWeight: 600 }}>{question.question_text}</Table.Td>
+                                        <Table.Td>
+                                            <Badge color="green" variant="filled">
+                                                {question.correct_answer + 1}번
+                                            </Badge>
+                                        </Table.Td>
                                         <Table.Td>
                                             <Text size="sm" c="dimmed">
-                                                {word.major_unit} - {word.minor_unit}
+                                                {question.major_unit} - {question.minor_unit}
                                             </Text>
                                         </Table.Td>
                                         <Table.Td>
@@ -463,9 +508,20 @@ export default function WordbooksPage() {
                                                     color="blue"
                                                     size="sm"
                                                     onClick={() => {
-                                                        setEditingWord(word);
-                                                        wordForm.setValues(word);
-                                                        setWordModalOpened(true);
+                                                        setEditingQuestion(question);
+                                                        questionForm.setValues({
+                                                            question_no: question.question_no,
+                                                            question_text: question.question_text,
+                                                            choice1: question.choices[0],
+                                                            choice2: question.choices[1],
+                                                            choice3: question.choices[2],
+                                                            choice4: question.choices[3],
+                                                            correct_answer: question.correct_answer + 1,
+                                                            script: question.script,
+                                                            major_unit: question.major_unit || '',
+                                                            minor_unit: question.minor_unit || '',
+                                                        });
+                                                        setQuestionModalOpened(true);
                                                     }}
                                                 >
                                                     <IconEdit size={14} />
@@ -479,53 +535,87 @@ export default function WordbooksPage() {
                     </Stack>
                 </Modal>
 
-                {/* 단어 추가/수정 모달 */}
+                {/* 문제 추가/수정 모달 */}
                 <Modal
-                    opened={wordModalOpened}
-                    onClose={() => setWordModalOpened(false)}
+                    opened={questionModalOpened}
+                    onClose={() => setQuestionModalOpened(false)}
                     title={
                         <Title order={4} style={{ fontWeight: 900 }}>
-                            {editingWord ? '단어 수정' : '단어 추가'}
+                            {editingQuestion ? '문제 수정' : '문제 추가'}
                         </Title>
                     }
-                    size="md"
+                    size="lg"
                 >
-                    <form onSubmit={wordForm.onSubmit(handleWordSubmit)}>
+                    <form onSubmit={questionForm.onSubmit(handleQuestionSubmit)}>
                         <Stack gap="md">
                             <TextInput
-                                label="영어 단어"
-                                placeholder="apple"
+                                label="문제"
+                                placeholder="What is the man doing?"
                                 required
-                                {...wordForm.getInputProps('english')}
+                                {...questionForm.getInputProps('question_text')}
                                 styles={{ input: { border: '3px solid black' } }}
                             />
+                            <Group grow>
+                                <TextInput
+                                    label="대단원"
+                                    placeholder="1단원"
+                                    {...questionForm.getInputProps('major_unit')}
+                                    styles={{ input: { border: '3px solid black' } }}
+                                />
+                                <TextInput
+                                    label="소단원"
+                                    placeholder="1-1"
+                                    {...questionForm.getInputProps('minor_unit')}
+                                    styles={{ input: { border: '3px solid black' } }}
+                                />
+                            </Group>
                             <TextInput
-                                label="한글 뜻"
-                                placeholder="사과"
+                                label="보기 1"
+                                placeholder="Reading a book"
                                 required
-                                {...wordForm.getInputProps('korean')}
+                                {...questionForm.getInputProps('choice1')}
                                 styles={{ input: { border: '3px solid black' } }}
                             />
                             <TextInput
-                                label="대단원"
-                                placeholder="1단원"
-                                {...wordForm.getInputProps('major_unit')}
+                                label="보기 2"
+                                placeholder="Watching TV"
+                                required
+                                {...questionForm.getInputProps('choice2')}
                                 styles={{ input: { border: '3px solid black' } }}
                             />
                             <TextInput
-                                label="소단원"
-                                placeholder="1-1"
-                                {...wordForm.getInputProps('minor_unit')}
+                                label="보기 3"
+                                placeholder="Cooking dinner"
+                                required
+                                {...questionForm.getInputProps('choice3')}
                                 styles={{ input: { border: '3px solid black' } }}
                             />
                             <TextInput
-                                label="단원명"
-                                placeholder="과일"
-                                {...wordForm.getInputProps('unit_name')}
+                                label="보기 4"
+                                placeholder="Playing games"
+                                required
+                                {...questionForm.getInputProps('choice4')}
+                                styles={{ input: { border: '3px solid black' } }}
+                            />
+                            <NumberInput
+                                label="정답 (1-4)"
+                                placeholder="1"
+                                required
+                                min={1}
+                                max={4}
+                                {...questionForm.getInputProps('correct_answer')}
+                                styles={{ input: { border: '3px solid black' } }}
+                            />
+                            <Textarea
+                                label="스크립트"
+                                placeholder="The man is cooking dinner in the kitchen."
+                                required
+                                rows={4}
+                                {...questionForm.getInputProps('script')}
                                 styles={{ input: { border: '3px solid black' } }}
                             />
                             <Group justify="flex-end" mt="md">
-                                <Button variant="outline" onClick={() => setWordModalOpened(false)}>
+                                <Button variant="outline" onClick={() => setQuestionModalOpened(false)}>
                                     취소
                                 </Button>
                                 <button
@@ -542,7 +632,7 @@ export default function WordbooksPage() {
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    {editingWord ? '수정하기' : '추가하기'}
+                                    {editingQuestion ? '수정하기' : '추가하기'}
                                 </button>
                             </Group>
                         </Stack>

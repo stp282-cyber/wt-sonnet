@@ -34,24 +34,44 @@ export default function LoginPage() {
   const handleSubmit = async (values: typeof form.values) => {
     setLoading(true);
     try {
-      console.log('로그인 시도:', values);
+      // Supabase API 호출
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: values.username,
+          password: values.password,
+        }),
+      });
 
-      localStorage.setItem('user', JSON.stringify({
-        username: values.username,
-        role: 'teacher',
-      }));
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || '로그인 실패');
+      }
+
+      const { user } = await response.json();
+
+      // 사용자 정보 저장
+      localStorage.setItem('user', JSON.stringify(user));
 
       notifications.show({
         title: '로그인 성공! 🎉',
-        message: '환영합니다!',
+        message: `환영합니다, ${user.full_name}님!`,
         color: 'teal',
       });
 
-      router.push('/teacher/dashboard');
-    } catch (error) {
+      // 역할별 리다이렉트
+      if (user.role === 'teacher' || user.role === 'super_admin') {
+        router.push('/teacher/dashboard');
+      } else if (user.role === 'student') {
+        router.push('/student/dashboard');
+      }
+    } catch (error: any) {
       notifications.show({
         title: '로그인 실패',
-        message: '아이디 또는 비밀번호를 확인해주세요',
+        message: error.message || '아이디 또는 비밀번호를 확인해주세요',
         color: 'red',
       });
     } finally {

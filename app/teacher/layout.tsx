@@ -21,6 +21,7 @@ import {
     IconSettings,
     IconLogout,
     IconDashboard,
+    IconHeadphones,
 } from '@tabler/icons-react';
 
 export default function TeacherLayout({ children }: { children: ReactNode }) {
@@ -32,8 +33,11 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
         { icon: IconDashboard, label: '대시보드', href: '/teacher/dashboard' },
         { icon: IconUsers, label: '학생 관리', href: '/teacher/students' },
         { icon: IconBook, label: '단어장 관리', href: '/teacher/wordbooks' },
+        { icon: IconHeadphones, label: '듣기 문제 관리', href: '/teacher/listening' },
         { icon: IconList, label: '커리큘럼 관리', href: '/teacher/curriculums' },
         { icon: IconBell, label: '공지/쪽지', href: '/teacher/notices' },
+        { icon: IconList, label: '수업 일지', href: '/teacher/class-log' },
+        { icon: IconList, label: '당일 관리', href: '/teacher/today' },
         { icon: IconSettings, label: '설정', href: '/teacher/settings' },
     ];
 
@@ -123,7 +127,10 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                                 label={item.label}
                                 leftSection={<Icon size={20} />}
                                 active={isActive}
-                                onClick={() => router.push(item.href)}
+                                onClick={() => {
+                                    router.push(item.href);
+                                    toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
+                                }}
                                 style={{
                                     borderRadius: '8px',
                                     marginBottom: '0.5rem',

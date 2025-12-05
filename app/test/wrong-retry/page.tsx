@@ -23,46 +23,55 @@ interface Word {
     korean: string;
 }
 
-const sampleWords: Word[] = [
-    { no: 1, english: 'apple', korean: '사과' },
-    { no: 2, english: 'banana', korean: '바나나' },
-    { no: 3, english: 'orange', korean: '오렌지' },
-    { no: 4, english: 'grape', korean: '포도' },
-    { no: 5, english: 'watermelon', korean: '수박' },
-];
-
-// 답안 정규화 함수 (특수문자, 띄어쓰기, 대소문자, 괄호 무시)
+// 답안 정규화 함수
 function normalizeAnswer(answer: string): string {
     return answer
         .toLowerCase()
-        .replace(/[^a-z가-힣]/g, '') // 영문자와 한글만 남김
+        .replace(/[^a-z가-힣]/g, '')
         .trim();
 }
 
-export default function TypingTestPage() {
+export default function WrongRetryPage() {
     const router = useRouter();
+    const [words, setWords] = useState<Word[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [results, setResults] = useState<boolean[]>([]);
-    const [timeLeft, setTimeLeft] = useState(20); // 제한 시간 20초
+    const [timeLeft, setTimeLeft] = useState(20);
     const [isAnswered, setIsAnswered] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const currentWord = sampleWords[currentIndex];
-    const progress = ((currentIndex + 1) / sampleWords.length) * 100;
+    useEffect(() => {
+        // localStorage에서 오답 단어 로드
+        const savedWrongWords = localStorage.getItem('wrongWords');
+        if (savedWrongWords) {
+            setWords(JSON.parse(savedWrongWords));
+        } else {
+            // 테스트용 샘플 데이터
+            const sampleWrongWords = [
+                { no: 1, english: 'apple', korean: '사과' },
+                { no: 3, english: 'orange', korean: '오렌지' },
+                { no: 5, english: 'watermelon', korean: '수박' },
+            ];
+            setWords(sampleWrongWords);
+            localStorage.setItem('wrongWords', JSON.stringify(sampleWrongWords));
+        }
+    }, [router]);
+
+    const currentWord = words[currentIndex];
+    const progress = words.length > 0 ? ((currentIndex + 1) / words.length) * 100 : 0;
     const correctCount = results.filter((r) => r).length;
     const wrongCount = results.filter((r) => !r).length;
 
     // 타이머
     useEffect(() => {
-        if (timeLeft > 0 && !isAnswered) {
+        if (timeLeft > 0 && !isAnswered && words.length > 0) {
             const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
             return () => clearTimeout(timer);
         } else if (timeLeft === 0 && !isAnswered) {
-            // 시간 초과
             handleSubmit(true);
         }
-    }, [timeLeft, isAnswered]);
+    }, [timeLeft, isAnswered, words]);
 
     // 복사/붙여넣기 방지
     useEffect(() => {
@@ -90,7 +99,6 @@ export default function TypingTestPage() {
         };
     }, []);
 
-    // 답안 제출
     const handleSubmit = (timeout = false) => {
         const normalizedUser = normalizeAnswer(userAnswer);
         const normalizedCorrect = normalizeAnswer(currentWord.english);
@@ -107,63 +115,70 @@ export default function TypingTestPage() {
             });
         }
 
-        // 1.5초 후 다음 문제로
         setTimeout(() => {
-            if (currentIndex < sampleWords.length - 1) {
+            if (currentIndex < words.length - 1) {
                 setCurrentIndex(currentIndex + 1);
                 setUserAnswer('');
                 setTimeLeft(20);
                 setIsAnswered(false);
                 inputRef.current?.focus();
             } else {
-                // 시험 완료 - 결과 저장 및 페이지 이동
+                // 재시험 완료
                 const finalResults = [...results, isCorrect];
-                const finalCorrectCount = finalResults.filter(r => r).length;
-                const finalWrongCount = finalResults.length - finalCorrectCount;
-                const score = Math.round((finalCorrectCount / sampleWords.length) * 100);
-                const passed = score >= 80;
+                const finalWrongWords = words.filter((_, index) => !finalResults[index]);
 
-                // 오답 단어 목록 생성
-                const wrongWords = sampleWords.filter((_, index) => !finalResults[index]);
+                if (finalWrongWords.length === 0) {
+                    // 모든 오답 해결 → 완료!
+                    notifications.show({
+                        title: '🎉 완벽합니다!',
+                        message: '모든 오답을 정복했습니다!',
+                        color: 'green',
+                    });
 
-                // 결과 데이터 저장
-                const testResult = {
-                    totalQuestions: sampleWords.length,
-                    correctCount: finalCorrectCount,
-                    wrongCount: finalWrongCount,
-                    score,
-                    passed,
-                    wrongWords,
-                    timestamp: new Date().toISOString(),
-                };
+                    setTimeout(() => {
+                        router.push('/teacher/dashboard');
+                    }, 2000);
+                } else {
+                    // 여전히 오답 존재 → 다시 플래시카드
+                    localStorage.setItem('wrongWords', JSON.stringify(finalWrongWords));
 
-                localStorage.setItem('testResult', JSON.stringify(testResult));
+                    notifications.show({
+                        title: '조금 더 노력이 필요해요',
+                        message: `아직 ${finalWrongWords.length}개의 오답이 있습니다. 다시 복습하세요!`,
+                        color: 'orange',
+                    });
 
-                // 결과 페이지로 이동
-                setTimeout(() => {
-                    router.push('/test/result');
-                }, 1500);
+                    setTimeout(() => {
+                        router.push('/test/wrong-flashcard');
+                    }, 2000);
+                }
             }
         }, 1500);
     };
 
-    // Enter 키로 제출
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !isAnswered && userAnswer.trim()) {
             handleSubmit();
         }
     };
 
-    // 포커스 자동 설정
     useEffect(() => {
         inputRef.current?.focus();
     }, [currentIndex]);
+
+    if (words.length === 0) {
+        return (
+            <Container size="sm" py={40}>
+                <Text>오답 단어를 불러오는 중...</Text>
+            </Container>
+        );
+    }
 
     return (
         <Box
             style={{
                 minHeight: '100vh',
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                background: 'linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -184,7 +199,7 @@ export default function TypingTestPage() {
                                 marginBottom: '1rem',
                             }}
                         >
-                            ✍️ 타이핑 시험
+                            🔁 오답 재시험
                         </Title>
                         <Text
                             size="xl"
@@ -194,7 +209,7 @@ export default function TypingTestPage() {
                                 textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)',
                             }}
                         >
-                            한글을 보고 영어로 입력하세요!
+                            틀린 단어를 다시 시험봅니다!
                         </Text>
                     </Box>
 
@@ -254,10 +269,10 @@ export default function TypingTestPage() {
                     >
                         <Group justify="space-between" mb={10}>
                             <Text fw={700} size="lg">
-                                진행률
+                                재시험 진행률
                             </Text>
                             <Text fw={900} size="lg" c="violet">
-                                {currentIndex + 1} / {sampleWords.length}
+                                {currentIndex + 1} / {words.length}
                             </Text>
                         </Group>
                         <Progress
@@ -268,8 +283,8 @@ export default function TypingTestPage() {
                                 root: {
                                     border: '3px solid black',
                                 },
-                                bar: {
-                                    background: 'linear-gradient(90deg, #f093fb 0%, #f5576c 100%)',
+                                section: {
+                                    background: 'linear-gradient(90deg, #FA8BFF 0%, #2BD2FF 100%)',
                                 },
                             }}
                         />
@@ -296,18 +311,17 @@ export default function TypingTestPage() {
                         className="animate-bounce-in"
                     >
                         <Stack align="center" gap="xl" style={{ width: '100%' }}>
-                            {/* 한글 문제 */}
                             <Badge
                                 size="xl"
                                 variant="filled"
-                                color="violet"
+                                color="red"
                                 style={{
                                     border: '3px solid black',
                                     fontSize: '1.2rem',
                                     padding: '1rem 2rem',
                                 }}
                             >
-                                문제 {currentWord.no}
+                                오답 #{currentWord.no}
                             </Badge>
 
                             <Text
@@ -321,7 +335,6 @@ export default function TypingTestPage() {
                                 {currentWord.korean}
                             </Text>
 
-                            {/* 입력 필드 */}
                             <TextInput
                                 ref={inputRef}
                                 value={userAnswer}
@@ -344,7 +357,6 @@ export default function TypingTestPage() {
                                 style={{ width: '100%', maxWidth: '500px' }}
                             />
 
-                            {/* 정답 표시 */}
                             {isAnswered && (
                                 <Box
                                     className="animate-slide-in-right"
@@ -368,7 +380,6 @@ export default function TypingTestPage() {
                                 </Box>
                             )}
 
-                            {/* 제출 버튼 */}
                             {!isAnswered && (
                                 <button
                                     onClick={() => handleSubmit()}

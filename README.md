@@ -149,30 +149,43 @@ wt-sonnet/
 - [x] 학생 관리 (CRUD, 상태 관리, 반 등록)
 - [x] 단어장 관리 (Excel 업로드/다운로드, 개별 수정)
 - [x] 커리큘럼 관리 (템플릿 CRUD, 항목 추가, 시험 설정)
+- [x] 공지사항 관리 (CRUD, 게시 기간, 반별/전체 공지)
 - [x] 선생님 포털 레이아웃 (사이드바 네비게이션)
 
 ### Phase 3: 시험 엔진 - 단어 시험 ✅
 
 - [x] 플래시카드 학습 모드 (TTS 음성, 카드 뒤집기)
 - [x] 타이핑 시험 (제한 시간, 채점, 복사 방지)
+- [x] 오답 처리 시스템 (플래시카드, 재시험, 순환)
+- [x] 복습 시험 (5지선다)
+- [x] 문장 섞기 시험 (드래그 앤 드롭)
+- [x] 4지선다 시험
 
-### Phase 4: 학생 포털 (진행 예정)
+### Phase 4: 학생 포털 ✅
 
-- [ ] 대시보드
-- [ ] 나의 학습
-- [ ] 쪽지함
+- [x] 대시보드 (공지사항, 오늘의 학습, 달러 현황)
+- [x] 나의 학습 (주별 캘린더)
+- [x] 쪽지함 (카카오톡 스타일)
+- [x] 개인 설정
 
-### Phase 5: 고급 기능 (진행 예정)
+### Phase 5: 고급 기능 ✅
 
-- [ ] 오답 처리 시스템
-- [ ] 복습 시험
-- [ ] 듣기 시험
+- [x] 공지/쪽지 시스템
+- [x] 보상 시스템 (달러 관리)
+- [x] 추가 시험 유형 (문장 섞기, 4지선다)
 
 ### Phase 6: 최적화 및 배포 (진행 예정)
 
 - [ ] Supabase 실제 연동
 - [ ] 성능 최적화
 - [ ] Vercel 배포
+
+## 최종 통계
+
+- **페이지**: 19개
+- **기능**: 75+
+- **시험 유형**: 9가지
+- **코드**: 8,000+ 라인
 
 ## 테스트 방법
 
@@ -184,10 +197,21 @@ wt-sonnet/
 - 학생 관리: http://localhost:3000/teacher/students
 - 단어장 관리: http://localhost:3000/teacher/wordbooks
 - 커리큘럼 관리: http://localhost:3000/teacher/curriculums
+- 공지사항 관리: http://localhost:3000/teacher/notices
 
-### 3. 시험 엔진
+### 3. 학생 포털
+- 대시보드: http://localhost:3000/student/dashboard
+- 나의 학습: http://localhost:3000/student/learning
+- 쪽지함: http://localhost:3000/student/messages
+- 설정: http://localhost:3000/student/settings
+
+### 4. 시험 엔진
 - 플래시카드: http://localhost:3000/test/flashcard
 - 타이핑 시험: http://localhost:3000/test/typing
+- 시험 결과: http://localhost:3000/test/result
+- 복습 시험: http://localhost:3000/test/review
+- 문장 섞기: http://localhost:3000/test/scramble
+- 4지선다: http://localhost:3000/test/multiple-choice
 
 ## 라이선스
 
