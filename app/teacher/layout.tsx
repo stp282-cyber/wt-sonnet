@@ -48,73 +48,122 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
 
     return (
         <AppShell
-            header={{ height: 70 }}
+            header={{ height: 80 }}
             navbar={{
-                width: 280,
+                width: 300,
                 breakpoint: 'sm',
                 collapsed: { mobile: !opened },
             }}
             padding="md"
+            style={{
+                '--app-shell-header-height': '80px',
+            }}
         >
-            <AppShell.Header>
+            <AppShell.Header
+                style={{
+                    borderBottom: '3px solid black',
+                    backgroundColor: 'white',
+                    zIndex: 101
+                }}
+            >
                 <Group h="100%" px="md" justify="space-between">
                     <Group>
                         <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+
+                        {/* 로고 영역 */}
                         <Box
                             style={{
-                                background: '#FFD93D',
+                                background: 'var(--accent)', // Yellow
                                 border: '3px solid black',
-                                borderRadius: '10px',
-                                padding: '0.5rem 1rem',
-                                boxShadow: '3px 3px 0px rgba(0, 0, 0, 0.3)',
+                                borderRadius: '0px',
+                                padding: '0.4rem 1rem',
+                                boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
+                                transform: 'rotate(-2deg)',
+                                transition: 'transform 0.2s',
                             }}
                         >
-                            <Text size="xl" fw={900} style={{ color: 'black' }}>
-                                📚 Eastern-WordTest
+                            <Text
+                                size="xl"
+                                fw={900}
+                                style={{
+                                    color: 'black',
+                                    fontFamily: "'Montserrat', sans-serif",
+                                    letterSpacing: '-1px'
+                                }}
+                            >
+                                WORDTEST
+                                <span style={{ fontSize: '0.8em', marginLeft: '5px', fontWeight: 500 }}>
+                                    TEACHER
+                                </span>
                             </Text>
                         </Box>
                     </Group>
+
+                    {/* 로그아웃 버튼 */}
                     <button
                         onClick={handleLogout}
                         style={{
-                            background: '#FF6B9D',
-                            color: 'white',
+                            background: '#FF90E8', // Pink
+                            color: 'black',
                             border: '3px solid black',
-                            borderRadius: '8px',
-                            boxShadow: '3px 3px 0px rgba(0, 0, 0, 1)',
+                            borderRadius: '0px',
+                            boxShadow: '4px 4px 0px black',
                             fontSize: '0.9rem',
-                            fontWeight: 700,
-                            padding: '0.5rem 1rem',
+                            fontWeight: 800,
+                            padding: '0.6rem 1.2rem',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
+                            transition: 'all 0.1s',
+                        }}
+                        onMouseDown={(e) => {
+                            e.currentTarget.style.transform = 'translate(2px, 2px)';
+                            e.currentTarget.style.boxShadow = '2px 2px 0px black';
+                        }}
+                        onMouseUp={(e) => {
+                            e.currentTarget.style.transform = 'translate(0, 0)';
+                            e.currentTarget.style.boxShadow = '4px 4px 0px black';
                         }}
                     >
-                        <IconLogout size={18} />
-                        로그아웃
+                        <IconLogout size={18} stroke={2.5} />
+                        LOGOUT
                     </button>
                 </Group>
             </AppShell.Header>
 
-            <AppShell.Navbar p="md">
+            <AppShell.Navbar p="md" style={{ borderRight: '3px solid black', backgroundColor: '#F8F9FA' }}>
                 <Box>
+                    {/* 프로필 카드 */}
                     <Paper
                         p="md"
-                        mb="md"
+                        mb="xl"
                         style={{
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            background: 'white',
                             border: '3px solid black',
-                            borderRadius: '12px',
-                            boxShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
+                            borderRadius: '0px',
+                            boxShadow: '6px 6px 0px black',
                         }}
                     >
-                        <Text size="sm" c="white" fw={700}>
-                            👨‍🏫 선생님 포털
-                        </Text>
-                        <Text size="xs" c="white" mt={5}>
-                            학생 관리 및 커리큘럼 운영
-                        </Text>
+                        <Group>
+                            <Box
+                                style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    background: '#2563EB',
+                                    borderRadius: '50%',
+                                    border: '2px solid black'
+                                }}
+                            />
+                            <Box>
+                                <Text size="sm" c="dimmed" fw={700} style={{ textTransform: 'uppercase' }}>
+                                    Current User
+                                </Text>
+                                <Text size="lg" fw={900} style={{ fontFamily: 'Pretendard' }}>
+                                    선생님
+                                </Text>
+                            </Box>
+                        </Group>
                     </Paper>
 
                     {menuItems.map((item) => {
@@ -125,19 +174,24 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                             <NavLink
                                 key={item.href}
                                 label={item.label}
-                                leftSection={<Icon size={20} />}
+                                leftSection={<Icon size={22} stroke={2.5} />}
                                 active={isActive}
                                 onClick={() => {
                                     router.push(item.href);
-                                    toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
+                                    toggle();
                                 }}
                                 style={{
-                                    borderRadius: '8px',
-                                    marginBottom: '0.5rem',
-                                    border: isActive ? '3px solid black' : 'none',
-                                    background: isActive ? '#FFD93D' : 'transparent',
-                                    fontWeight: isActive ? 900 : 600,
-                                    boxShadow: isActive ? '3px 3px 0px rgba(0, 0, 0, 0.2)' : 'none',
+                                    borderRadius: '0px',
+                                    marginBottom: '0.8rem',
+                                    border: '3px solid black',
+                                    backgroundColor: isActive ? 'var(--accent)' : 'white',
+                                    color: 'black',
+                                    fontWeight: isActive ? 900 : 700,
+                                    fontSize: '1rem',
+                                    padding: '0.8rem',
+                                    boxShadow: isActive ? '4px 4px 0px black' : '2px 2px 0px rgba(0,0,0,0.1)',
+                                    transform: isActive ? 'translate(-2px, -2px)' : 'none',
+                                    transition: 'all 0.1s',
                                 }}
                             />
                         );
@@ -147,7 +201,9 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
 
             <AppShell.Main
                 style={{
-                    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                    background: '#F3F4F6',
+                    backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
+                    backgroundSize: '20px 20px',
                     minHeight: '100vh',
                 }}
             >

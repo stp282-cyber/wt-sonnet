@@ -2,19 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Paper,
-  TextInput,
-  PasswordInput,
-  Button,
-  Title,
-  Text,
-  Box,
-  Stack,
-  Group,
-} from '@mantine/core';
+import { Title, Text, Box, Stack, TextInput, PasswordInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { motion } from 'framer-motion';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,43 +17,37 @@ export default function LoginPage() {
       password: '',
     },
     validate: {
-      username: (value) => (!value ? '아이디를 입력해주세요' : null),
-      password: (value) => (!value ? '비밀번호를 입력해주세요' : null),
+      username: (value) => (!value ? 'USERNAME IS REQUIRED!' : null),
+      password: (value) => (!value ? 'PASSWORD IS REQUIRED!' : null),
     },
   });
 
   const handleSubmit = async (values: typeof form.values) => {
     setLoading(true);
     try {
-      // Supabase API 호출
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: values.username,
-          password: values.password,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: values.username, password: values.password }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || '로그인 실패');
+        throw new Error(error.error || 'Login Failed');
       }
 
       const { user } = await response.json();
-
-      // 사용자 정보 저장
       localStorage.setItem('user', JSON.stringify(user));
 
       notifications.show({
-        title: '로그인 성공! 🎉',
-        message: `환영합니다, ${user.full_name}님!`,
-        color: 'teal',
+        title: 'WELCOME!',
+        message: `Let's start learning, ${user.full_name}!`,
+        color: 'blue',
+        styles: {
+          root: { border: '3px solid black', boxShadow: '4px 4px 0px 0px black' }
+        }
       });
 
-      // 역할별 리다이렉트
       if (user.role === 'teacher' || user.role === 'super_admin') {
         router.push('/teacher/dashboard');
       } else if (user.role === 'student') {
@@ -70,9 +55,12 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       notifications.show({
-        title: '로그인 실패',
-        message: error.message || '아이디 또는 비밀번호를 확인해주세요',
+        title: 'OOPS!',
+        message: error.message || 'Check your info again.',
         color: 'red',
+        styles: {
+          root: { border: '3px solid black', boxShadow: '4px 4px 0px 0px black' }
+        }
       });
     } finally {
       setLoading(false);
@@ -83,329 +71,239 @@ export default function LoginPage() {
     <Box
       style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #12c2e9 0%, #c471ed 50%, #f64f59 100%)',
+        background: '#F3F4F6',
+        position: 'relative',
+        overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
-        position: 'relative',
-        overflow: 'hidden',
+        backgroundImage: 'radial-gradient(#CBD5E1 1.5px, transparent 1.5px)',
+        backgroundSize: '24px 24px',
       }}
     >
-      {/* 배경 장식 요소들 */}
-      <div
+      {/* Decorative Geometric Shapes (Absolute Positioned) */}
+
+      {/* Top Left Circle - Yellow */}
+      <motion.div
+        animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
         style={{
           position: 'absolute',
           top: '10%',
           left: '10%',
-          width: '100px',
-          height: '100px',
+          width: '120px',
+          height: '120px',
           borderRadius: '50%',
-          background: '#FFD93D',
-          border: '5px solid black',
-          boxShadow: '8px 8px 0px rgba(0, 0, 0, 0.3)',
+          background: '#FACC15', // Mustard Yellow
+          border: '4px solid black',
+          boxShadow: '8px 8px 0px 0px black',
+          zIndex: 0,
         }}
       />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '15%',
-          right: '15%',
-          width: '80px',
-          height: '80px',
-          background: '#FF6B9D',
-          border: '5px solid black',
-          transform: 'rotate(45deg)',
-          boxShadow: '8px 8px 0px rgba(0, 0, 0, 0.3)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: '20%',
-          right: '20%',
-          fontSize: '4rem',
-          filter: 'drop-shadow(4px 4px 0px rgba(0, 0, 0, 0.3))',
-        }}
-      >
-        ⭐
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '20%',
-          left: '15%',
-          fontSize: '3rem',
-          filter: 'drop-shadow(4px 4px 0px rgba(0, 0, 0, 0.3))',
-        }}
-      >
-        🎯
-      </div>
 
-      <Box style={{ maxWidth: '500px', width: '100%', zIndex: 1 }}>
-        <div className="animate-bounce-in">
-          {/* 로고 영역 */}
-          <Box
-            style={{
-              textAlign: 'center',
-              marginBottom: '2rem',
-            }}
+      {/* Bottom Right Square - Purple (Rotated) */}
+      <motion.div
+        animate={{ rotate: [15, 25, 15] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: 'absolute',
+          bottom: '10%',
+          right: '8%',
+          width: '140px',
+          height: '140px',
+          background: '#A855F7', // Vivid Purple
+          border: '4px solid black',
+          boxShadow: '8px 8px 0px 0px black',
+          zIndex: 0,
+        }}
+      />
+
+      {/* Shapes - Pink Circle (Left Bottom) */}
+      <motion.div
+        animate={{ x: [0, 20, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: 'absolute',
+          bottom: '30%',
+          left: '-5%',
+          width: '200px',
+          height: '200px',
+          borderRadius: '50%',
+          background: '#F9A8D4', // Pink
+          border: '4px solid black',
+          opacity: 0.8,
+          zIndex: 0,
+        }}
+      />
+
+      {/* Main Content Container */}
+      <Box style={{ zIndex: 1, width: '100%', maxWidth: '460px', padding: '20px' }}>
+
+        {/* Brand Header */}
+        <Box style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
+            <Title
+              order={1}
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 900,
+                fontSize: '3.5rem',
+                letterSpacing: '-2px',
+                color: '#2563EB', // Blue
+                lineHeight: 0.9,
+                textShadow: '4px 4px 0px black',
+                marginBottom: '0.5rem',
+                fontStyle: 'italic',
+              }}
+            >
+              WORD<span style={{ color: 'white', textShadow: '4px 4px 0px black, -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black' }}>TEST</span>
+            </Title>
             <Box
               style={{
-                display: 'inline-block',
-                background: '#FFD93D',
-                border: '6px solid black',
-                borderRadius: '20px',
-                padding: '1.5rem 2rem',
-                boxShadow: '10px 10px 0px rgba(0, 0, 0, 0.4)',
-                marginBottom: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '4rem', marginBottom: '0.5rem' }}>📚</div>
-              <Title
-                order={1}
-                style={{
-                  fontWeight: 900,
-                  fontSize: '2.5rem',
-                  color: 'black',
-                  margin: 0,
-                }}
-              >
-                Eastern-WordTest
-              </Title>
-            </Box>
-            <Text
-              size="xl"
-              style={{
+                background: 'black',
                 color: 'white',
-                fontWeight: 700,
-                textShadow: '3px 3px 0px rgba(0, 0, 0, 0.3)',
-                fontSize: '1.3rem',
+                display: 'inline-block',
+                padding: '0.25rem 1rem',
+                transform: 'rotate(-2deg)',
+                boxShadow: '4px 4px 0px 0px #FACC15'
               }}
             >
-              재미있게 공부하고 실력 UP! 🚀
-            </Text>
-          </Box>
+              <Text fw={800} size="sm" style={{ letterSpacing: '2px' }}>PREMIUM LEARNING PLATFORM</Text>
+            </Box>
+          </motion.div>
+        </Box>
 
-          {/* 로그인 폼 */}
-          <Paper
-            p={40}
-            radius="xl"
+        {/* Login Card */}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
+        >
+          <Box
+            className="neo-card"
             style={{
-              border: '6px solid black',
-              boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-              background: 'white',
+              padding: '2.5rem',
+              backgroundColor: 'white',
+              border: '3px solid black',
+              boxShadow: '8px 8px 0px 0px black',
+              borderRadius: '0px', // Square corners like reference
             }}
           >
-            <form onSubmit={form.onSubmit(handleSubmit)}>
-              <Stack gap="xl">
-                {/* 아이디 입력 */}
-                <Box>
-                  <Group gap="xs" mb={10}>
-                    <Text
-                      size="lg"
-                      fw={900}
-                      style={{
-                        color: '#7950f2',
-                        fontSize: '1.1rem',
-                      }}
-                    >
-                      👤 아이디
-                    </Text>
-                  </Group>
+            <Stack gap="xl">
+              <Box style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                <Title order={2} style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 900, fontSize: '1.8rem' }}>
+                  WELCOME BACK
+                </Title>
+                <Text c="dimmed" fw={600} size="sm">
+                  Sign in to continue your journey
+                </Text>
+              </Box>
+
+              <form onSubmit={form.onSubmit(handleSubmit)}>
+                <Stack gap="lg">
                   <TextInput
-                    placeholder="한글 이름 또는 아이디"
-                    size="xl"
+                    label="USERNAME"
+                    placeholder="ENTER YOUR USERNAME"
+                    size="lg"
                     required
                     {...form.getInputProps('username')}
                     styles={{
                       input: {
-                        border: '4px solid black',
-                        fontSize: '1.2rem',
-                        padding: '1.8rem 1.2rem',
-                        borderRadius: '12px',
-                        boxShadow: '5px 5px 0px 0px rgba(0, 0, 0, 0.2)',
-                        transition: 'all 0.2s ease',
-                        backgroundColor: '#f8f9fa',
+                        height: '56px',
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        border: '3px solid black',
+                        borderRadius: '0px',
+                        boxShadow: '4px 4px 0px 0px rgba(0,0,0,0.1)',
                         '&:focus': {
-                          boxShadow: '7px 7px 0px 0px #FFD93D',
+                          boxShadow: '6px 6px 0px 0px black',
                           transform: 'translate(-2px, -2px)',
-                          backgroundColor: 'white',
-                        },
+                        }
                       },
+                      label: { fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }
                     }}
                   />
-                </Box>
 
-                {/* 비밀번호 입력 */}
-                <Box>
-                  <Group gap="xs" mb={10}>
-                    <Text
-                      size="lg"
-                      fw={900}
-                      style={{
-                        color: '#7950f2',
-                        fontSize: '1.1rem',
-                      }}
-                    >
-                      🔒 비밀번호
-                    </Text>
-                  </Group>
                   <PasswordInput
-                    placeholder="비밀번호를 입력하세요"
-                    size="xl"
+                    label="PASSWORD"
+                    placeholder="ENTER YOUR PASSWORD"
+                    size="lg"
                     required
                     {...form.getInputProps('password')}
                     styles={{
                       input: {
-                        border: '4px solid black',
-                        fontSize: '1.2rem',
-                        padding: '1.8rem 1.2rem',
-                        borderRadius: '12px',
-                        boxShadow: '5px 5px 0px 0px rgba(0, 0, 0, 0.2)',
-                        transition: 'all 0.2s ease',
-                        backgroundColor: '#f8f9fa',
+                        height: '56px',
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        border: '3px solid black',
+                        borderRadius: '0px',
+                        boxShadow: '4px 4px 0px 0px rgba(0,0,0,0.1)',
                         '&:focus': {
-                          boxShadow: '7px 7px 0px 0px #FF6B9D',
+                          boxShadow: '6px 6px 0px 0px black',
                           transform: 'translate(-2px, -2px)',
-                          backgroundColor: 'white',
-                        },
+                        }
                       },
+                      label: { fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }
                     }}
                   />
-                </Box>
 
-                {/* 로그인 버튼 */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    width: '100%',
-                    background: '#FFD93D',
-                    color: 'black',
-                    border: '5px solid black',
-                    borderRadius: '15px',
-                    boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                    fontSize: '1.5rem',
-                    fontWeight: 900,
-                    padding: '2rem',
-                    marginTop: '1rem',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease',
-                    opacity: loading ? 0.6 : 1,
-                  }}
-                  onMouseDown={(e) => {
-                    if (!loading) {
-                      e.currentTarget.style.transform = 'translate(8px, 8px)';
-                      e.currentTarget.style.boxShadow = '0px 0px 0px 0px rgba(0, 0, 0, 1)';
-                    }
-                  }}
-                  onMouseUp={(e) => {
-                    if (!loading) {
-                      e.currentTarget.style.transform = 'translate(0px, 0px)';
-                      e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!loading) {
-                      e.currentTarget.style.transform = 'translate(0px, 0px)';
-                      e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
-                    }
-                  }}
-                >
-                  {loading ? '로그인 중...' : '로그인 시작! 🚀'}
-                </button>
-              </Stack>
-            </form>
+                  <motion.button
+                    type="submit"
+                    disabled={loading}
+                    whileHover={{ scale: 1.02, x: -2, y: -2, boxShadow: '6px 6px 0px 0px black' }}
+                    whileTap={{ scale: 0.98, x: 2, y: 2, boxShadow: '0px 0px 0px 0px black' }}
+                    style={{
+                      width: '100%',
+                      padding: '1.2rem',
+                      background: '#2563EB', // Blue
+                      color: 'white',
+                      border: '3px solid black',
+                      fontSize: '1.2rem',
+                      fontWeight: 900,
+                      fontFamily: "'Montserrat', sans-serif",
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      marginTop: '1rem',
+                      boxShadow: '4px 4px 0px 0px black',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    {loading ? 'LOADING...' : 'SIGN IN →'}
+                  </motion.button>
+                </Stack>
+              </form>
 
-            {/* 하단 정보 */}
-            <Box mt={30}>
-              <Group justify="center" gap="xs" mb={15}>
-                <Box
-                  style={{
-                    background: '#FFD93D',
-                    border: '3px solid black',
-                    borderRadius: '10px',
-                    padding: '0.5rem 1rem',
-                  }}
-                >
-                  <Text fw={700} size="sm">
-                    📱 모바일 OK
+              <Box style={{ borderTop: '2px solid #E5E7EB', paddingTop: '1.5rem', textAlign: 'center' }}>
+                <Text size="sm" fw={700} c="dimmed">
+                  DON'T HAVE AN ACCOUNT?{' '}
+                  <Text component="span" c="blue" fw={900} style={{ cursor: 'pointer', textDecoration: 'underline' }}>
+                    CREATE ACADEMY
                   </Text>
-                </Box>
-                <Box
-                  style={{
-                    background: '#FF6B9D',
-                    border: '3px solid black',
-                    borderRadius: '10px',
-                    padding: '0.5rem 1rem',
-                  }}
-                >
-                  <Text fw={700} size="sm" c="white">
-                    🇰🇷 한글 입력
-                  </Text>
-                </Box>
-                <Box
-                  style={{
-                    background: '#4ECDC4',
-                    border: '3px solid black',
-                    borderRadius: '10px',
-                    padding: '0.5rem 1rem',
-                  }}
-                >
-                  <Text fw={700} size="sm" c="white">
-                    ⚡ 빠른 학습
-                  </Text>
-                </Box>
-              </Group>
-            </Box>
-          </Paper>
-
-          {/* 하단 장식 카드들 */}
-          <Group justify="center" mt={30} gap="md">
-            <Paper
-              p="lg"
-              style={{
-                border: '4px solid black',
-                background: 'rgba(255, 255, 255, 0.95)',
-                borderRadius: '15px',
-                boxShadow: '6px 6px 0px rgba(0, 0, 0, 0.4)',
-              }}
-            >
-              <Text fw={900} size="lg" ta="center">
-                ✨ 재미있는<br />학습
-              </Text>
-            </Paper>
-            <Paper
-              p="lg"
-              style={{
-                border: '4px solid black',
-                background: 'rgba(255, 255, 255, 0.95)',
-                borderRadius: '15px',
-                boxShadow: '6px 6px 0px rgba(0, 0, 0, 0.4)',
-              }}
-            >
-              <Text fw={900} size="lg" ta="center">
-                🎯 실력<br />향상
-              </Text>
-            </Paper>
-            <Paper
-              p="lg"
-              style={{
-                border: '4px solid black',
-                background: 'rgba(255, 255, 255, 0.95)',
-                borderRadius: '15px',
-                boxShadow: '6px 6px 0px rgba(0, 0, 0, 0.4)',
-              }}
-            >
-              <Text fw={900} size="lg" ta="center">
-                🏆 높은<br />성취감
-              </Text>
-            </Paper>
-          </Group>
-        </div>
+                </Text>
+              </Box>
+            </Stack>
+          </Box>
+        </motion.div>
       </Box>
+
+      {/* Footer Copyright */}
+      <Text
+        style={{
+          position: 'absolute',
+          bottom: '20px',
+          width: '100%',
+          textAlign: 'center',
+          opacity: 0.5,
+          fontWeight: 700,
+          fontFamily: 'monospace',
+          fontSize: '0.8rem'
+        }}
+      >
+        © 2025 WordTest Academy.
+      </Text>
     </Box>
   );
 }

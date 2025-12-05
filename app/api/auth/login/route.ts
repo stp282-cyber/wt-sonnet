@@ -22,7 +22,12 @@ export async function POST(request: NextRequest) {
         if (error) {
             console.error('Database error:', error);
             return NextResponse.json(
-                { error: 'Database error' },
+                {
+                    error: 'Database error',
+                    details: error.message,
+                    code: error.code,
+                    hint: error.hint
+                },
                 { status: 500 }
             );
         }
@@ -51,10 +56,13 @@ export async function POST(request: NextRequest) {
             user: userWithoutPassword,
             message: 'Login successful',
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Login error:', error);
         return NextResponse.json(
-            { error: 'Internal server error' },
+            {
+                error: 'Internal server error',
+                details: error.message || JSON.stringify(error)
+            },
             { status: 500 }
         );
     }

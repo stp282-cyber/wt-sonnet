@@ -1,8 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 배경은 미세한 웜 그레이 또는 화이트 */
+  --background: #F3F4F6;
+  --foreground: #000000;
+
+  /* Bold & Vivid Brand Colors (from Reference) */
+  --primary: #2563EB;
+  /* Royal Blue */
+  --secondary: #9333EA;
+  /* Vivid Purple */
+  --accent: #FACC15;
+  /* Mustard Yellow */
+  --success: #22C55E;
+  /* Bright Green */
+  --error: #EF4444;
+  /* Red */
+  --pink: #FF90E8;
+  /* Hot Pink */
+
+  /* Bold Lines & Shadows */
+  --border-color: #000000;
+  --border-width: 3px;
+  --radius: 0px;
+  /* Sharp Edges for distinct brutalism */
+  --radius-md: 8px;
+  /* Slight rounding for specific elements */
+
+  /* Shadows */
+  --shadow-color: #000000;
 }
 
 @theme inline {
@@ -13,123 +39,94 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  font-family: 'Montserrat', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  overflow-x: hidden;
+  /* 배경 패턴 */
+  background-image: radial-gradient(#E5E7EB 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-/* 네오브루탈리즘 스타일 */
+/* Bold Neo-Brutalism Style Components */
+
 .neo-card {
-  border: 3px solid black;
-  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
-  transition: all 0.2s ease;
   background: white;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 6px 6px 0px 0px var(--shadow-color);
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .neo-card:hover {
-  transform: translate(2px, 2px);
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0px 0px var(--shadow-color);
 }
 
 .neo-button {
-  border: 3px solid black;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-  font-weight: 700;
+  background-color: var(--primary);
+  color: white;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  /* 약간의 라운딩 */
+  box-shadow: 5px 5px 0px 0px var(--shadow-color);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   transition: all 0.1s ease;
   cursor: pointer;
+  padding: 1rem 2rem;
+  font-family: 'Montserrat', sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.neo-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0px 0px var(--shadow-color);
 }
 
 .neo-button:active {
   transform: translate(4px, 4px);
-  box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 0px 0px 0px 0px var(--shadow-color);
+}
+
+.neo-button.secondary {
+  background-color: var(--secondary);
+}
+
+.neo-button.accent {
+  background-color: var(--accent);
+  color: black;
 }
 
 .neo-input {
-  border: 3px solid black;
-  box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 1);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: white;
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
+  padding: 1rem;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .neo-input:focus {
   outline: none;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  background: #FFFBE6;
+  /* 연한 노란색 배경 */
+  border-color: black;
+  box-shadow: 6px 6px 0px 0px black;
+  transform: translate(-2px, -2px);
 }
 
-/* 애니메이션 */
-@keyframes bounce-in {
-  0% { 
-    transform: scale(0.8); 
-    opacity: 0; 
-  }
-  50% { 
-    transform: scale(1.05); 
-  }
-  100% { 
-    transform: scale(1); 
-    opacity: 1; 
-  }
+/* 유틸리티 */
+.text-stroke {
+  -webkit-text-stroke: 1.5px black;
+  color: white;
+  /* 투명 대신 화이트 필 */
+  text-shadow: 3px 3px 0px black;
+  font-weight: 900;
 }
 
-@keyframes slide-in-right {
-  0% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slide-in-left {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fade-in {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.animate-bounce-in {
-  animation: bounce-in 0.4s ease-out;
-}
-
-.animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out;
-}
-
-.animate-slide-in-left {
-  animation: slide-in-left 0.3s ease-out;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
-
-/* 복사/붙여넣기 방지 */
 .no-copy {
   user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 모바일 최적화 */
-@media (max-width: 768px) {
-  .neo-card {
-    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-  }
-  
-  .neo-button {
-    box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 1);
-  }
 }

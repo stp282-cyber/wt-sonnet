@@ -1,7 +1,7 @@
 'use client';
 
-import { Container, Title, Grid, Paper, Text, Box, Group, Stack, Badge, Progress } from '@mantine/core';
-import { IconBell, IconBook, IconCoin, IconTrophy, IconClock } from '@tabler/icons-react';
+import { Container, Title, Grid, Paper, Text, Box, Group, Stack, Badge, Progress, Button } from '@mantine/core';
+import { IconBell, IconBook, IconCoin, IconTrophy, IconClock, IconArrowRight } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 
 export default function StudentDashboardPage() {
@@ -45,302 +45,242 @@ export default function StudentDashboardPage() {
         averageScore: 85,
     };
 
-    const getStatusColor = (status: string) => {
+    const getStatusInfo = (status: string) => {
         switch (status) {
-            case 'pending':
-                return 'gray';
-            case 'in_progress':
-                return 'yellow';
-            case 'completed':
-                return 'green';
-            default:
-                return 'gray';
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return '대기';
-            case 'in_progress':
-                return '진행중';
-            case 'completed':
-                return '완료';
-            default:
-                return '대기';
+            case 'pending': return { text: '대기', color: 'gray' };
+            case 'in_progress': return { text: '진행중', color: 'yellow' };
+            case 'completed': return { text: '완료', color: 'green' };
+            default: return { text: '대기', color: 'gray' };
         }
     };
 
     return (
         <Container size="xl" py={40}>
-            <div className="animate-fade-in">
-                {/* 페이지 헤더 */}
-                <Box mb={30}>
-                    <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                        📚 대시보드
+            {/* 페이지 헤더 */}
+            <Box mb={30} className="animate-fade-in">
+                <Box
+                    style={{
+                        display: 'inline-block',
+                        background: '#FFD93D',
+                        border: '3px solid black',
+                        padding: '0.5rem 1rem',
+                        boxShadow: '4px 4px 0px black',
+                        marginBottom: '1rem',
+                        transform: 'rotate(-1deg)'
+                    }}
+                >
+                    <Title order={1} style={{ fontWeight: 900, fontFamily: "'Montserrat', sans-serif" }}>
+                        STUDENT DASHBOARD
                     </Title>
-                    <Text size="lg" c="dimmed">
-                        오늘도 열심히 공부해봐요!
-                    </Text>
                 </Box>
+                <Text size="lg" fw={700}>
+                    오늘도 열심히 공부해봐요! 🚀
+                </Text>
+            </Box>
 
-                <Grid>
-                    {/* 공지사항 */}
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <Paper
-                            p="xl"
-                            radius="lg"
-                            style={{
-                                border: '4px solid black',
-                                background: 'white',
-                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                                height: '100%',
-                            }}
-                        >
-                            <Group mb="md">
-                                <IconBell size={28} color="#FF6B9D" />
-                                <Text size="xl" fw={900}>
-                                    공지사항
-                                </Text>
-                            </Group>
-
-                            <Stack gap="sm">
-                                {notices.map((notice) => (
-                                    <Paper
-                                        key={notice.id}
-                                        p="md"
-                                        style={{
-                                            border: '3px solid black',
-                                            background: notice.priority === 'high' ? '#FFE5E5' : '#F8F9FA',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        <Group justify="space-between">
-                                            <div>
-                                                <Text fw={700} size="md">
-                                                    {notice.title}
-                                                </Text>
-                                                <Text size="sm" c="dimmed">
-                                                    {notice.date}
-                                                </Text>
-                                            </div>
-                                            {notice.priority === 'high' && (
-                                                <Badge color="red" variant="filled">
-                                                    중요
-                                                </Badge>
-                                            )}
-                                        </Group>
-                                    </Paper>
-                                ))}
-                            </Stack>
-                        </Paper>
-                    </Grid.Col>
-
-                    {/* 오늘의 학습 */}
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <Paper
-                            p="xl"
-                            radius="lg"
-                            style={{
-                                border: '4px solid black',
-                                background: 'white',
-                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                                height: '100%',
-                            }}
-                        >
-                            <Group mb="md">
-                                <IconBook size={28} color="#4ECDC4" />
-                                <Text size="xl" fw={900}>
-                                    오늘의 학습
-                                </Text>
-                            </Group>
-
-                            <Stack gap="sm">
-                                {todayLearning.map((item) => (
-                                    <Paper
-                                        key={item.id}
-                                        p="md"
-                                        style={{
-                                            border: '3px solid black',
-                                            background: '#F8F9FA',
-                                        }}
-                                    >
-                                        <Group justify="space-between" mb="xs">
-                                            <Text fw={700} size="md">
-                                                {item.curriculum}
-                                            </Text>
-                                            <Badge color={getStatusColor(item.status)} variant="filled">
-                                                {getStatusText(item.status)}
-                                            </Badge>
-                                        </Group>
-                                        <Text size="sm" c="dimmed" mb="sm">
-                                            {item.type} · {item.section} · {item.wordCount}개 단어
-                                        </Text>
-                                        <button
-                                            onClick={() => router.push('/student/learning')}
-                                            style={{
-                                                background: '#7950f2',
-                                                color: 'white',
-                                                border: '3px solid black',
-                                                borderRadius: '8px',
-                                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                padding: '0.5rem 1rem',
-                                                cursor: 'pointer',
-                                                width: '100%',
-                                            }}
-                                        >
-                                            시작하기 →
-                                        </button>
-                                    </Paper>
-                                ))}
-                            </Stack>
-                        </Paper>
-                    </Grid.Col>
-
-                    {/* 달러 현황 */}
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <Paper
-                            p="xl"
-                            radius="lg"
-                            style={{
-                                border: '4px solid black',
-                                background: 'linear-gradient(135deg, #FFD93D 0%, #FFA94D 100%)',
-                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                            }}
-                        >
-                            <Group mb="md">
-                                <IconCoin size={28} color="black" />
-                                <Text size="xl" fw={900} c="black">
-                                    달러 현황
-                                </Text>
-                            </Group>
-
-                            <Box
-                                mb="md"
-                                style={{
-                                    background: 'white',
-                                    border: '3px solid black',
-                                    borderRadius: '12px',
-                                    padding: '1.5rem',
-                                    textAlign: 'center',
-                                }}
-                            >
-                                <Text size="sm" c="dimmed" mb="xs">
-                                    현재 보유 달러
-                                </Text>
-                                <Text size="3rem" fw={900} c="violet">
-                                    150
-                                </Text>
-                                <Text size="sm" c="dimmed">
-                                    이번 주 +35 달러
-                                </Text>
+            <Grid>
+                {/* 1. 공지사항 (Red Theme) */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Paper
+                        p="xl"
+                        className="neo-card"
+                        style={{
+                            border: '3px solid black',
+                            background: '#FFF5F5', // Light Red
+                            boxShadow: '6px 6px 0px black',
+                            height: '100%',
+                        }}
+                    >
+                        <Group mb="lg">
+                            <Box style={{ background: '#FF6B6B', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
+                                <IconBell size={24} color="white" stroke={2.5} />
                             </Box>
+                            <Title order={3} fw={900}>공지사항</Title>
+                        </Group>
 
-                            <Stack gap="xs">
-                                <Text fw={700} size="sm" c="black">
-                                    최근 내역
-                                </Text>
-                                {dollarHistory.map((item) => (
+                        <Stack gap="sm">
+                            {notices.map((notice) => (
+                                <Paper
+                                    key={notice.id}
+                                    p="md"
+                                    onClick={() => router.push('/student/notices')}
+                                    style={{
+                                        border: '2px solid black',
+                                        background: 'white',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.1s',
+                                    }}
+                                >
+                                    <Group justify="space-between" align="flex-start">
+                                        <div>
+                                            {notice.priority === 'high' && (
+                                                <Badge color="red" variant="filled" mb={5} style={{ border: '1px solid black' }}>중요</Badge>
+                                            )}
+                                            <Text fw={700} size="md">{notice.title}</Text>
+                                            <Text size="xs" c="dimmed" fw={600}>{notice.date}</Text>
+                                        </div>
+                                    </Group>
+                                </Paper>
+                            ))}
+                        </Stack>
+                    </Paper>
+                </Grid.Col>
+
+                {/* 2. 오늘의 학습 (Blue Theme) */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Paper
+                        p="xl"
+                        className="neo-card"
+                        style={{
+                            border: '3px solid black',
+                            background: '#E7F5FF', // Light Blue
+                            boxShadow: '6px 6px 0px black',
+                            height: '100%',
+                        }}
+                    >
+                        <Group mb="lg">
+                            <Box style={{ background: '#339AF0', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
+                                <IconBook size={24} color="white" stroke={2.5} />
+                            </Box>
+                            <Title order={3} fw={900}>오늘의 학습</Title>
+                        </Group>
+
+                        <Stack gap="md">
+                            {todayLearning.map((item) => {
+                                const status = getStatusInfo(item.status);
+                                return (
                                     <Paper
                                         key={item.id}
-                                        p="sm"
+                                        p="md"
                                         style={{
-                                            border: '2px solid black',
+                                            border: '3px solid black',
                                             background: 'white',
                                         }}
                                     >
-                                        <Group justify="space-between">
-                                            <div>
-                                                <Text fw={600} size="sm">
-                                                    {item.reason}
-                                                </Text>
-                                                <Text size="xs" c="dimmed">
-                                                    {item.date}
-                                                </Text>
-                                            </div>
-                                            <Text fw={900} size="lg" c="green">
-                                                +{item.amount}
-                                            </Text>
+                                        <Group justify="space-between" mb="xs">
+                                            <Badge
+                                                color="blue"
+                                                variant="light"
+                                                size="lg"
+                                                radius="sm"
+                                                style={{ border: '2px solid black', color: 'black', fontWeight: 800 }}
+                                            >
+                                                {item.type}
+                                            </Badge>
+                                            <Badge
+                                                color={status.color}
+                                                variant="filled"
+                                                style={{ border: '2px solid black', fontWeight: 700 }}
+                                            >
+                                                {status.text}
+                                            </Badge>
                                         </Group>
+                                        <Text fw={800} size="lg" truncate>{item.curriculum}</Text>
+                                        <Text size="sm" c="dimmed" fw={600} mb="md">
+                                            {item.section} · {item.wordCount}개 단어
+                                        </Text>
+                                        <Button
+                                            fullWidth
+                                            className="neo-button"
+                                            onClick={() => router.push('/student/learning')}
+                                            rightSection={<IconArrowRight size={18} />}
+                                            style={{ backgroundColor: '#339AF0', border: '2px solid black' }}
+                                        >
+                                            학습 시작하기
+                                        </Button>
                                     </Paper>
-                                ))}
-                            </Stack>
-                        </Paper>
-                    </Grid.Col>
+                                );
+                            })}
+                        </Stack>
+                    </Paper>
+                </Grid.Col>
 
-                    {/* 학습 통계 */}
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <Paper
-                            p="xl"
-                            radius="lg"
-                            style={{
-                                border: '4px solid black',
-                                background: 'white',
-                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                            }}
-                        >
-                            <Group mb="md">
-                                <IconTrophy size={28} color="#51CF66" />
-                                <Text size="xl" fw={900}>
-                                    이번 주 통계
-                                </Text>
-                            </Group>
+                {/* 3. 달러 현황 (Yellow Theme) */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Paper
+                        p="xl"
+                        className="neo-card"
+                        style={{
+                            border: '3px solid black',
+                            background: '#FFF9DB', // Light Yellow
+                            boxShadow: '6px 6px 0px black',
+                        }}
+                    >
+                        <Group mb="lg">
+                            <Box style={{ background: '#FFD43B', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
+                                <IconCoin size={24} color="black" stroke={2.5} />
+                            </Box>
+                            <Title order={3} fw={900}>내 지갑</Title>
+                        </Group>
 
-                            <Stack gap="md">
-                                <Box>
-                                    <Group justify="space-between" mb="xs">
-                                        <Text fw={700}>완료한 학습</Text>
-                                        <Text fw={900} size="xl" c="violet">
-                                            {stats.completedThisWeek}개
-                                        </Text>
-                                    </Group>
-                                    <Progress
-                                        value={(stats.completedThisWeek / 10) * 100}
-                                        size="xl"
-                                        radius="xl"
-                                        styles={{
-                                            root: { border: '3px solid black' },
-                                            section: { background: '#7950f2' },
-                                        }}
-                                    />
-                                </Box>
+                        <Box mb="lg" style={{ textAlign: 'center', background: 'white', border: '3px solid black', padding: '1rem' }}>
+                            <Text size="3rem" fw={900} style={{ color: 'black', lineHeight: 1 }}>
+                                $150
+                            </Text>
+                            <Text size="sm" fw={700} c="dimmed">이번 주 획득: +$35</Text>
+                        </Box>
 
-                                <Box>
-                                    <Group justify="space-between" mb="xs">
-                                        <Group gap="xs">
-                                            <IconClock size={20} />
-                                            <Text fw={700}>총 학습 시간</Text>
-                                        </Group>
-                                        <Text fw={900} size="xl" c="blue">
-                                            {stats.totalHours}시간
-                                        </Text>
-                                    </Group>
-                                </Box>
+                        <Stack gap="xs">
+                            {dollarHistory.map((item) => (
+                                <Group key={item.id} justify="space-between" style={{ borderBottom: '2px dashed #ced4da', paddingBottom: '8px' }}>
+                                    <Text size="sm" fw={600}>{item.reason}</Text>
+                                    <Text fw={800} c="green">+{item.amount}</Text>
+                                </Group>
+                            ))}
+                        </Stack>
+                    </Paper>
+                </Grid.Col>
 
-                                <Box>
-                                    <Group justify="space-between" mb="xs">
-                                        <Text fw={700}>평균 점수</Text>
-                                        <Text fw={900} size="xl" c="green">
-                                            {stats.averageScore}점
-                                        </Text>
-                                    </Group>
-                                    <Progress
-                                        value={stats.averageScore}
-                                        size="xl"
-                                        radius="xl"
-                                        styles={{
-                                            root: { border: '3px solid black' },
-                                            section: { background: '#51CF66' },
-                                        }}
-                                    />
-                                </Box>
-                            </Stack>
-                        </Paper>
-                    </Grid.Col>
-                </Grid>
-            </div>
+                {/* 4. 학습 통계 (Green Theme) */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Paper
+                        p="xl"
+                        className="neo-card"
+                        style={{
+                            border: '3px solid black',
+                            background: '#EBFBEE', // Light Green
+                            boxShadow: '6px 6px 0px black',
+                        }}
+                    >
+                        <Group mb="lg">
+                            <Box style={{ background: '#40C057', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
+                                <IconTrophy size={24} color="black" stroke={2.5} />
+                            </Box>
+                            <Title order={3} fw={900}>주간 통계</Title>
+                        </Group>
+
+                        <Stack gap="lg">
+                            <Box>
+                                <Group justify="space-between" mb={5}>
+                                    <Text fw={700}>완료한 학습</Text>
+                                    <Text fw={900} size="lg">{stats.completedThisWeek}개</Text>
+                                </Group>
+                                <Progress
+                                    value={80}
+                                    size="xl"
+                                    radius="sm"
+                                    color="grape"
+                                    style={{ border: '2px solid black' }}
+                                />
+                            </Box>
+
+                            <Box>
+                                <Group justify="space-between" mb={5}>
+                                    <Text fw={700}>평균 점수</Text>
+                                    <Text fw={900} size="lg" c="green">{stats.averageScore}점</Text>
+                                </Group>
+                                <Progress
+                                    value={stats.averageScore}
+                                    size="xl"
+                                    radius="sm"
+                                    color="green"
+                                    style={{ border: '2px solid black' }}
+                                />
+                            </Box>
+                        </Stack>
+                    </Paper>
+                </Grid.Col>
+            </Grid>
         </Container>
     );
 }
