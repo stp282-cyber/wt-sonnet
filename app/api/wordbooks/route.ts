@@ -77,13 +77,16 @@ export async function POST(request: NextRequest) {
         });
 
         // 3. 각 소단원을 wordbook_sections에 저장
-        const sections = Array.from(sectionMap.entries()).map(([minorUnit, sectionWords]) => ({
-            wordbook_id: wordbook.id,
-            major_unit: words.find((w: any) => w.minor_unit === minorUnit)?.major_unit || null,
-            minor_unit: minorUnit,
-            unit_name: minorUnit,
-            words: sectionWords,
-        }));
+        const sections = Array.from(sectionMap.entries()).map(([minorUnit, sectionWords]) => {
+            const representativeWord = words.find((w: any) => w.minor_unit === minorUnit);
+            return {
+                wordbook_id: wordbook.id,
+                major_unit: representativeWord?.major_unit || null,
+                minor_unit: minorUnit,
+                unit_name: representativeWord?.unit_name || minorUnit,
+                words: sectionWords,
+            };
+        });
 
         const { error: sectionsError } = await supabase
             .from('wordbook_sections')

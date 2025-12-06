@@ -47,6 +47,7 @@ export async function GET(
                     ...word,
                     major_unit: section.major_unit,
                     minor_unit: section.minor_unit,
+                    unit_name: section.unit_name,
                 });
             });
         });
@@ -122,13 +123,16 @@ export async function PUT(
             });
 
             // 새 섹션 생성
-            const sections = Array.from(sectionMap.entries()).map(([minorUnit, sectionWords]) => ({
-                wordbook_id: id,
-                major_unit: words.find((w: any) => w.minor_unit === minorUnit)?.major_unit || null,
-                minor_unit: minorUnit,
-                unit_name: minorUnit,
-                words: sectionWords,
-            }));
+            const sections = Array.from(sectionMap.entries()).map(([minorUnit, sectionWords]) => {
+                const representativeWord = words.find((w: any) => w.minor_unit === minorUnit);
+                return {
+                    wordbook_id: id,
+                    major_unit: representativeWord?.major_unit || null,
+                    minor_unit: minorUnit,
+                    unit_name: representativeWord?.unit_name || minorUnit,
+                    words: sectionWords,
+                };
+            });
 
             const { error: sectionsError } = await supabase
                 .from('wordbook_sections')
