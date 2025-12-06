@@ -108,7 +108,24 @@ export default function StudentSchedulePage() {
     const [student, setStudent] = useState<Student | null>(null);
     const [curriculums, setCurriculums] = useState<StudentCurriculum[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchStartDate, setSearchStartDate] = useState<Date>(new Date());
+
+    // 오늘이 토요일(6) 또는 일요일(0)이면 다음주 월요일로 설정
+    const getInitialDate = () => {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+
+        // 토요일(6) 또는 일요일(0)인 경우
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            const daysUntilMonday = dayOfWeek === 0 ? 1 : 2; // 일요일이면 1일, 토요일이면 2일 후
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() + daysUntilMonday);
+            return nextMonday;
+        }
+
+        return today;
+    };
+
+    const [searchStartDate, setSearchStartDate] = useState<Date>(getInitialDate());
 
     useEffect(() => {
         const resolveParams = async () => {
