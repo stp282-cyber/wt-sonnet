@@ -66,7 +66,6 @@ export default function StudentDashboardPage() {
                         padding: '0.5rem 1rem',
                         boxShadow: '4px 4px 0px black',
                         marginBottom: '1rem',
-                        transform: 'rotate(-1deg)'
                     }}
                 >
                     <Title order={1} style={{ fontWeight: 900, fontFamily: "'Montserrat', sans-serif" }}>
@@ -74,25 +73,26 @@ export default function StudentDashboardPage() {
                     </Title>
                 </Box>
                 <Text size="lg" fw={700}>
-                    오늘도 열심히 공부해봐요! 🚀
+                    오늘도 열심히 공부해봐요!
                 </Text>
             </Box>
 
             <Grid>
-                {/* 1. 공지사항 (Red Theme) */}
+                {/* 1. 공지사항 (단순화된 스타일) */}
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper
                         p="xl"
                         className="neo-card"
                         style={{
                             border: '3px solid black',
-                            background: '#FFF5F5', // Light Red
+                            background: 'white',
                             boxShadow: '6px 6px 0px black',
                             height: '100%',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="lg">
-                            <Box style={{ background: '#FF6B6B', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
+                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
                                 <IconBell size={24} color="white" stroke={2.5} />
                             </Box>
                             <Title order={3} fw={900}>공지사항</Title>
@@ -109,12 +109,13 @@ export default function StudentDashboardPage() {
                                         background: 'white',
                                         cursor: 'pointer',
                                         transition: 'transform 0.1s',
+                                        borderRadius: 0,
                                     }}
                                 >
                                     <Group justify="space-between" align="flex-start">
                                         <div>
                                             {notice.priority === 'high' && (
-                                                <Badge color="red" variant="filled" mb={5} style={{ border: '1px solid black' }}>중요</Badge>
+                                                <Badge color="red" variant="filled" mb={5} radius={0} style={{ border: '1px solid black' }}>중요</Badge>
                                             )}
                                             <Text fw={700} size="md">{notice.title}</Text>
                                             <Text size="xs" c="dimmed" fw={600}>{notice.date}</Text>
@@ -126,20 +127,21 @@ export default function StudentDashboardPage() {
                     </Paper>
                 </Grid.Col>
 
-                {/* 2. 오늘의 학습 (Blue Theme) */}
+                {/* 2. 오늘의 학습 */}
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper
                         p="xl"
                         className="neo-card"
                         style={{
                             border: '3px solid black',
-                            background: '#E7F5FF', // Light Blue
+                            background: 'white',
                             boxShadow: '6px 6px 0px black',
                             height: '100%',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="lg">
-                            <Box style={{ background: '#339AF0', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
+                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
                                 <IconBook size={24} color="white" stroke={2.5} />
                             </Box>
                             <Title order={3} fw={900}>오늘의 학습</Title>
@@ -154,15 +156,16 @@ export default function StudentDashboardPage() {
                                         p="md"
                                         style={{
                                             border: '3px solid black',
-                                            background: 'white',
+                                            background: '#F8F9FA',
+                                            borderRadius: 0,
                                         }}
                                     >
                                         <Group justify="space-between" mb="xs">
                                             <Badge
-                                                color="blue"
+                                                color="gray"
                                                 variant="light"
                                                 size="lg"
-                                                radius="sm"
+                                                radius={0}
                                                 style={{ border: '2px solid black', color: 'black', fontWeight: 800 }}
                                             >
                                                 {item.type}
@@ -170,6 +173,7 @@ export default function StudentDashboardPage() {
                                             <Badge
                                                 color={status.color}
                                                 variant="filled"
+                                                radius={0}
                                                 style={{ border: '2px solid black', fontWeight: 700 }}
                                             >
                                                 {status.text}
@@ -184,7 +188,8 @@ export default function StudentDashboardPage() {
                                             className="neo-button"
                                             onClick={() => router.push('/student/learning')}
                                             rightSection={<IconArrowRight size={18} />}
-                                            style={{ backgroundColor: '#339AF0', border: '2px solid black' }}
+                                            radius={0}
+                                            style={{ backgroundColor: 'black', color: 'white', border: '2px solid black' }}
                                         >
                                             학습 시작하기
                                         </Button>
@@ -195,25 +200,26 @@ export default function StudentDashboardPage() {
                     </Paper>
                 </Grid.Col>
 
-                {/* 3. 달러 현황 (Yellow Theme) */}
+                {/* 3. 달러 현황 */}
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper
                         p="xl"
                         className="neo-card"
                         style={{
                             border: '3px solid black',
-                            background: '#FFF9DB', // Light Yellow
+                            background: 'white',
                             boxShadow: '6px 6px 0px black',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="lg">
-                            <Box style={{ background: '#FFD43B', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
-                                <IconCoin size={24} color="black" stroke={2.5} />
+                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
+                                <IconCoin size={24} color="white" stroke={2.5} />
                             </Box>
                             <Title order={3} fw={900}>내 지갑</Title>
                         </Group>
 
-                        <Box mb="lg" style={{ textAlign: 'center', background: 'white', border: '3px solid black', padding: '1rem' }}>
+                        <Box mb="lg" style={{ textAlign: 'center', background: '#FFF9DB', border: '3px solid black', padding: '1rem' }}>
                             <Text size="3rem" fw={900} style={{ color: 'black', lineHeight: 1 }}>
                                 $150
                             </Text>
@@ -222,7 +228,7 @@ export default function StudentDashboardPage() {
 
                         <Stack gap="xs">
                             {dollarHistory.map((item) => (
-                                <Group key={item.id} justify="space-between" style={{ borderBottom: '2px dashed #ced4da', paddingBottom: '8px' }}>
+                                <Group key={item.id} justify="space-between" style={{ borderBottom: '2px solid #eee', paddingBottom: '8px' }}>
                                     <Text size="sm" fw={600}>{item.reason}</Text>
                                     <Text fw={800} c="green">+{item.amount}</Text>
                                 </Group>
@@ -231,20 +237,21 @@ export default function StudentDashboardPage() {
                     </Paper>
                 </Grid.Col>
 
-                {/* 4. 학습 통계 (Green Theme) */}
+                {/* 4. 학습 통계 */}
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper
                         p="xl"
                         className="neo-card"
                         style={{
                             border: '3px solid black',
-                            background: '#EBFBEE', // Light Green
+                            background: 'white',
                             boxShadow: '6px 6px 0px black',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="lg">
-                            <Box style={{ background: '#40C057', padding: '8px', border: '2px solid black', borderRadius: '50%' }}>
-                                <IconTrophy size={24} color="black" stroke={2.5} />
+                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
+                                <IconTrophy size={24} color="white" stroke={2.5} />
                             </Box>
                             <Title order={3} fw={900}>주간 통계</Title>
                         </Group>
@@ -258,8 +265,8 @@ export default function StudentDashboardPage() {
                                 <Progress
                                     value={80}
                                     size="xl"
-                                    radius="sm"
-                                    color="grape"
+                                    radius={0}
+                                    color="dark"
                                     style={{ border: '2px solid black' }}
                                 />
                             </Box>
@@ -272,8 +279,8 @@ export default function StudentDashboardPage() {
                                 <Progress
                                     value={stats.averageScore}
                                     size="xl"
-                                    radius="sm"
-                                    color="green"
+                                    radius={0}
+                                    color="dark"
                                     style={{ border: '2px solid black' }}
                                 />
                             </Box>
