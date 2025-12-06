@@ -175,7 +175,7 @@ export default function StudentSchedulePage() {
         }
     };
 
-    // 특정 주의 월~금 날짜 생성
+    // 특정 주의 월~금 날짜 생성 (로컬 시간 기준)
     const getWeekDays = (startDate: Date, weekOffset: number): WeekDay[] => {
         const days: WeekDay[] = [];
         const currentDate = new Date(startDate);
@@ -189,8 +189,14 @@ export default function StudentSchedulePage() {
             const date = new Date(monday);
             date.setDate(date.getDate() + i);
 
+            // 로컬 시간 기준으로 YYYY-MM-DD 문자열 생성
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+
             days.push({
-                date: date.toISOString().split('T')[0],
+                date: dateStr,
                 dateObj: date,
                 dayOfWeek: DAYS_OF_WEEK[i],
             });
@@ -237,7 +243,22 @@ export default function StudentSchedulePage() {
             if (num === dayOfWeek) currentDayCode = code;
         });
 
-        if (!currentDayCode || !curriculum.study_days.includes(currentDayCode)) {
+        // study_days 파싱 (문자열로 올 경우 대비)
+        let studyDays: string[] = [];
+        if (Array.isArray(curriculum.study_days)) {
+            studyDays = curriculum.study_days;
+        } else if (typeof curriculum.study_days === 'string') {
+            try {
+                // 작은따옴표를 큰따옴표로 변환 후 파싱 시도 (Python 스타일 리스트 문자열인 경우)
+                const sanitized = (curriculum.study_days as string).replace(/'/g, '"');
+                studyDays = JSON.parse(sanitized);
+            } catch (e) {
+                console.error("Failed to parse study_days:", curriculum.study_days);
+                studyDays = [];
+            }
+        }
+
+        if (!currentDayCode || !studyDays.includes(currentDayCode)) {
             return null;
         }
 
@@ -252,7 +273,7 @@ export default function StudentSchedulePage() {
                 if (num === checkDayOfWeek) checkDayCode = code;
             });
 
-            if (checkDayCode && curriculum.study_days.includes(checkDayCode)) {
+            if (checkDayCode && studyDays.includes(checkDayCode)) {
                 studyDayCount++;
             }
 
@@ -486,10 +507,10 @@ export default function StudentSchedulePage() {
 
                                                                     {/* 진도 범위 */}
                                                                     <Box style={{
-                                                                        background: '#e3f2fd',
+                                                                        background: '#FFF9DB', // Yellow background
                                                                         padding: '6px',
                                                                         marginTop: '4px',
-                                                                        border: '1px solid #90caf9',
+                                                                        border: '1px solid #FFD93D', // darker yellow border
                                                                         borderRadius: '4px'
                                                                     }}>
                                                                         <Text size="xs" fw={700} ta="center">진도 범위</Text>
