@@ -39,6 +39,7 @@ interface CurriculumDetail {
 
 interface StudentCurriculum {
     id: string;
+    student_id: string;
     student_name: string;
     class_name: string;
     curriculum_name: string;
@@ -84,31 +85,31 @@ export default function ClassLogPage() {
     const fetchStudents = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/students');
-            if (!response.ok) throw new Error('Failed to fetch students');
+            const response = await fetch('/api/student-curriculums');
+            if (!response.ok) throw new Error('Failed to fetch student curriculums');
 
             const data = await response.json();
-            const students = data.students || [];
+            const studentCurriculumsData = data.studentCurriculums || [];
 
-            // 학생 데이터를 StudentCurriculum 형식으로 변환
-            const curriculums: StudentCurriculum[] = students.map((student: any) => ({
-                id: student.id,
-                student_name: student.full_name,
-                class_name: student.class_name || '-',
-                curriculum_name: '중학 영단어 1000', // 임시 데이터
-                start_date: new Date(student.created_at).toISOString().split('T')[0],
-                current_progress: 15, // 임시 데이터
-                total_items: 50, // 임시 데이터
+            const curriculums: StudentCurriculum[] = studentCurriculumsData.map((sc: any) => ({
+                id: sc.id, // student_curriculum ID (important!)
+                student_id: sc.student_id,
+                student_name: sc.users?.full_name || '이름 없음',
+                class_name: sc.users?.classes?.name || '-',
+                curriculum_name: sc.curriculums?.name || '커리큘럼 없음',
+                start_date: sc.start_date || new Date().toISOString().split('T')[0],
+                current_progress: sc.current_progress || 0,
+                total_items: 50, // TODO: calculate by curriculum_items count
                 status: 'active',
-                this_week_completed: 4, // 임시 데이터
-                this_week_total: 5, // 임시 데이터
+                this_week_completed: 0, // TODO: calculate with actual data
+                this_week_total: 5,
             }));
 
             setStudentCurriculums(curriculums);
         } catch (error: any) {
             notifications.show({
                 title: '오류',
-                message: error.message || '학생 목록을 불러오는데 실패했습니다.',
+                message: error.message || '학생 커리큘럼을 불러오는데 실패했습니다.',
                 color: 'red',
             });
         } finally {
@@ -471,7 +472,7 @@ export default function ClassLogPage() {
                                         size="xs"
                                         variant="filled"
                                         color="dark"
-                                        onClick={() => router.push(`/teacher/schedule/${student.id}`)}
+                                        onClick={() => router.push(`/teacher/schedule/student/${student.student_id}`)}
                                         style={{ border: '2px solid black', borderRadius: '0px' }}
                                     >
                                         학습일정
