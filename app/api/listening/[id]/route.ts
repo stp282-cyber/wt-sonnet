@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase/client';
 // GET - 듣기 시험 상세 조회 (문제 포함)
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = params;
+        const { id } = await params;
 
         // 듣기 시험 메타데이터 조회
         const { data: listeningTest, error: testError } = await supabase
@@ -57,10 +57,10 @@ export async function GET(
 // DELETE - 듣기 시험 삭제
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = params;
+        const { id } = await params;
 
         // CASCADE 설정으로 인해 듣기 문제도 자동 삭제됨
         const { error } = await supabase
@@ -85,3 +85,4 @@ export async function DELETE(
         );
     }
 }
+

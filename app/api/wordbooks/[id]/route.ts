@@ -4,11 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 // GET /api/wordbooks/[id] - 단어장 상세 조회 (단어 포함)
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
-        const { id } = params;
+        const { id } = await params;
 
         // 1. 단어장 메타데이터 조회
         const { data: wordbook, error: wordbookError } = await supabase
@@ -67,11 +67,11 @@ export async function GET(
 // DELETE /api/wordbooks/[id] - 단어장 삭제
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
-        const { id } = params;
+        const { id } = await params;
 
         const { error } = await supabase
             .from('wordbooks')
@@ -89,3 +89,4 @@ export async function DELETE(
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

@@ -12,7 +12,7 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
     "@mantine/core": "^7.17.6",
-    "@mantine/dates": "^8.3.9",
+    "@mantine/dates": "^7.17.6",
     "@mantine/form": "^7.17.6",
     "@mantine/hooks": "^7.17.6",
     "@mantine/notifications": "^7.17.6",
