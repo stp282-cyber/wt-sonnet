@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Container,
     Title,
@@ -16,6 +16,7 @@ import {
     Box,
     FileInput,
     Badge,
+    Loader,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -47,19 +48,8 @@ interface Wordbook {
 }
 
 export default function WordbooksPage() {
-    const [wordbooks, setWordbooks] = useState<Wordbook[]>([
-        {
-            id: '1',
-            title: '중학 영단어 1000',
-            word_count: 50,
-            words: [
-                { no: 1, english: 'apple', korean: '사과', major_unit: '1단원', minor_unit: '1-1', unit_name: '과일' },
-                { no: 2, english: 'banana', korean: '바나나', major_unit: '1단원', minor_unit: '1-1', unit_name: '과일' },
-            ],
-            created_at: '2024-01-01',
-        },
-    ]);
-
+    const [wordbooks, setWordbooks] = useState<Wordbook[]>([]);
+    const [loading, setLoading] = useState(true);
     const [modalOpened, setModalOpened] = useState(false);
     const [wordModalOpened, setWordModalOpened] = useState(false);
     const [selectedWordbook, setSelectedWordbook] = useState<Wordbook | null>(null);
@@ -88,6 +78,43 @@ export default function WordbooksPage() {
             korean: (value) => (!value ? '한글 뜻을 입력해주세요' : null),
         },
     });
+
+    // 단어장 목록 로드
+    const fetchWordbooks = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/wordbooks');
+            if (!response.ok) throw new Error('Failed to fetch wordbooks');
+
+            const data = await response.json();
+
+            // 각 단어장의 상세 정보 로드 (단어 포함)
+            const wordbooksWithWords = await Promise.all(
+                (data.wordbooks || []).map(async (wb: any) => {
+                    const detailResponse = await fetch(`/api/wordbooks/${wb.id}`);
+                    if (detailResponse.ok) {
+                        const detailData = await detailResponse.json();
+                        return detailData.wordbook;
+                    }
+                    return wb;
+                })
+            );
+
+            setWordbooks(wordbooksWithWords);
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '단어장 목록을 불러오는데 실패했습니다.',
+                color: 'red',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchWordbooks();
+    }, []);
 
     // Excel 템플릿 다운로드
     const handleDownloadTemplate = () => {
@@ -127,11 +154,11 @@ export default function WordbooksPage() {
     };
 
     // Excel 파일 업로드
-    const handleExcelUpload = (file: File | null) => {
+    const handleExcelUpload = async (file: File | null) => {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = new Uint8Array(e.target?.result as ArrayBuffer);
                 const workbook = XLSX.read(data, { type: 'array' });
@@ -148,28 +175,31 @@ export default function WordbooksPage() {
                     unit_name: row['단원명'] || '',
                 }));
 
-                const newWordbook: Wordbook = {
-                    id: Date.now().toString(),
-                    title: jsonData[0]?.['교재명'] || '새 단어장',
-                    word_count: words.length,
-                    words: words,
-                    created_at: new Date().toISOString(),
-                };
+                const title = (jsonData[0] as any)?.['교재명'] || '새 단어장';
 
-                setWordbooks([...wordbooks, newWordbook]);
+                // API로 단어장 생성
+                const response = await fetch('/api/wordbooks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, words }),
+                });
 
-                // localStorage에 저장하여 커리큘럼 페이지에서 참조 가능하도록
-                localStorage.setItem('wordbooks', JSON.stringify([...wordbooks, newWordbook]));
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create wordbook');
+                }
 
                 notifications.show({
                     title: 'Excel 업로드 완료',
                     message: `${words.length}개의 단어가 등록되었습니다.`,
                     color: 'green',
                 });
-            } catch (error) {
+
+                fetchWordbooks(); // 목록 새로고침
+            } catch (error: any) {
                 notifications.show({
                     title: 'Excel 업로드 실패',
-                    message: 'Excel 파일 형식을 확인해주세요.',
+                    message: error.message || 'Excel 파일 형식을 확인해주세요.',
                     color: 'red',
                 });
             }
@@ -203,49 +233,79 @@ export default function WordbooksPage() {
     };
 
     // 단어장 삭제
-    const handleDeleteWordbook = (wordbook: Wordbook) => {
-        if (confirm(`${wordbook.title}을(를) 삭제하시겠습니까?`)) {
-            setWordbooks(wordbooks.filter((w) => w.id !== wordbook.id));
+    const handleDeleteWordbook = async (wordbook: Wordbook) => {
+        if (!confirm(`${wordbook.title}을(를) 삭제하시겠습니까?`)) return;
+
+        try {
+            const response = await fetch(`/api/wordbooks/${wordbook.id}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete wordbook');
+            }
+
             notifications.show({
                 title: '단어장 삭제 완료',
                 message: `${wordbook.title}이(가) 삭제되었습니다.`,
+                color: 'red',
+            });
+
+            fetchWordbooks(); // 목록 새로고침
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '삭제에 실패했습니다.',
                 color: 'red',
             });
         }
     };
 
     // 단어 추가/수정
-    const handleWordSubmit = (values: typeof wordForm.values) => {
+    const handleWordSubmit = async (values: typeof wordForm.values) => {
         if (!selectedWordbook) return;
 
-        const updatedWordbook = { ...selectedWordbook };
+        try {
+            const updatedWords = editingWord
+                ? selectedWordbook.words.map((w) => (w.no === editingWord.no ? { ...values } : w))
+                : [...selectedWordbook.words, { ...values, no: selectedWordbook.words.length + 1 }];
 
-        if (editingWord) {
-            // 수정
-            updatedWordbook.words = updatedWordbook.words.map((w) =>
-                w.no === editingWord.no ? { ...values } : w
-            );
-        } else {
-            // 추가
-            const newWord: Word = {
-                ...values,
-                no: updatedWordbook.words.length + 1,
-            };
-            updatedWordbook.words.push(newWord);
+            // API로 단어장 수정
+            const response = await fetch(`/api/wordbooks/${selectedWordbook.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ words: updatedWords }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update wordbook');
+            }
+
+            notifications.show({
+                title: editingWord ? '단어 수정 완료' : '단어 추가 완료',
+                message: `${values.english}이(가) ${editingWord ? '수정' : '추가'}되었습니다.`,
+                color: 'green',
+            });
+
+            setWordModalOpened(false);
+            wordForm.reset();
+            fetchWordbooks(); // 목록 새로고침
+
+            // 선택된 단어장 업데이트
+            const detailResponse = await fetch(`/api/wordbooks/${selectedWordbook.id}`);
+            if (detailResponse.ok) {
+                const detailData = await detailResponse.json();
+                setSelectedWordbook(detailData.wordbook);
+            }
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '작업에 실패했습니다.',
+                color: 'red',
+            });
         }
-
-        updatedWordbook.word_count = updatedWordbook.words.length;
-
-        setWordbooks(wordbooks.map((w) => (w.id === selectedWordbook.id ? updatedWordbook : w)));
-        setSelectedWordbook(updatedWordbook);
-        setWordModalOpened(false);
-        wordForm.reset();
-
-        notifications.show({
-            title: editingWord ? '단어 수정 완료' : '단어 추가 완료',
-            message: `${values.english}이(가) ${editingWord ? '수정' : '추가'}되었습니다.`,
-            color: 'green',
-        });
     };
 
     return (

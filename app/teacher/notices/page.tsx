@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Container,
     Title,
@@ -16,6 +16,7 @@ import {
     ActionIcon,
     Text,
     Badge,
+    Loader,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DateInput } from '@mantine/dates';
@@ -35,28 +36,8 @@ interface Notice {
 }
 
 export default function NoticesPage() {
-    const [notices, setNotices] = useState<Notice[]>([
-        {
-            id: '1',
-            title: '이번 주 시험 일정 안내',
-            content: '월요일부터 금요일까지 매일 타이핑 시험이 있습니다.',
-            priority: 'high',
-            target_type: 'all',
-            start_date: '2024-01-15',
-            created_at: '2024-01-15T10:00:00',
-        },
-        {
-            id: '2',
-            title: '달러 사용처 안내',
-            content: '달러로 문구류를 구매할 수 있습니다.',
-            priority: 'normal',
-            target_type: 'class',
-            target_class: 'A반',
-            start_date: '2024-01-14',
-            created_at: '2024-01-14T10:00:00',
-        },
-    ]);
-
+    const [notices, setNotices] = useState<Notice[]>([]);
+    const [loading, setLoading] = useState(true);
     const [modalOpened, setModalOpened] = useState(false);
     const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
 
@@ -72,46 +53,91 @@ export default function NoticesPage() {
         },
     });
 
-    const handleSubmit = (values: typeof form.values) => {
-        if (editingNotice) {
-            // 수정
-            setNotices(
-                notices.map((n) =>
-                    n.id === editingNotice.id
-                        ? {
-                            ...n,
-                            ...values,
-                            start_date: values.start_date.toISOString().split('T')[0],
-                            end_date: values.end_date?.toISOString().split('T')[0],
-                        }
-                        : n
-                )
-            );
+    // 공지사항 목록 로드
+    const fetchNotices = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/notices');
+            if (!response.ok) throw new Error('Failed to fetch notices');
+
+            const data = await response.json();
+            setNotices(data.notices || []);
+        } catch (error: any) {
             notifications.show({
-                title: '공지사항 수정 완료',
-                message: '공지사항이 수정되었습니다.',
-                color: 'green',
+                title: '오류',
+                message: error.message || '공지사항을 불러오는데 실패했습니다.',
+                color: 'red',
             });
-        } else {
-            // 생성
-            const newNotice: Notice = {
-                id: Date.now().toString(),
-                ...values,
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchNotices();
+    }, []);
+
+    const handleSubmit = async (values: typeof form.values) => {
+        try {
+            const payload = {
+                title: values.title,
+                content: values.content,
+                target_type: values.target_type,
+                target_class_id: values.target_type === 'class' ? values.target_class : null,
                 start_date: values.start_date.toISOString().split('T')[0],
                 end_date: values.end_date?.toISOString().split('T')[0],
-                created_at: new Date().toISOString(),
+                is_permanent: !values.end_date,
             };
-            setNotices([newNotice, ...notices]);
+
+            if (editingNotice) {
+                // 수정
+                const response = await fetch(`/api/notices/${editingNotice.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to update notice');
+                }
+
+                notifications.show({
+                    title: '공지사항 수정 완료',
+                    message: '공지사항이 수정되었습니다.',
+                    color: 'green',
+                });
+            } else {
+                // 생성
+                const response = await fetch('/api/notices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create notice');
+                }
+
+                notifications.show({
+                    title: '공지사항 생성 완료',
+                    message: '새 공지사항이 등록되었습니다.',
+                    color: 'green',
+                });
+            }
+
+            setModalOpened(false);
+            form.reset();
+            setEditingNotice(null);
+            fetchNotices(); // 목록 새로고침
+        } catch (error: any) {
             notifications.show({
-                title: '공지사항 생성 완료',
-                message: '새 공지사항이 등록되었습니다.',
-                color: 'green',
+                title: '오류',
+                message: error.message || '작업에 실패했습니다.',
+                color: 'red',
             });
         }
-
-        setModalOpened(false);
-        form.reset();
-        setEditingNotice(null);
     };
 
     const handleEdit = (notice: Notice) => {
@@ -128,13 +154,33 @@ export default function NoticesPage() {
         setModalOpened(true);
     };
 
-    const handleDelete = (id: string) => {
-        setNotices(notices.filter((n) => n.id !== id));
-        notifications.show({
-            title: '공지사항 삭제 완료',
-            message: '공지사항이 삭제되었습니다.',
-            color: 'red',
-        });
+    const handleDelete = async (id: string) => {
+        if (!confirm('이 공지사항을 삭제하시겠습니까?')) return;
+
+        try {
+            const response = await fetch(`/api/notices/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete notice');
+            }
+
+            notifications.show({
+                title: '공지사항 삭제 완료',
+                message: '공지사항이 삭제되었습니다.',
+                color: 'red',
+            });
+
+            fetchNotices(); // 목록 새로고침
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '삭제에 실패했습니다.',
+                color: 'red',
+            });
+        }
     };
 
     const getPriorityColor = (priority: string) => {
