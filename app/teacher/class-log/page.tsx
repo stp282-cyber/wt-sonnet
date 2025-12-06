@@ -16,10 +16,12 @@ import {
     Progress,
     Box,
     Grid,
+    MultiSelect,
+    Chip,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconCalendar, IconBook, IconTrendingUp, IconSettings } from '@tabler/icons-react';
+import { IconCalendar, IconBook, IconTrendingUp, IconSettings, IconPlus } from '@tabler/icons-react';
 
 interface DailyStudy {
     date: string;
@@ -61,6 +63,18 @@ export default function ClassLogPage() {
     const [studentCurriculums, setStudentCurriculums] = useState<StudentCurriculum[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // 커리큘럼 등록 모달 상태
+    const [assignModalOpened, setAssignModalOpened] = useState(false);
+    const [availableStudents, setAvailableStudents] = useState<any[]>([]);
+    const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+    const [availableCurriculums, setAvailableCurriculums] = useState<any[]>([]);
+    const [availableClasses, setAvailableClasses] = useState<any[]>([]);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+    const [selectedCurriculumId, setSelectedCurriculumId] = useState<string | null>(null);
+    const [assignStartDate, setAssignStartDate] = useState<Date | null>(new Date());
+    const [selectedDays, setSelectedDays] = useState<string[]>(['월', '수', '금']);
+    const [selectedFilterClass, setSelectedFilterClass] = useState<string | null>(null);
+
     // 오늘 날짜
     const today = new Date().toISOString().split('T')[0];
 
@@ -100,9 +114,121 @@ export default function ClassLogPage() {
         }
     };
 
+    // 반 목록 로드
+    const fetchClasses = async () => {
+        try {
+            const response = await fetch('/api/classes');
+            if (!response.ok) throw new Error('Failed to fetch classes');
+            const data = await response.json();
+            setAvailableClasses(data.classes?.map((c: any) => ({
+                value: c.id,
+                label: c.name,
+            })) || []);
+        } catch (error) {
+            console.error('Failed to fetch classes:', error);
+        }
+    };
+
+    // 학생 목록 로드 (드롭다운용)
+    const fetchAvailableStudents = async () => {
+        try {
+            const response = await fetch('/api/students');
+            if (!response.ok) throw new Error('Failed to fetch students');
+            const data = await response.json();
+            const studentsData = data.students?.map((s: any) => ({
+                value: s.id,
+                label: s.full_name || s.name || '이름 없음',
+                classId: s.class_id,
+                className: s.class_name,
+            })) || [];
+            setAvailableStudents(studentsData);
+            setFilteredStudents(studentsData);
+        } catch (error) {
+            console.error('Failed to fetch students:', error);
+        }
+    };
+
+    // 커리큘럼 목록 로드 (드롭다운용)
+    const fetchAvailableCurriculums = async () => {
+        try {
+            const response = await fetch('/api/curriculums');
+            if (!response.ok) throw new Error('Failed to fetch curriculums');
+            const data = await response.json();
+            setAvailableCurriculums(data.curriculums?.map((c: any) => ({
+                value: c.id,
+                label: c.name,
+            })) || []);
+        } catch (error) {
+            console.error('Failed to fetch curriculums:', error);
+        }
+    };
+
+    // 커리큘럼 등록 핸들러
+    const handleAssignCurriculum = async () => {
+        if (!selectedStudentIds.length || !selectedCurriculumId || !assignStartDate || !selectedDays.length) {
+            notifications.show({
+                title: '입력 오류',
+                message: '모든 필드를 입력해주세요.',
+                color: 'red',
+            });
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/student-curriculums', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_ids: selectedStudentIds,
+                    curriculum_id: selectedCurriculumId,
+                    start_date: assignStartDate instanceof Date ? assignStartDate.toISOString().split('T')[0] : String(assignStartDate).split('T')[0],
+                    class_days: selectedDays,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '등록 실패');
+            }
+
+            notifications.show({
+                title: '등록 완료',
+                message: `${selectedStudentIds.length}명의 학생에게 커리큘럼이 등록되었습니다.`,
+                color: 'green',
+            });
+
+            setAssignModalOpened(false);
+            setSelectedStudentIds([]);
+            setSelectedCurriculumId(null);
+            setSelectedDays(['월', '수', '금']);
+            fetchStudents(); // 목록 새로고침
+        } catch (error: any) {
+            notifications.show({
+                title: '등록 실패',
+                message: error.message,
+                color: 'red',
+            });
+        }
+    };
+
     useEffect(() => {
         fetchStudents();
+        fetchAvailableStudents();
+        fetchAvailableCurriculums();
+        fetchClasses();
     }, []);
+
+    // 반 필터링 시 학생 목록 업데이트
+    useEffect(() => {
+        if (selectedFilterClass) {
+            const filtered = availableStudents.filter(s => s.classId === selectedFilterClass);
+            setFilteredStudents(filtered);
+            // 필터 변경 시 선택된 학생 초기화 (선택된 학생이 필터된 목록에 없으면)
+            setSelectedStudentIds(prev => prev.filter(id => filtered.some(s => s.value === id)));
+        } else {
+            setFilteredStudents(availableStudents);
+        }
+    }, [selectedFilterClass, availableStudents]);
 
     // 학생 상세 정보 (커리큘럼별 주간 일정)
     const getStudentDetail = (studentName: string): StudentDetail => {
@@ -206,6 +332,26 @@ export default function ClassLogPage() {
                         학생별 커리큘럼 진도 및 학습 현황을 확인하세요
                     </Text>
                 </div>
+                <button
+                    onClick={() => setAssignModalOpened(true)}
+                    style={{
+                        background: '#FFD93D',
+                        color: 'black',
+                        border: '2px solid black',
+                        borderRadius: '0px',
+                        boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                        fontSize: '1rem',
+                        fontWeight: 900,
+                        padding: '1rem 1.5rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                    }}
+                >
+                    <IconPlus size={20} />
+                    커리큘럼 등록
+                </button>
             </Group>
 
             {/* 필터 */}
@@ -513,6 +659,162 @@ export default function ClassLogPage() {
                         ))}
                     </Stack>
                 )}
+            </Modal>
+            {/* 커리큘럼 등록 모달 */}
+            <Modal
+                opened={assignModalOpened}
+                onClose={() => setAssignModalOpened(false)}
+                title="학생 커리큘럼 등록"
+                size="lg"
+                radius={0}
+                styles={{
+                    content: {
+                        border: '2px solid black',
+                        borderRadius: '0px',
+                        boxShadow: '8px 8px 0px black',
+                    },
+                    header: {
+                        backgroundColor: '#FFD93D',
+                        borderBottom: '2px solid black',
+                    }
+                }}
+            >
+                <Stack gap="md">
+                    {/* 반 필터 */}
+                    <Select
+                        label="반 선택 (필터)"
+                        placeholder="반을 선택하면 해당 반 학생만 표시됩니다"
+                        data={availableClasses}
+                        value={selectedFilterClass}
+                        onChange={setSelectedFilterClass}
+                        clearable
+                        styles={{
+                            input: {
+                                border: '2px solid black',
+                                borderRadius: '0px',
+                                background: selectedFilterClass ? '#E8F5E9' : 'white',
+                            }
+                        }}
+                    />
+
+                    {/* 필터된 학생 수 표시 */}
+                    {selectedFilterClass && (
+                        <Text size="sm" c="dimmed">
+                            {availableClasses.find(c => c.value === selectedFilterClass)?.label}에 {filteredStudents.length}명의 학생이 있습니다.
+                        </Text>
+                    )}
+
+                    {/* 전체 선택 버튼 */}
+                    <Group gap="xs">
+                        <Button
+                            size="xs"
+                            variant="outline"
+                            color="dark"
+                            onClick={() => setSelectedStudentIds(filteredStudents.map(s => s.value))}
+                            disabled={filteredStudents.length === 0}
+                            style={{ border: '2px solid black', borderRadius: '0px' }}
+                        >
+                            전체 선택 ({filteredStudents.length}명)
+                        </Button>
+                        <Button
+                            size="xs"
+                            variant="outline"
+                            color="red"
+                            onClick={() => setSelectedStudentIds([])}
+                            disabled={selectedStudentIds.length === 0}
+                            style={{ border: '2px solid black', borderRadius: '0px' }}
+                        >
+                            선택 해제
+                        </Button>
+                    </Group>
+
+                    <MultiSelect
+                        label={`학생 선택 (${selectedStudentIds.length}명 선택됨)`}
+                        placeholder="학생을 선택하세요 (여러 명 선택 가능)"
+                        data={filteredStudents}
+                        value={selectedStudentIds}
+                        onChange={setSelectedStudentIds}
+                        searchable
+                        clearable
+                        styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
+                    />
+
+                    <Select
+                        label="커리큘럼 선택"
+                        placeholder="커리큘럼을 선택하세요"
+                        data={availableCurriculums}
+                        value={selectedCurriculumId}
+                        onChange={setSelectedCurriculumId}
+                        searchable
+                        clearable
+                        styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
+                    />
+
+                    <DateInput
+                        label="시작일"
+                        placeholder="시작일을 선택하세요"
+                        value={assignStartDate}
+                        onChange={setAssignStartDate}
+                        styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
+                    />
+
+                    <Box>
+                        <Text fw={500} mb="xs">수업 요일</Text>
+                        <Group gap="xs">
+                            {['월', '화', '수', '목', '금'].map((day) => (
+                                <Chip
+                                    key={day}
+                                    checked={selectedDays.includes(day)}
+                                    onChange={() => {
+                                        setSelectedDays(prev =>
+                                            prev.includes(day)
+                                                ? prev.filter(d => d !== day)
+                                                : [...prev, day]
+                                        );
+                                    }}
+                                    variant="filled"
+                                    color="yellow"
+                                    styles={{
+                                        label: {
+                                            border: '2px solid black',
+                                            borderRadius: '0px',
+                                            fontWeight: 700,
+                                        }
+                                    }}
+                                >
+                                    {day}
+                                </Chip>
+                            ))}
+                        </Group>
+                    </Box>
+
+                    <Group justify="flex-end" mt="md">
+                        <Button
+                            variant="subtle"
+                            color="dark"
+                            onClick={() => setAssignModalOpened(false)}
+                            radius={0}
+                        >
+                            취소
+                        </Button>
+                        <button
+                            onClick={handleAssignCurriculum}
+                            style={{
+                                background: '#FFD93D',
+                                color: 'black',
+                                border: '2px solid black',
+                                borderRadius: '0px',
+                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                fontSize: '1rem',
+                                fontWeight: 700,
+                                padding: '0.75rem 1.5rem',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            등록하기
+                        </button>
+                    </Group>
+                </Stack>
             </Modal>
         </Container>
     );

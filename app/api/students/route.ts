@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
                 email,
                 role: 'student',
                 status,
-                class_id,
+                class_id: class_id || null, // 빈 문자열이면 null로 저장
                 dollars: 0,
             })
             .select()

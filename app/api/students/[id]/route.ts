@@ -50,7 +50,7 @@ export async function PUT(
         if (username) updateData.username = username;
         if (full_name) updateData.full_name = full_name;
         if (email !== undefined) updateData.email = email;
-        if (class_id !== undefined) updateData.class_id = class_id;
+        if (class_id !== undefined) updateData.class_id = class_id || null; // 빈 문자열이면 null
         if (status) updateData.status = status;
         if (password) updateData.password_hash = password; // TODO: bcrypt로 해싱 필요
 
