@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Container,
     Title,
@@ -16,6 +16,8 @@ import {
     Box,
     Badge,
     FileButton,
+    Select,
+    ScrollArea,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -26,6 +28,8 @@ import {
     IconUpload,
     IconFileSpreadsheet,
     IconPlus,
+    IconSearch,
+    IconFilter,
 } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 
@@ -53,6 +57,9 @@ export default function WordbooksPage() {
     const [wordModalOpened, setWordModalOpened] = useState(false);
     const [selectedWordbook, setSelectedWordbook] = useState<Wordbook | null>(null);
     const [editingWord, setEditingWord] = useState<Word | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedMajorUnit, setSelectedMajorUnit] = useState<string | null>(null);
+    const [selectedMinorUnit, setSelectedMinorUnit] = useState<string | null>(null);
 
     const wordbookForm = useForm({
         initialValues: {
@@ -307,6 +314,54 @@ export default function WordbooksPage() {
         }
     };
 
+    // 대단원 목록 추출
+    const majorUnits = useMemo(() => {
+        if (!selectedWordbook) return [];
+        const units = new Set(selectedWordbook.words.map(w => w.major_unit).filter(Boolean));
+        return Array.from(units);
+    }, [selectedWordbook]);
+
+    // 소단원 목록 추출 (선택된 대단원에 따라)
+    const minorUnits = useMemo(() => {
+        if (!selectedWordbook) return [];
+        const filtered = selectedMajorUnit
+            ? selectedWordbook.words.filter(w => w.major_unit === selectedMajorUnit)
+            : selectedWordbook.words;
+        const units = new Set(filtered.map(w => w.minor_unit).filter(Boolean));
+        return Array.from(units);
+    }, [selectedWordbook, selectedMajorUnit]);
+
+    // 필터링 및 검색된 단어 목록
+    const filteredWords = useMemo(() => {
+        if (!selectedWordbook) return [];
+
+        let filtered = [...selectedWordbook.words];
+
+        // 대단원 필터
+        if (selectedMajorUnit) {
+            filtered = filtered.filter(w => w.major_unit === selectedMajorUnit);
+        }
+
+        // 소단원 필터
+        if (selectedMinorUnit) {
+            filtered = filtered.filter(w => w.minor_unit === selectedMinorUnit);
+        }
+
+        // 검색어 필터
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(w =>
+                w.english.toLowerCase().includes(query) ||
+                w.korean.toLowerCase().includes(query) ||
+                w.major_unit?.toLowerCase().includes(query) ||
+                w.minor_unit?.toLowerCase().includes(query) ||
+                w.unit_name?.toLowerCase().includes(query)
+            );
+        }
+
+        return filtered;
+    }, [selectedWordbook, selectedMajorUnit, selectedMinorUnit, searchQuery]);
+
     return (
         <Container size="xl" py={40}>
             <div className="animate-fade-in">
@@ -459,13 +514,18 @@ export default function WordbooksPage() {
                 {/* 단어 목록 모달 */}
                 <Modal
                     opened={modalOpened}
-                    onClose={() => setModalOpened(false)}
+                    onClose={() => {
+                        setModalOpened(false);
+                        setSearchQuery('');
+                        setSelectedMajorUnit(null);
+                        setSelectedMinorUnit(null);
+                    }}
                     title={
                         <Title order={3} style={{ fontWeight: 900 }}>
                             {selectedWordbook?.title}
                         </Title>
                     }
-                    size="xl"
+                    size="95%"
                     radius={0}
                     styles={{
                         content: {
@@ -480,10 +540,16 @@ export default function WordbooksPage() {
                     }}
                 >
                     <Stack gap="md">
+                        {/* 상단 통계 및 버튼 */}
                         <Group justify="space-between">
-                            <Text size="lg" fw={700}>
-                                총 {selectedWordbook?.word_count}개의 단어
-                            </Text>
+                            <Box>
+                                <Text size="lg" fw={700}>
+                                    총 {selectedWordbook?.word_count}개의 단어
+                                </Text>
+                                <Text size="sm" c="dimmed">
+                                    필터링된 단어: {filteredWords.length}개
+                                </Text>
+                            </Box>
                             <button
                                 onClick={() => {
                                     setEditingWord(null);
@@ -510,49 +576,161 @@ export default function WordbooksPage() {
                             </button>
                         </Group>
 
-                        <Table>
-                            <Table.Thead>
-                                <Table.Tr>
-                                    <Table.Th>No.</Table.Th>
-                                    <Table.Th>영어</Table.Th>
-                                    <Table.Th>한글</Table.Th>
-                                    <Table.Th>단원</Table.Th>
-                                    <Table.Th style={{ textAlign: 'right' }}>관리</Table.Th>
-                                </Table.Tr>
-                            </Table.Thead>
-                            <Table.Tbody>
-                                {selectedWordbook?.words.map((word) => (
-                                    <Table.Tr key={word.no}>
-                                        <Table.Td>{word.no}</Table.Td>
-                                        <Table.Td style={{ fontWeight: 600 }}>{word.english}</Table.Td>
-                                        <Table.Td>{word.korean}</Table.Td>
-                                        <Table.Td>
-                                            <Text size="sm" c="dimmed">
-                                                {word.major_unit} - {word.minor_unit}
-                                            </Text>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <Group justify="flex-end">
-                                                <ActionIcon
-                                                    variant="filled"
-                                                    color="gray"
-                                                    size="sm"
-                                                    radius={0}
-                                                    style={{ border: '2px solid black' }}
-                                                    onClick={() => {
-                                                        setEditingWord(word);
-                                                        wordForm.setValues(word);
-                                                        setWordModalOpened(true);
-                                                    }}
-                                                >
-                                                    <IconEdit size={14} />
-                                                </ActionIcon>
-                                            </Group>
-                                        </Table.Td>
+                        {/* 검색 및 필터 */}
+                        <Paper p="md" style={{ border: '2px solid black', borderRadius: '0px', background: '#f8f9fa' }}>
+                            <Stack gap="sm">
+                                <Group grow>
+                                    <TextInput
+                                        placeholder="영어, 한글, 단원명으로 검색..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        leftSection={<IconSearch size={16} />}
+                                        styles={{
+                                            input: {
+                                                border: '2px solid black',
+                                                borderRadius: '0px',
+                                            }
+                                        }}
+                                    />
+                                </Group>
+                                <Group grow>
+                                    <Select
+                                        placeholder="대단원 선택"
+                                        value={selectedMajorUnit}
+                                        onChange={(value) => {
+                                            setSelectedMajorUnit(value);
+                                            setSelectedMinorUnit(null);
+                                        }}
+                                        data={majorUnits.map(unit => ({ value: unit || '', label: unit || '미지정' }))}
+                                        clearable
+                                        leftSection={<IconFilter size={16} />}
+                                        styles={{
+                                            input: {
+                                                border: '2px solid black',
+                                                borderRadius: '0px',
+                                            }
+                                        }}
+                                    />
+                                    <Select
+                                        placeholder="소단원 선택"
+                                        value={selectedMinorUnit}
+                                        onChange={setSelectedMinorUnit}
+                                        data={minorUnits.map(unit => ({ value: unit || '', label: unit || '미지정' }))}
+                                        clearable
+                                        disabled={!selectedMajorUnit}
+                                        leftSection={<IconFilter size={16} />}
+                                        styles={{
+                                            input: {
+                                                border: '2px solid black',
+                                                borderRadius: '0px',
+                                            }
+                                        }}
+                                    />
+                                    {(searchQuery || selectedMajorUnit || selectedMinorUnit) && (
+                                        <Button
+                                            variant="outline"
+                                            color="dark"
+                                            onClick={() => {
+                                                setSearchQuery('');
+                                                setSelectedMajorUnit(null);
+                                                setSelectedMinorUnit(null);
+                                            }}
+                                            radius={0}
+                                            style={{ border: '2px solid black' }}
+                                        >
+                                            필터 초기화
+                                        </Button>
+                                    )}
+                                </Group>
+                            </Stack>
+                        </Paper>
+
+                        {/* 단어 테이블 */}
+                        <ScrollArea h={500}>
+                            <Table highlightOnHover>
+                                <Table.Thead style={{ position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+                                    <Table.Tr style={{ borderBottom: '2px solid black' }}>
+                                        <Table.Th style={{ fontWeight: 900 }}>번호</Table.Th>
+                                        <Table.Th style={{ fontWeight: 900 }}>교재명</Table.Th>
+                                        <Table.Th style={{ fontWeight: 900 }}>대단원</Table.Th>
+                                        <Table.Th style={{ fontWeight: 900 }}>소단원</Table.Th>
+                                        <Table.Th style={{ fontWeight: 900 }}>단원명</Table.Th>
+                                        <Table.Th style={{ fontWeight: 900 }}>영어</Table.Th>
+                                        <Table.Th style={{ fontWeight: 900 }}>한글</Table.Th>
+                                        <Table.Th style={{ fontWeight: 900, textAlign: 'right' }}>관리</Table.Th>
                                     </Table.Tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
+                                </Table.Thead>
+                                <Table.Tbody>
+                                    {filteredWords.length === 0 ? (
+                                        <Table.Tr>
+                                            <Table.Td colSpan={8} style={{ textAlign: 'center', padding: '3rem' }}>
+                                                <Text c="dimmed">
+                                                    {searchQuery || selectedMajorUnit || selectedMinorUnit
+                                                        ? '검색 결과가 없습니다.'
+                                                        : '등록된 단어가 없습니다.'}
+                                                </Text>
+                                            </Table.Td>
+                                        </Table.Tr>
+                                    ) : (
+                                        filteredWords.map((word) => (
+                                            <Table.Tr key={word.no}>
+                                                <Table.Td>{word.no}</Table.Td>
+                                                <Table.Td>
+                                                    <Text size="sm" c="dimmed">
+                                                        {selectedWordbook?.title}
+                                                    </Text>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <Badge
+                                                        color="blue"
+                                                        variant="light"
+                                                        radius="xs"
+                                                        style={{ border: '1px solid black' }}
+                                                    >
+                                                        {word.major_unit || '-'}
+                                                    </Badge>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <Badge
+                                                        color="cyan"
+                                                        variant="light"
+                                                        radius="xs"
+                                                        style={{ border: '1px solid black' }}
+                                                    >
+                                                        {word.minor_unit || '-'}
+                                                    </Badge>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <Text size="sm">
+                                                        {word.unit_name || '-'}
+                                                    </Text>
+                                                </Table.Td>
+                                                <Table.Td style={{ fontWeight: 600 }}>{word.english}</Table.Td>
+                                                <Table.Td>{word.korean}</Table.Td>
+                                                <Table.Td>
+                                                    <Group justify="flex-end">
+                                                        <ActionIcon
+                                                            variant="filled"
+                                                            color="gray"
+                                                            size="sm"
+                                                            radius={0}
+                                                            style={{ border: '2px solid black' }}
+                                                            onClick={() => {
+                                                                setEditingWord(word);
+                                                                wordForm.setValues(word);
+                                                                setWordModalOpened(true);
+                                                            }}
+                                                        >
+                                                            <IconEdit size={14} />
+                                                        </ActionIcon>
+                                                    </Group>
+                                                </Table.Td>
+                                            </Table.Tr>
+                                        ))
+                                    )}
+                                </Table.Tbody>
+                            </Table>
+                        </ScrollArea>
                     </Stack>
                 </Modal>
 
