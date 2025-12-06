@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AppShell, Burger, Group, Text, NavLink, Box, Badge, Paper, Stack } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -18,11 +18,30 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     const [opened, { toggle }] = useDisclosure();
     const pathname = usePathname();
 
-    // 샘플 학생 데이터 (나중에 API 연동)
-    const studentName = '김철수';
-    const studentDollars = 150;
+    // 학생 정보 상태
+    const [studentName, setStudentName] = useState('학생');
+    const [studentDollars, setStudentDollars] = useState(0);
+
+    // localStorage에서 사용자 정보 가져오기
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    setStudentName(user.full_name || user.name || '학생');
+                    setStudentDollars(user.dollars || 0);
+                } catch (error) {
+                    console.error('Failed to parse user data:', error);
+                }
+            }
+        }
+    }, []);
 
     const handleLogout = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('user');
+        }
         router.push('/');
     };
 

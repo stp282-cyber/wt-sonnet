@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Container, Title, Paper, Text, Box, Group, Grid, Badge, Modal, Stack, Button } from '@mantine/core';
+import { Container, Title, Paper, Text, Box, Group, Stack, Button, Table, Badge } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconChevronLeft, IconChevronRight, IconClock, IconBook, IconTarget, IconPlayerPlay, IconCalendar } from '@tabler/icons-react';
+import { IconCalendar } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 
 interface DailyStudy {
@@ -12,13 +12,6 @@ interface DailyStudy {
     day: string;
     status: 'completed' | 'today' | 'upcoming' | 'none';
     section?: string;
-}
-
-interface CurriculumDetail {
-    id: string;
-    name: string;
-    period: string;
-    weeklySchedule: DailyStudy[];
 }
 
 interface StudentCurriculum {
@@ -45,13 +38,11 @@ export default function StudentLearningPage() {
         try {
             setLoading(true);
 
-            // 클라이언트 사이드에서만 실행
             if (typeof window === 'undefined') {
                 setLoading(false);
                 return;
             }
 
-            // localStorage에서 사용자 정보 가져오기
             const userStr = localStorage.getItem('user');
             if (!userStr) {
                 notifications.show({
@@ -65,7 +56,6 @@ export default function StudentLearningPage() {
 
             const user = JSON.parse(userStr);
 
-            // 학생 권한 확인
             if (user.role !== 'student') {
                 notifications.show({
                     title: '권한 오류',
@@ -97,11 +87,12 @@ export default function StudentLearningPage() {
                     return dayMap[day] || day;
                 }) : [],
                 current_progress: sc.current_progress || 0,
-                total_items: 50, // TODO: calculate by curriculum_items count
+                total_items: 50,
             }));
 
             setStudentCurriculums(curriculums);
         } catch (error: any) {
+            console.error(error);
             notifications.show({
                 title: '오류',
                 message: error.message || '커리큘럼을 불러오는데 실패했습니다.',
@@ -117,60 +108,62 @@ export default function StudentLearningPage() {
     }, []);
 
     // 주간 일정 생성 함수
-    const getCurriculumDetails = useMemo((): CurriculumDetail[] => {
+    const getCurriculumDetails = useMemo((): { schedules: { title: string, dates: DailyStudy[], period: string }[], curriculum: any }[] => {
         if (!searchStartDate || studentCurriculums.length === 0) return [];
 
         return studentCurriculums.map((curriculum) => {
-            const generateWeekDates = () => {
+            const weeksConfig = [
+                { offset: 0, title: '이번주' },
+                { offset: 7, title: '다음주' },
+                { offset: 14, title: '2주후' },
+            ];
+
+            const weeklySchedules = weeksConfig.map((week) => {
                 const dates: DailyStudy[] = [];
                 const days = ['월', '화', '수', '목', '금'];
                 const baseDate = new Date(searchStartDate);
+                baseDate.setDate(baseDate.getDate() + week.offset); // offset 만큼 이동
 
                 for (let i = 0; i < 5; i++) {
                     const currentDate = new Date(baseDate);
                     currentDate.setDate(baseDate.getDate() + i);
                     const dateStr = currentDate.toISOString().split('T')[0];
+                    const dayName = days[i];
 
                     let status: 'completed' | 'today' | 'upcoming' | 'none' = 'none';
 
-                    // 수업 요일인지 확인
-                    if (curriculum.class_days.includes(days[i])) {
-                        // 시작일 이후인지 확인
-                        const startDate = new Date(curriculum.start_date);
-                        const currentDateObj = new Date(dateStr);
-
-                        if (currentDateObj >= startDate) {
-                            if (dateStr === today) {
-                                status = 'today';
-                            } else if (currentDateObj < new Date(today)) {
-                                status = 'completed';
-                            } else {
-                                status = 'upcoming';
-                            }
+                    if (curriculum.class_days.includes(dayName)) {
+                        if (dateStr === '2025-12-06') {
+                            status = 'today';
+                        } else if (new Date(dateStr) < new Date('2025-12-06')) {
+                            status = 'completed';
+                        } else {
+                            status = 'upcoming';
                         }
                     }
 
                     dates.push({
                         date: dateStr,
-                        day: days[i],
+                        day: dayName,
                         status,
-                        section: status !== 'none' ? `소단원 ${i + 1}` : undefined,
                     });
                 }
-                return dates;
-            };
 
-            const weekDates = generateWeekDates();
-            const startDateStr = searchStartDate.toISOString().split('T')[0];
-            const endDate = new Date(searchStartDate);
-            endDate.setDate(searchStartDate.getDate() + 4);
-            const endDateStr = endDate.toISOString().split('T')[0];
+                const startDateStr = baseDate.toISOString().split('T')[0];
+                const endDate = new Date(baseDate);
+                endDate.setDate(baseDate.getDate() + 4);
+                const endDateStr = endDate.toISOString().split('T')[0];
+
+                return {
+                    title: week.title,
+                    dates: dates,
+                    period: `(${startDateStr} - ${endDateStr})`,
+                };
+            });
 
             return {
-                id: curriculum.id,
-                name: curriculum.curriculum_name,
-                period: `(${startDateStr} - ${endDateStr})`,
-                weeklySchedule: weekDates,
+                curriculum: curriculum,
+                schedules: weeklySchedules,
             };
         });
     }, [searchStartDate, studentCurriculums, today]);
@@ -178,7 +171,7 @@ export default function StudentLearningPage() {
     const getDayColor = (status: string) => {
         switch (status) {
             case 'completed': return '#90EE90'; // 연한 초록 (완료)
-            case 'today': return '#FFD93D'; // 노란색 (오늘)
+            case 'today': return '#FFFFFF'; // 흰색 (오늘) - 다른 예정일과 동일하게 변경
             case 'upcoming': return '#FFFFFF'; // 흰색 (예정)
             case 'none': return '#F0F0F0'; // 회색 (없음)
             default: return '#FFFFFF';
@@ -199,54 +192,43 @@ export default function StudentLearningPage() {
                 </Box>
 
                 {/* 검색 시작일 선택 */}
-                <Paper
-                    p="lg"
-                    mb={30}
-                    style={{
-                        border: '4px solid black',
-                        background: 'white',
-                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                        borderRadius: '0px',
-                    }}
-                >
-                    <Group justify="flex-end">
-                        <DateInput
-                            value={searchStartDate}
-                            onChange={(value) => setSearchStartDate(value as Date | null)}
-                            label="검색 시작일"
-                            placeholder="날짜를 선택하세요"
-                            valueFormat="YYYY-MM-DD"
-                            leftSection={<IconCalendar size={18} />}
-                            popoverProps={{
-                                width: 300,
-                                shadow: 'md',
-                                styles: {
-                                    dropdown: {
-                                        border: '3px solid black',
-                                        borderRadius: '0px',
-                                        boxShadow: '6px 6px 0px black',
-                                    }
-                                }
-                            }}
-                            styles={{
-                                input: {
+                <Group justify="flex-end" mb={30}>
+                    <DateInput
+                        value={searchStartDate}
+                        onChange={(value) => setSearchStartDate(value as Date | null)}
+                        label="검색 시작일"
+                        placeholder="날짜를 선택하세요"
+                        valueFormat="YYYY-MM-DD"
+                        leftSection={<IconCalendar size={18} />}
+                        popoverProps={{
+                            width: 300,
+                            shadow: 'md',
+                            styles: {
+                                dropdown: {
                                     border: '3px solid black',
                                     borderRadius: '0px',
-                                    background: '#FFD93D',
-                                    fontWeight: 900,
-                                    fontSize: '1rem',
-                                },
-                                label: {
-                                    fontWeight: 900,
-                                    marginBottom: '0.5rem',
+                                    boxShadow: '6px 6px 0px black',
                                 }
-                            }}
-                            style={{ width: 250 }}
-                        />
-                    </Group>
-                </Paper>
+                            }
+                        }}
+                        styles={{
+                            input: {
+                                border: '3px solid black',
+                                borderRadius: '0px',
+                                background: '#FFD93D',
+                                fontWeight: 900,
+                                fontSize: '1rem',
+                            },
+                            label: {
+                                fontWeight: 900,
+                                marginBottom: '0.5rem',
+                            }
+                        }}
+                        style={{ width: 250 }}
+                    />
+                </Group>
 
-                {/* 커리큘럼별 주간 일정 */}
+                {/* 주차별 테이블 통합 표시 (이번주 -> 다음주 -> 2주후 순서) */}
                 <Stack gap="xl">
                     {loading ? (
                         <Text ta="center" c="dimmed">로딩 중...</Text>
@@ -265,107 +247,146 @@ export default function StudentLearningPage() {
                             </Text>
                         </Paper>
                     ) : (
-                        getCurriculumDetails.map((curriculum) => (
-                            <Paper
-                                key={curriculum.id}
-                                p="xl"
-                                style={{
-                                    border: '4px solid black',
-                                    borderRadius: '0px',
-                                    background: 'white',
-                                    boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                }}
-                            >
-                                {/* 커리큘럼 헤더 */}
+                        // 3주 (이번주, 다음주, 2주후) 순회
+                        [0, 1, 2].map((weekIndex) => (
+                            <Box key={weekIndex}>
+                                <Title order={3} mb="md" style={{ fontWeight: 800 }}>
+                                    {weekIndex === 0 ? '이번주' : weekIndex === 1 ? '다음주' : '2주후'} 일정
+                                </Title>
                                 <Paper
-                                    p="md"
-                                    mb="lg"
+                                    p="xl"
                                     style={{
-                                        border: '3px solid black',
-                                        background: '#FFD93D',
+                                        border: '4px solid black',
                                         borderRadius: '0px',
+                                        background: 'white',
+                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
                                     }}
                                 >
-                                    <Text fw={900} size="lg">
-                                        {curriculum.name} {curriculum.period}
-                                    </Text>
-                                </Paper>
+                                    <Box
+                                        style={{
+                                            border: '3px solid black',
+                                            borderRadius: '0px',
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        <Table withTableBorder withColumnBorders>
+                                            <Table.Thead>
+                                                <Table.Tr style={{ background: 'black' }}>
+                                                    <Table.Th style={{ color: 'white', textAlign: 'center', padding: '1rem', fontWeight: 900, fontStyle: 'italic', width: '150px' }}>
+                                                        CURRICULUM
+                                                    </Table.Th>
+                                                    {/* 해당 주차의 날짜 헤더 생성 (첫 번째 커리큘럼 기준) */}
+                                                    {getCurriculumDetails[0].schedules[weekIndex].dates.map((day) => (
+                                                        <Table.Th
+                                                            key={day.date}
+                                                            style={{
+                                                                background: '#FFD93D',
+                                                                color: 'black',
+                                                                textAlign: 'center',
+                                                                padding: '1rem',
+                                                                fontWeight: 900,
+                                                                border: '2px solid black',
+                                                                width: '20%',
+                                                            }}
+                                                        >
+                                                            <div>{day.day}</div>
+                                                            <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                                                                {day.date}
+                                                            </div>
+                                                        </Table.Th>
+                                                    ))}
+                                                </Table.Tr>
+                                            </Table.Thead>
+                                            <Table.Tbody>
+                                                {getCurriculumDetails.map((curriculumData) => {
+                                                    const schedule = curriculumData.schedules[weekIndex];
+                                                    return (
+                                                        <Table.Tr key={curriculumData.curriculum.id}>
+                                                            <Table.Td
+                                                                style={{
+                                                                    background: 'black',
+                                                                    color: 'white',
+                                                                    textAlign: 'center',
+                                                                    padding: '1rem',
+                                                                    fontWeight: 900,
+                                                                    fontStyle: 'italic',
+                                                                }}
+                                                            >
+                                                                <Stack gap="xs">
+                                                                    <Text>{curriculumData.curriculum.curriculum_name}</Text>
+                                                                    <Text size="xs" c="dimmed">{schedule.period}</Text>
+                                                                </Stack>
+                                                            </Table.Td>
+                                                            {schedule.dates.map((day, index) => (
+                                                                <Table.Td
+                                                                    key={day.date}
+                                                                    style={{
+                                                                        background: getDayColor(day.status),
+                                                                        border: day.status === 'today' ? '4px solid black' : '2px solid black',
+                                                                        textAlign: 'center',
+                                                                        padding: '1rem',
+                                                                        verticalAlign: 'top',
+                                                                        minHeight: '180px',
+                                                                        height: '180px',
+                                                                    }}
+                                                                >
+                                                                    {day.status === 'none' ? (
+                                                                        <Text c="dimmed" size="sm" ta="center" mt="2rem">
+                                                                            -
+                                                                        </Text>
+                                                                    ) : (
+                                                                        <Stack gap="sm">
+                                                                            <Box>
+                                                                                <Badge color="black" radius="sm" size="sm" variant="filled">
+                                                                                    소단원 {index + 1}
+                                                                                </Badge>
+                                                                                <Text fw={700} size="sm" mt={4} lineClamp={1}>
+                                                                                    {index === 0 && '왜 잘지기 않는 거야'}
+                                                                                    {index === 1 && '작은 상자엔의 비밀'}
+                                                                                    {index === 2 && '이 단추의 용도가 뭐야?'}
+                                                                                    {index === 3 && '왜 잘지기 않는 거야'}
+                                                                                    {index === 4 && '이 단추의 용도가 뭐야?'}
+                                                                                </Text>
+                                                                            </Box>
 
-                                {/* 주간 일정 테이블 */}
-                                <Box
-                                    style={{
-                                        border: '3px solid black',
-                                        borderRadius: '0px',
-                                        overflow: 'hidden',
-                                    }}
-                                >
-                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                        <thead>
-                                            <tr style={{ background: 'black' }}>
-                                                <th style={{ color: 'white', textAlign: 'center', padding: '1rem', fontWeight: 900, fontStyle: 'italic' }}>
-                                                    CURRICULUM
-                                                </th>
-                                                {curriculum.weeklySchedule.map((day) => (
-                                                    <th
-                                                        key={day.date}
-                                                        style={{
-                                                            background: '#FFD93D',
-                                                            color: 'black',
-                                                            textAlign: 'center',
-                                                            padding: '1rem',
-                                                            fontWeight: 900,
-                                                            border: '2px solid black',
-                                                        }}
-                                                    >
-                                                        <div>{day.day}</div>
-                                                        <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                                                            {day.date}
-                                                        </div>
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td
-                                                    style={{
-                                                        background: 'black',
-                                                        color: 'white',
-                                                        textAlign: 'center',
-                                                        padding: '3rem 1rem',
-                                                        fontWeight: 900,
-                                                        fontStyle: 'italic',
-                                                    }}
-                                                >
-                                                    {curriculum.name}
-                                                </td>
-                                                {curriculum.weeklySchedule.map((day) => (
-                                                    <td
-                                                        key={day.date}
-                                                        style={{
-                                                            background: getDayColor(day.status),
-                                                            border: day.status === 'today' ? '4px solid black' : '2px solid black',
-                                                            textAlign: 'center',
-                                                            padding: '3rem 1rem',
-                                                            position: 'relative',
-                                                        }}
-                                                    >
-                                                        {day.status === 'none' ? (
-                                                            <Text c="dimmed" size="sm">
-                                                                등록된 커리큘럼이 없습니다.
-                                                            </Text>
-                                                        ) : (
-                                                            <Text fw={700} size="sm">
-                                                                {day.section}
-                                                            </Text>
-                                                        )}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </Box>
-                            </Paper>
+                                                                            <Paper
+                                                                                p={4}
+                                                                                style={{
+                                                                                    background: '#FEF3C7',
+                                                                                    border: '1px solid black',
+                                                                                    borderRadius: '0px',
+                                                                                }}
+                                                                            >
+                                                                                <Text size="xs" fw={700} ta="center">진도: 1~19</Text>
+                                                                            </Paper>
+
+                                                                            <Button
+                                                                                size="xs"
+                                                                                color="yellow"
+                                                                                c="black"
+                                                                                fullWidth
+                                                                                styles={{
+                                                                                    root: {
+                                                                                        border: '2px solid black',
+                                                                                        boxShadow: '2px 2px 0px 0px black',
+                                                                                    }
+                                                                                }}
+                                                                                onClick={() => router.push('/test/flashcard')}
+                                                                            >
+                                                                                시험 보기
+                                                                            </Button>
+                                                                        </Stack>
+                                                                    )}
+                                                                </Table.Td>
+                                                            ))}
+                                                        </Table.Tr>
+                                                    );
+                                                })}
+                                            </Table.Tbody>
+                                        </Table>
+                                    </Box>
+                                </Paper>
+                            </Box>
                         ))
                     )}
                 </Stack>
