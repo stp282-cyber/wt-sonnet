@@ -59,7 +59,7 @@ interface StudentDetail {
 export default function ClassLogPage() {
     const router = useRouter();
     const [selectedClass, setSelectedClass] = useState<string>('all');
-    const [selectedWeek, setSelectedWeek] = useState<string>('2024-W03');
+    const [selectedWeek, setSelectedWeek] = useState<string>('2025-W49');
     const [detailModalOpened, setDetailModalOpened] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<StudentCurriculum | null>(null);
     const [searchStartDate, setSearchStartDate] = useState<Date | null>(new Date('2025-12-06'));
@@ -375,9 +375,7 @@ export default function ClassLogPage() {
                         onChange={(value) => setSelectedClass(value || 'all')}
                         data={[
                             { value: 'all', label: '전체' },
-                            { value: 'A반', label: 'A반' },
-                            { value: 'B반', label: 'B반' },
-                            { value: 'C반', label: 'C반' },
+                            ...availableClasses.map((c: any) => ({ value: c.label, label: c.label }))
                         ]}
                         style={{ width: 200 }}
                         styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
@@ -385,13 +383,14 @@ export default function ClassLogPage() {
                     <Select
                         label="주차 선택"
                         value={selectedWeek}
-                        onChange={(value) => setSelectedWeek(value || '2024-W03')}
+                        onChange={(value) => setSelectedWeek(value || '2025-W49')}
                         data={[
-                            { value: '2024-W01', label: '2024년 1주차' },
-                            { value: '2024-W02', label: '2024년 2주차' },
-                            { value: '2024-W03', label: '2024년 3주차' },
+                            { value: '2025-W49', label: '2025년 49주차 (12/01~12/07)' },
+                            { value: '2025-W50', label: '2025년 50주차 (12/08~12/14)' },
+                            { value: '2025-W51', label: '2025년 51주차 (12/15~12/21)' },
+                            { value: '2025-W52', label: '2025년 52주차 (12/22~12/28)' },
                         ]}
-                        style={{ width: 200 }}
+                        style={{ width: 250 }}
                         styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                     />
                 </Group>

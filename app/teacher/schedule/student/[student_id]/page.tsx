@@ -11,32 +11,39 @@ import {
     Stack,
     Badge,
     Button,
-    Table,
     Box,
     Loader,
     Center,
-    Divider,
-    ActionIcon,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconBook, IconHeadphones, IconTrash, IconSettings, IconRefresh } from '@tabler/icons-react';
+import { IconArrowLeft, IconSettings, IconRefresh, IconCalendar, IconTrash } from '@tabler/icons-react';
 
+// 소단원 정보 인터페이스
+interface Section {
+    id: string;
+    major_unit: string;
+    minor_unit: string;
+    unit_name: string;
+    sequence: number;
+    word_count: number;
+}
+
+// 커리큘럼 항목 인터페이스
 interface CurriculumItem {
     id: string;
     sequence: number;
     item_type: 'wordbook' | 'listening';
     item_id: string;
-    test_type: string | null;
-    daily_amount: number | null;
-    word_count: number | null;
     item_details: {
         id: string;
         title: string;
         word_count?: number;
     } | null;
+    sections: Section[];
 }
 
+// 학생 커리큘럼 인터페이스
 interface StudentCurriculum {
     id: string;
     student_id: string;
@@ -53,17 +60,31 @@ interface StudentCurriculum {
     curriculum_items: CurriculumItem[];
 }
 
+// 학생 정보 인터페이스
 interface Student {
     id: string;
     full_name: string;
     username: string;
-    student_id?: string; // API에서 student_id 필드가 있을 수 있음
     classes: {
         id: string;
         name: string;
     } | null;
 }
 
+// 학습 스케줄 항목 인터페이스
+interface ScheduleItem {
+    dayIndex: number;
+    itemTitle: string;
+    majorUnit: string;
+    minorUnit: string;
+    unitName: string;
+    itemType: 'wordbook' | 'listening';
+    wordCount: number;
+    progressRange: string;
+    status: 'completed' | 'today' | 'upcoming';
+}
+
+// 주간 날짜 인터페이스
 interface WeekDay {
     date: string;
     dateObj: Date;
@@ -90,7 +111,6 @@ export default function StudentSchedulePage() {
     const [searchStartDate, setSearchStartDate] = useState<Date>(new Date());
 
     useEffect(() => {
-        // params가 Promise일 수 있는 Next.js 15+ 환경 대응
         const resolveParams = async () => {
             const resolvedParams = await params;
             if (resolvedParams && resolvedParams.student_id) {
@@ -116,6 +136,15 @@ export default function StudentSchedulePage() {
             }
 
             const data = await response.json();
+            console.log('=== DEBUG: API Response ===');
+            console.log('Student:', data.student);
+            console.log('Curriculums:', data.curriculums);
+            if (data.curriculums && data.curriculums.length > 0) {
+                console.log('First curriculum items:', data.curriculums[0].curriculum_items);
+                if (data.curriculums[0].curriculum_items && data.curriculums[0].curriculum_items.length > 0) {
+                    console.log('First item sections:', data.curriculums[0].curriculum_items[0].sections);
+                }
+            }
             setStudent(data.student);
             setCurriculums(data.curriculums || []);
         } catch (error: any) {
@@ -134,17 +163,11 @@ export default function StudentSchedulePage() {
         const days: WeekDay[] = [];
         const currentDate = new Date(startDate);
 
-        // 검색 시작일이 속한 주의 월요일 찾기
-        // getDay(): 일(0) ~ 토(6)
         const day = currentDate.getDay();
-        const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1); // 월요일로 조정
-
+        const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1);
         const monday = new Date(currentDate.setDate(diff));
-
-        // 주차 오프셋 적용
         monday.setDate(monday.getDate() + (weekOffset * 7));
 
-        // 월~금 생성
         for (let i = 0; i < 5; i++) {
             const date = new Date(monday);
             date.setDate(date.getDate() + i);
@@ -159,38 +182,51 @@ export default function StudentSchedulePage() {
         return days;
     };
 
-    // 특정 날짜에 특정 커리큘럼의 학습 항목 찾기
-    const getItemForDate = (curriculum: StudentCurriculum, dateObj: Date): { item: CurriculumItem | null, status: string } => {
-        const targetDate = new Date(dateObj);
+    // 커리큘럼의 모든 소단원을 평탄화하여 학습 순서 생성
+    const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): { section: Section; item: CurriculumItem; progressStart: number }[] => {
+        const allSections: { section: Section; item: CurriculumItem; progressStart: number }[] = [];
+        let progressCounter = 1;
+
+        curriculum.curriculum_items.forEach((item) => {
+            if (item.sections && item.sections.length > 0) {
+                item.sections.forEach((section) => {
+                    const wordCount = section.word_count || 20;
+                    allSections.push({
+                        section,
+                        item,
+                        progressStart: progressCounter
+                    });
+                    progressCounter += wordCount;
+                });
+            }
+        });
+
+        return allSections;
+    };
+
+    // 특정 날짜에 특정 커리큘럼의 학습 내용 계산
+    const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: string): ScheduleItem | null => {
+        const targetDate = new Date(dateStr);
         targetDate.setHours(0, 0, 0, 0);
 
         const startDate = new Date(curriculum.start_date);
         startDate.setHours(0, 0, 0, 0);
 
-        if (targetDate < startDate) return { item: null, status: 'none' };
+        if (targetDate < startDate) return null;
 
-        // 학습 요일 확인
-        const dayOfWeek = targetDate.getDay(); // 0(일)~6(토)
-        // DAY_MAP: mon:1, tue:2 ...
-        // 만약 curriculum.study_days=['mon', 'wed', 'fri']
-
-        // 현재 요일의 영어 코드 찾기
+        const dayOfWeek = targetDate.getDay();
         let currentDayCode = '';
         Object.entries(DAY_MAP).forEach(([code, num]) => {
             if (num === dayOfWeek) currentDayCode = code;
         });
 
         if (!currentDayCode || !curriculum.study_days.includes(currentDayCode)) {
-            return { item: null, status: 'none' };
+            return null;
         }
 
-        // 시작일부터 해당 날짜까지의 학습일 수 계산 (순서 결정을 위해)
         let studyDayCount = 0;
         const checkDate = new Date(startDate);
         checkDate.setHours(0, 0, 0, 0);
-
-        // 날짜 차이가 너무 크면 성능 문제 생길 수 있으므로 최적화 가능하지만 일단 루프
-        // 시작일이 미래인 경우 루프 안돔
 
         while (checkDate <= targetDate) {
             const checkDayOfWeek = checkDate.getDay();
@@ -206,22 +242,34 @@ export default function StudentSchedulePage() {
             checkDate.setDate(checkDate.getDate() + 1);
         }
 
-        // 해당 날짜에 학습할 항목 찾기 (1-based index -> 0-based index)
-        if (studyDayCount > 0 && studyDayCount <= curriculum.curriculum_items.length) {
-            const item = curriculum.curriculum_items[studyDayCount - 1];
+        const allSections = getAllSectionsForCurriculum(curriculum);
 
-            // 상태 결정 (Mock Logic)
+        if (studyDayCount > 0 && studyDayCount <= allSections.length) {
+            const { section, item, progressStart } = allSections[studyDayCount - 1];
+            const wordCount = section.word_count || 20;
+            const progressEnd = progressStart + wordCount - 1;
+
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            let status = 'upcoming'; // 예정
-            if (targetDate < today) status = 'completed'; // 완료 (가정)
-            else if (targetDate.getTime() === today.getTime()) status = 'today'; // 진행중/오늘
+            let status: 'completed' | 'today' | 'upcoming' = 'upcoming';
+            if (targetDate < today) status = 'completed';
+            else if (targetDate.getTime() === today.getTime()) status = 'today';
 
-            return { item, status };
+            return {
+                dayIndex: studyDayCount,
+                itemTitle: item.item_details?.title || '제목 없음',
+                majorUnit: section.major_unit || '대단원 미지정',
+                minorUnit: section.minor_unit || String(studyDayCount),
+                unitName: section.unit_name || `${studyDayCount}일차`,
+                itemType: item.item_type,
+                wordCount: wordCount,
+                progressRange: `${progressStart}~${progressEnd}`,
+                status,
+            };
         }
 
-        return { item: null, status: 'none' };
+        return null;
     };
 
     if (loading) {
@@ -244,206 +292,221 @@ export default function StudentSchedulePage() {
         );
     }
 
-    const weeksToRender = [0, 1, 2, 3]; // 이번주 ~ 3주뒤
+    const weeksToRender = [0, 1, 2, 3];
 
     return (
         <Container size="xl" py={40}>
-            {/* 상단 헤더 영역 */}
-            <Group justify="space-between" mb="xs">
-                <Title order={2} style={{ fontWeight: 900 }}>수업일지 (화면)</Title>
-                <Button
-                    variant="subtle"
-                    color="dark"
-                    leftSection={<IconArrowLeft size={16} />}
-                    onClick={() => router.back()}
-                >
-                    뒤로가기
-                </Button>
-            </Group>
-
-            {/* 학생 정보 및 검색일 설정 */}
-            <Group mb="xl" align="flex-end">
-                <Text size="xl" fw={900}>{student.username}</Text>
-                <Text size="xl" fw={900}>{student.full_name}</Text>
-                <Badge
-                    size="lg"
-                    color="yellow"
-                    variant="filled"
-                    radius="xs"
-                    style={{ border: '2px solid black', color: 'black' }}
-                >
-                    {student.classes?.name || '반 없음'}
-                </Badge>
-
-                <Group gap="xs" ml="xl">
-                    <Text fw={900} size="lg">검색시작일</Text>
-                    <DateInput
-                        value={searchStartDate}
-                        onChange={(date) => date && setSearchStartDate(date)}
-                        valueFormat="YYYY-MM-DD"
-                        size="sm"
-                        styles={{
-                            input: {
-                                fontWeight: 'bold',
-                                border: '2px solid black',
-                                borderRadius: '0px',
-                                width: '140px'
-                            }
-                        }}
-                    />
+            {/* 상단 헤더 */}
+            <Group justify="space-between" mb="xl">
+                <Group>
+                    <Title order={2} style={{ fontWeight: 900 }}>수업일지</Title>
+                    <Badge size="lg" color="yellow" variant="filled" radius="xs" style={{ border: '2px solid black', color: 'black' }}>
+                        {student.full_name}
+                    </Badge>
+                    <Badge size="lg" color="gray" variant="filled" radius="xs" style={{ border: '2px solid black' }}>
+                        {student.classes?.name || '반 없음'}
+                    </Badge>
+                </Group>
+                <Group>
+                    <Group gap="xs">
+                        <Text fw={700}>검색시작일</Text>
+                        <DateInput
+                            value={searchStartDate}
+                            onChange={(date) => date && setSearchStartDate(date)}
+                            valueFormat="YYYY-MM-DD"
+                            size="sm"
+                            styles={{
+                                input: {
+                                    fontWeight: 'bold',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
+                                    width: '140px'
+                                }
+                            }}
+                        />
+                    </Group>
+                    <Button
+                        variant="outline"
+                        color="dark"
+                        leftSection={<IconArrowLeft size={16} />}
+                        onClick={() => router.back()}
+                        style={{ border: '2px solid black', borderRadius: '0px' }}
+                    >
+                        뒤로가기
+                    </Button>
                 </Group>
             </Group>
 
-            {/* 주차별 테이블 렌더링 */}
-            <Stack gap={40}>
+            {/* 주차별 테이블 */}
+            <Stack gap={30}>
                 {weeksToRender.map((weekOffset) => {
                     const weekDays = getWeekDays(searchStartDate, weekOffset);
                     const weekLabel = weekOffset === 0 ? "이번주" : weekOffset === 1 ? "다음주" : `${weekOffset}주 후`;
 
                     return (
-                        <div key={weekOffset} style={{ display: 'flex' }}>
-                            {/* 좌측 주차 라벨 (세로 텍스트) */}
-                            <Box
-                                style={{
-                                    width: '40px',
-                                    border: '2px solid black',
-                                    borderRight: 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: '#f1f3f5',
-                                    fontWeight: 900
-                                }}
-                            >
-                                <Text style={{ writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '5px' }}>
-                                    {weekLabel}
-                                </Text>
-                            </Box>
+                        <Box key={weekOffset}>
+                            {/* 주차 라벨 */}
+                            <Text fw={900} size="lg" mb="xs">{weekLabel}</Text>
 
-                            {/* 우측 테이블 */}
-                            <Paper style={{ flex: 1, border: '2px solid black', borderRadius: '0px', overflow: 'hidden' }}>
-                                <Table layout="fixed" withTableBorder withColumnBorders>
-                                    <Table.Thead>
-                                        <Table.Tr>
-                                            <Table.Th style={{ width: '200px', background: 'white', borderBottom: '2px solid black' }}>커리큘럼</Table.Th>
-                                            {weekDays.map((day, idx) => (
-                                                <Table.Th key={idx} style={{ background: 'white', borderBottom: '2px solid black' }}>
-                                                    <Group justify="space-between">
-                                                        <Text fw={700}>{day.dayOfWeek}</Text>
-                                                        <Text size="xs" c="dimmed">{day.date}</Text>
-                                                    </Group>
-                                                </Table.Th>
-                                            ))}
-                                        </Table.Tr>
-                                    </Table.Thead>
-                                    <Table.Tbody>
-                                        {curriculums.length === 0 ? (
-                                            <Table.Tr>
-                                                <Table.Td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>
-                                                    등록된 커리큘럼이 없습니다.
-                                                </Table.Td>
-                                            </Table.Tr>
-                                        ) : (
-                                            curriculums.map((curr) => (
-                                                <Table.Tr key={curr.id}>
-                                                    {/* 커리큘럼 정보 셀 */}
-                                                    <Table.Td style={{ verticalAlign: 'top', background: '#fff' }}>
-                                                        <Stack gap="xs">
-                                                            <Group justify="space-between" align="start">
-                                                                <Text fw={800} size="sm" style={{ lineHeight: 1.2 }}>
-                                                                    {curr.curriculums.name}
-                                                                </Text>
-                                                                <Badge variant="outline" color="dark" size="xs" radius="xs">
-                                                                    출력
-                                                                </Badge>
-                                                            </Group>
+                            {curriculums.map((curr) => (
+                                <Paper key={curr.id} mb="md" style={{ border: '3px solid black', borderRadius: '0px', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex' }}>
+                                        {/* 좌측 커리큘럼 정보 */}
+                                        <Box style={{
+                                            width: '200px',
+                                            minWidth: '200px',
+                                            background: 'white',
+                                            borderRight: '3px solid black',
+                                            padding: '16px'
+                                        }}>
+                                            <Text fw={900} size="md" mb="xs" style={{ lineHeight: 1.2 }}>
+                                                {curr.curriculums.name}
+                                            </Text>
+                                            <Text size="xs" c="dimmed" mb="md">
+                                                시작일: {curr.start_date}
+                                            </Text>
 
-                                                            <Text size="xs" c="dimmed">
-                                                                월,수,금
-                                                            </Text>
+                                            <Stack gap={6}>
+                                                <Button
+                                                    size="xs"
+                                                    variant="outline"
+                                                    color="dark"
+                                                    fullWidth
+                                                    leftSection={<IconSettings size={14} />}
+                                                    style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                >
+                                                    학습 설정
+                                                </Button>
+                                                <Button
+                                                    size="xs"
+                                                    variant="outline"
+                                                    color="green"
+                                                    fullWidth
+                                                    leftSection={<IconRefresh size={14} />}
+                                                    style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                >
+                                                    수업 진도 변경
+                                                </Button>
+                                                <Button
+                                                    size="xs"
+                                                    variant="outline"
+                                                    color="blue"
+                                                    fullWidth
+                                                    leftSection={<IconCalendar size={14} />}
+                                                    style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                >
+                                                    학습 요일 변경
+                                                </Button>
+                                                <Button
+                                                    size="xs"
+                                                    variant="filled"
+                                                    color="red"
+                                                    fullWidth
+                                                    leftSection={<IconTrash size={14} />}
+                                                    style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                >
+                                                    커리큘럼 삭제
+                                                </Button>
+                                            </Stack>
+                                        </Box>
 
-                                                            <Group gap={4}>
-                                                                <Button
-                                                                    size="compact-xs"
-                                                                    variant="white"
-                                                                    color="blue"
-                                                                    radius="xs"
-                                                                    style={{ border: '1px solid black', flex: 1 }}
-                                                                >
-                                                                    학습설정
-                                                                </Button>
-                                                                <Button
-                                                                    size="compact-xs"
-                                                                    variant="white"
-                                                                    color="green"
-                                                                    radius="xs"
-                                                                    style={{ border: '1px solid black', flex: 1 }}
-                                                                >
-                                                                    진도변경
-                                                                </Button>
-                                                                <Button
-                                                                    size="compact-xs"
-                                                                    variant="filled"
-                                                                    color="red"
-                                                                    radius="xs"
-                                                                    style={{ border: '1px solid black', flex: 1 }}
-                                                                >
-                                                                    삭제
-                                                                </Button>
-                                                            </Group>
-                                                        </Stack>
-                                                    </Table.Td>
+                                        {/* 우측 달력 영역 */}
+                                        <Box style={{ flex: 1, display: 'flex' }}>
+                                            {weekDays.map((day, idx) => {
+                                                const schedule = getScheduleForDate(curr, day.date);
 
-                                                    {/* 날짜별 학습 내용 셀 */}
-                                                    {weekDays.map((day, dayIdx) => {
-                                                        const result = getItemForDate(curr, day.dateObj);
-                                                        const { item, status } = result;
+                                                return (
+                                                    <Box
+                                                        key={idx}
+                                                        style={{
+                                                            flex: 1,
+                                                            borderRight: idx < 4 ? '2px solid black' : 'none',
+                                                            display: 'flex',
+                                                            flexDirection: 'column'
+                                                        }}
+                                                    >
+                                                        {/* 요일 헤더 */}
+                                                        <Box style={{
+                                                            background: '#FFD93D',
+                                                            padding: '8px',
+                                                            borderBottom: '2px solid black',
+                                                            textAlign: 'center'
+                                                        }}>
+                                                            <Text fw={900} size="lg">{day.dayOfWeek}</Text>
+                                                            <Text size="xs" fw={700}>{day.date}</Text>
+                                                        </Box>
 
-                                                        if (!item) {
-                                                            return <Table.Td key={dayIdx} style={{ background: 'white' }}></Table.Td>;
-                                                        }
-
-                                                        // 아이템 상세 정보
-                                                        const title = item.item_details?.title || '제목 없음';
-                                                        const subTitle = item.item_type === 'wordbook' ? '단어학습' : '듣기평가';
-
-                                                        return (
-                                                            <Table.Td key={dayIdx} style={{ verticalAlign: 'top', background: 'white' }}>
+                                                        {/* 학습 내용 */}
+                                                        <Box style={{
+                                                            padding: '10px',
+                                                            flex: 1,
+                                                            background: schedule?.status === 'today' ? '#fff9db' : 'white'
+                                                        }}>
+                                                            {schedule ? (
                                                                 <Stack gap={4}>
-                                                                    <Text fw={700} size="xs" lineClamp={2}>
-                                                                        {title}
+                                                                    {/* 교재명 */}
+                                                                    <Text fw={700} size="sm" lineClamp={2}>
+                                                                        {schedule.itemTitle}
                                                                     </Text>
 
-                                                                    <Group gap={4} wrap="nowrap">
-                                                                        <Text size="xs" c="dimmed" style={{ fontSize: '0.7rem' }}>
-                                                                            {item.item_type === 'wordbook' ? `단어 ${item.word_count || 0}개` : '듣기평가'}
-                                                                        </Text>
-                                                                        <ActionIcon
-                                                                            size="xs"
-                                                                            variant="subtle"
-                                                                            color="gray"
-                                                                            title="삭제"
-                                                                        >
-                                                                            <IconTrash size={10} />
-                                                                        </ActionIcon>
+                                                                    {/* 대단원 */}
+                                                                    <Group gap={4}>
+                                                                        <Text size="xs" c="dimmed">대단원:</Text>
+                                                                        <Text size="xs" fw={600}>{schedule.majorUnit}</Text>
                                                                     </Group>
 
-                                                                    <Divider my={2} />
+                                                                    {/* 소단원 */}
+                                                                    <Group gap={4}>
+                                                                        <Text size="xs" c="dimmed">소단원:</Text>
+                                                                        <Text size="xs" fw={600}>{schedule.minorUnit}</Text>
+                                                                    </Group>
 
-                                                                    <Text size="xs" fw={700} c={status === 'completed' ? 'blue' : status === 'today' ? 'green' : 'gray'}>
-                                                                        {status === 'completed' ? '학습완료' : status === 'today' ? '진행중' : '미완료'}
-                                                                    </Text>
+                                                                    {/* 단원명 */}
+                                                                    <Group gap={4}>
+                                                                        <Text size="xs" c="dimmed">단원명:</Text>
+                                                                        <Text size="xs" fw={600}>{schedule.dayIndex}일차</Text>
+                                                                    </Group>
+
+                                                                    {/* 진도 범위 */}
+                                                                    <Box style={{
+                                                                        background: '#e3f2fd',
+                                                                        padding: '6px',
+                                                                        marginTop: '4px',
+                                                                        border: '1px solid #90caf9',
+                                                                        borderRadius: '4px'
+                                                                    }}>
+                                                                        <Text size="xs" fw={700} ta="center">진도 범위</Text>
+                                                                        <Text size="xs" ta="center">{schedule.progressRange}</Text>
+                                                                    </Box>
+
+                                                                    {/* 날짜 및 단어 수 */}
+                                                                    <Group justify="space-between" mt={4}>
+                                                                        <Text size="xs" c="dimmed">{day.date}</Text>
+                                                                        <Badge size="sm" color="yellow" variant="filled" radius="xs" style={{ border: '1px solid black', color: 'black' }}>
+                                                                            {schedule.wordCount}개 단어
+                                                                        </Badge>
+                                                                    </Group>
                                                                 </Stack>
-                                                            </Table.Td>
-                                                        );
-                                                    })}
-                                                </Table.Tr>
-                                            ))
-                                        )}
-                                    </Table.Tbody>
-                                </Table>
-                            </Paper>
-                        </div>
+                                                            ) : (
+                                                                <Center style={{ height: '100%', minHeight: '120px' }}>
+                                                                    <Text size="xs" c="dimmed">-</Text>
+                                                                </Center>
+                                                            )}
+                                                        </Box>
+                                                    </Box>
+                                                );
+                                            })}
+                                        </Box>
+                                    </div>
+                                </Paper>
+                            ))}
+
+                            {curriculums.length === 0 && (
+                                <Paper p="xl" style={{ border: '2px solid black', borderRadius: '0px', textAlign: 'center' }}>
+                                    <Text c="dimmed">등록된 커리큘럼이 없습니다.</Text>
+                                </Paper>
+                            )}
+                        </Box>
                     );
                 })}
             </Stack>

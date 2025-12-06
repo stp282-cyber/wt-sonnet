@@ -4,35 +4,31 @@ import { createClient } from '@/lib/supabase/client';
 // PUT /api/curriculum-items/[id] - 학습 항목 수정
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
+        const { id } = await params;
         const body = await request.json();
-        const {
-            type,
-            title,
-            daily_amount_type,
-            daily_word_count,
-            daily_section_amount,
-            section_start,
-            time_limit_seconds,
-            passing_score,
-        } = body;
+
+        // 업데이트할 필드만 포함
+        const updateData: any = {};
+
+        if (body.type !== undefined) updateData.type = body.type;
+        if (body.title !== undefined) updateData.title = body.title;
+        if (body.daily_amount_type !== undefined) updateData.daily_amount_type = body.daily_amount_type;
+        if (body.daily_word_count !== undefined) updateData.daily_word_count = body.daily_word_count;
+        if (body.daily_section_amount !== undefined) updateData.daily_section_amount = body.daily_section_amount;
+        if (body.section_start !== undefined) updateData.section_start = body.section_start;
+        if (body.time_limit_seconds !== undefined) updateData.time_limit_seconds = body.time_limit_seconds;
+        if (body.passing_score !== undefined) updateData.passing_score = body.passing_score;
+        if (body.order_index !== undefined) updateData.sequence = body.order_index;
+        if (body.sequence !== undefined) updateData.sequence = body.sequence;
 
         const { data: item, error } = await supabase
             .from('curriculum_items')
-            .update({
-                type,
-                title,
-                daily_amount_type,
-                daily_word_count,
-                daily_section_amount,
-                section_start,
-                time_limit_seconds,
-                passing_score,
-            })
-            .eq('id', params.id)
+            .update(updateData)
+            .eq('id', id)
             .select()
             .single();
 
@@ -51,15 +47,16 @@ export async function PUT(
 // DELETE /api/curriculum-items/[id] - 학습 항목 삭제
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
+        const { id } = await params;
 
         const { error } = await supabase
             .from('curriculum_items')
             .delete()
-            .eq('id', params.id);
+            .eq('id', id);
 
         if (error) {
             console.error('Curriculum item deletion error:', error);

@@ -45,6 +45,7 @@ interface Curriculum {
     title: string;
     description: string;
     items: CurriculumItem[];
+    item_count?: number;
     created_at: string;
 }
 
@@ -143,6 +144,7 @@ export default function CurriculumsPage() {
                 title: c.name,
                 description: c.description || '',
                 items: [],
+                item_count: c.item_count || 0,
                 created_at: c.created_at,
             }));
             setCurriculums(formattedCurriculums);
@@ -161,9 +163,9 @@ export default function CurriculumsPage() {
     const fetchCurriculumItems = async (curriculumId: string) => {
         try {
             const response = await fetch(`/api/curriculum-items?curriculum_id=${curriculumId}`);
-            
+
             let items: CurriculumItem[] = [];
-            
+
             if (response.ok) {
                 const data = await response.json();
                 items = (data.items || []).map((item: any) => ({
@@ -184,7 +186,7 @@ export default function CurriculumsPage() {
             setCurriculums(prev =>
                 prev.map(c => c.id === curriculumId ? { ...c, items } : c)
             );
-            
+
             setSelectedCurriculum(prev => prev ? { ...prev, items } : null);
         } catch (error) {
             console.warn('Error fetching items, using empty array:', error);
@@ -308,10 +310,10 @@ export default function CurriculumsPage() {
                 order_index: selectedCurriculum.items.length,
             };
 
-            const url = editingItem 
+            const url = editingItem
                 ? `/api/curriculum-items/${editingItem.id}`
                 : '/api/curriculum-items';
-            
+
             const response = await fetch(url, {
                 method: editingItem ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -345,7 +347,7 @@ export default function CurriculumsPage() {
     };
 
     // 학습 항목 순서 변경
-    const moveItem = (index: number, direction: 'up' | 'down') => {
+    const moveItem = async (index: number, direction: 'up' | 'down') => {
         if (!selectedCurriculum) return;
         const newItems = [...selectedCurriculum.items];
         if (direction === 'up' && index > 0) {
@@ -361,6 +363,30 @@ export default function CurriculumsPage() {
             )
         );
         setSelectedCurriculum(updatedCurriculum);
+
+        // 서버에 순서 저장
+        try {
+            await Promise.all(
+                newItems.map((item, idx) =>
+                    fetch(`/api/curriculum-items/${item.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order_index: idx }),
+                    })
+                )
+            );
+            notifications.show({
+                title: '순서 변경 완료',
+                message: '학습 항목 순서가 저장되었습니다.',
+                color: 'green',
+            });
+        } catch (error) {
+            notifications.show({
+                title: '순서 저장 실패',
+                message: '순서 저장에 실패했습니다.',
+                color: 'red',
+            });
+        }
     };
 
     // 학습 항목 삭제
@@ -497,219 +523,219 @@ export default function CurriculumsPage() {
                         <Table.Tbody>
                             {curriculums.map((curriculum) => (
                                 <React.Fragment key={curriculum.id}>
-                                <Table.Tr>
-                                    <Table.Td 
-                                        style={{ 
-                                            fontWeight: 600, 
-                                            cursor: 'pointer',
-                                            textDecoration: 'underline',
-                                            color: '#2563EB'
-                                        }}
-                                        onClick={async () => {
-                                            setSelectedCurriculum(curriculum);
-                                            await fetchCurriculumItems(curriculum.id);
-                                        }}
-                                    >
-                                        {curriculum.title}
-                                    </Table.Td>
-                                    <Table.Td>{curriculum.description}</Table.Td>
-                                    <Table.Td>
-                                        <Badge
-                                            color="yellow"
-                                            variant="filled"
-                                            size="lg"
-                                            radius="xs"
-                                            style={{ border: '2px solid black', color: 'black' }}
-                                        >
-                                            {curriculum.items.length}개
-                                        </Badge>
-                                    </Table.Td>
-                                    <Table.Td>{new Date(curriculum.created_at).toLocaleDateString()}</Table.Td>
-                                    <Table.Td>
-                                        <Group justify="flex-end" gap="xs">
-                                            <ActionIcon
-                                                variant="filled"
-                                                color="gray"
-                                                size="lg"
-                                                radius={0}
-                                                style={{ border: '2px solid black', boxShadow: '2px 2px 0px black' }}
-                                                onClick={() => {
-                                                    setSelectedCurriculum(curriculum);
-                                                    curriculumForm.setValues({
-                                                        title: curriculum.title,
-                                                        description: curriculum.description,
-                                                    });
-                                                    setModalOpened(true);
-                                                }}
-                                            >
-                                                <IconEdit size={18} />
-                                            </ActionIcon>
-                                            <ActionIcon
-                                                variant="filled"
-                                                color="red"
-                                                size="lg"
-                                                radius={0}
-                                                style={{ border: '2px solid black', boxShadow: '2px 2px 0px black' }}
-                                                onClick={() => handleDeleteCurriculum(curriculum.id)}
-                                            >
-                                                <IconTrash size={18} />
-                                            </ActionIcon>
-                                        </Group>
-                                    </Table.Td>
-                                </Table.Tr>
-                                {selectedCurriculum?.id === curriculum.id && (
                                     <Table.Tr>
-                                        <Table.Td colSpan={5} style={{ padding: 0, border: 'none' }}>
-                                            <Paper
-                                                p="xl"
-                                                style={{
-                                                    border: '2px solid black',
-                                                    background: '#fff9db',
-                                                    borderRadius: '0px',
-                                                    margin: '0.5rem',
-                                                }}
+                                        <Table.Td
+                                            style={{
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                textDecoration: 'underline',
+                                                color: '#2563EB'
+                                            }}
+                                            onClick={async () => {
+                                                setSelectedCurriculum(curriculum);
+                                                await fetchCurriculumItems(curriculum.id);
+                                            }}
+                                        >
+                                            {curriculum.title}
+                                        </Table.Td>
+                                        <Table.Td>{curriculum.description}</Table.Td>
+                                        <Table.Td>
+                                            <Badge
+                                                color="yellow"
+                                                variant="filled"
+                                                size="lg"
+                                                radius="xs"
+                                                style={{ border: '2px solid black', color: 'black' }}
                                             >
-                                                <Stack gap="lg">
-                                                    <Group justify="space-between">
-                                                        <Box>
-                                                            <Title order={4} style={{ fontWeight: 900 }}>{selectedCurriculum.title}</Title>
-                                                            <Text c="dimmed" size="sm">{selectedCurriculum.description}</Text>
-                                                        </Box>
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingItem(null);
-                                                                itemForm.reset();
-            setSelectedMaterialId(null);
-                                                                setItemModalOpened(true);
-                                                            }}
-                                                            style={{
-                                                                background: '#FFD93D',
-                                                                color: 'black',
-                                                                border: '2px solid black',
-                                                                borderRadius: '0px',
-                                                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                                                fontSize: '0.9rem',
-                                                                fontWeight: 700,
-                                                                padding: '0.5rem 1rem',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '0.5rem',
-                                                            }}
-                                                        >
-                                                            <IconPlus size={16} />
-                                                            항목 추가
-                                                        </button>
-                                                    </Group>
-
-                                                    <Table size="sm">
-                                                        <Table.Thead>
-                                                            <Table.Tr>
-                                                                <Table.Th>순서</Table.Th>
-                                                                <Table.Th>유형</Table.Th>
-                                                                <Table.Th>교재명</Table.Th>
-                                                                <Table.Th>일일 학습량</Table.Th>
-                                                                <Table.Th>제한 시간</Table.Th>
-                                                                <Table.Th>합격 기준</Table.Th>
-                                                                <Table.Th style={{ textAlign: 'right' }}>관리</Table.Th>
-                                                            </Table.Tr>
-                                                        </Table.Thead>
-                                                        <Table.Tbody>
-                                                            {selectedCurriculum.items.map((item, index) => (
-                                                                <Table.Tr key={item.id}>
-                                                                    <Table.Td>{index + 1}</Table.Td>
-                                                                    <Table.Td>
-                                                                        <Badge
-                                                                            color={item.type === 'word' ? 'blue' : 'green'}
-                                                                            variant="filled"
-                                                                            radius="xs"
-                                                                            size="sm"
-                                                                            style={{ border: '1px solid black' }}
-                                                                        >
-                                                                            {item.type === 'word' ? '단어' : '듣기'}
-                                                                        </Badge>
-                                                                    </Table.Td>
-                                                                    <Table.Td style={{ fontWeight: 600 }}>{item.title}</Table.Td>
-                                                                    <Table.Td>
-                                                                        {item.daily_amount_type === 'count'
-                                                                            ? `${item.daily_word_count}문제`
-                                                                            : `${item.daily_section_amount}소단원 (시작: ${item.section_start})`}
-                                                                    </Table.Td>
-                                                                    <Table.Td>{item.time_limit_seconds}초/문제</Table.Td>
-                                                                    <Table.Td>{item.passing_score}점</Table.Td>
-                                                                    <Table.Td>
-                                                                        <Group justify="flex-end" gap={4}>
-                                                                            <ActionIcon
-                                                                                variant="subtle"
-                                                                                color="dark"
-                                                                                size="sm"
-                                                                                onClick={() => moveItem(index, 'up')}
-                                                                                disabled={index === 0}
-                                                                            >
-                                                                                <IconArrowUp size={14} />
-                                                                            </ActionIcon>
-                                                                            <ActionIcon
-                                                                                variant="subtle"
-                                                                                color="dark"
-                                                                                size="sm"
-                                                                                onClick={() => moveItem(index, 'down')}
-                                                                                disabled={index === selectedCurriculum.items.length - 1}
-                                                                            >
-                                                                                <IconArrowDown size={14} />
-                                                                            </ActionIcon>
-                                                                            <ActionIcon
-                                                                                variant="filled"
-                                                                                color="gray"
-                                                                                size="sm"
-                                                                                radius={0}
-                                                                                style={{ border: '2px solid black' }}
-                                                                                onClick={() => {
-                                                                                    setEditingItem(item);
-                                                                                    itemForm.setValues({
-                                                                                        type: item.type,
-                                                                                        title: item.title,
-                                                                                        daily_amount_type: item.daily_amount_type,
-                                                                                        daily_word_count: item.daily_word_count || 20,
-                                                                                        daily_section_amount: item.daily_section_amount || 1,
-                                                                                        section_start: item.section_start || '',
-                                                                                        time_limit_seconds: item.time_limit_seconds,
-                                                                                        passing_score: item.passing_score,
-                                                                                        word_count: item.daily_word_count || 20,
-                                                                                        section_count: 1,
-                                                                                    });
-                                                                                    setItemModalOpened(true);
-                                                                                }}
-                                                                            >
-                                                                                <IconEdit size={12} />
-                                                                            </ActionIcon>
-                                                                            <ActionIcon
-                                                                                variant="filled"
-                                                                                color="red"
-                                                                                size="sm"
-                                                                                radius={0}
-                                                                                style={{ border: '2px solid black' }}
-                                                                                onClick={() => handleDeleteItem(item.id)}
-                                                                            >
-                                                                                <IconTrash size={12} />
-                                                                            </ActionIcon>
-                                                                        </Group>
-                                                                    </Table.Td>
-                                                                </Table.Tr>
-                                                            ))}
-                                                        </Table.Tbody>
-                                                    </Table>
-                                                </Stack>
-                                            </Paper>
+                                                {curriculum.item_count ?? curriculum.items.length}개
+                                            </Badge>
+                                        </Table.Td>
+                                        <Table.Td>{new Date(curriculum.created_at).toLocaleDateString()}</Table.Td>
+                                        <Table.Td>
+                                            <Group justify="flex-end" gap="xs">
+                                                <ActionIcon
+                                                    variant="filled"
+                                                    color="gray"
+                                                    size="lg"
+                                                    radius={0}
+                                                    style={{ border: '2px solid black', boxShadow: '2px 2px 0px black' }}
+                                                    onClick={() => {
+                                                        setSelectedCurriculum(curriculum);
+                                                        curriculumForm.setValues({
+                                                            title: curriculum.title,
+                                                            description: curriculum.description,
+                                                        });
+                                                        setModalOpened(true);
+                                                    }}
+                                                >
+                                                    <IconEdit size={18} />
+                                                </ActionIcon>
+                                                <ActionIcon
+                                                    variant="filled"
+                                                    color="red"
+                                                    size="lg"
+                                                    radius={0}
+                                                    style={{ border: '2px solid black', boxShadow: '2px 2px 0px black' }}
+                                                    onClick={() => handleDeleteCurriculum(curriculum.id)}
+                                                >
+                                                    <IconTrash size={18} />
+                                                </ActionIcon>
+                                            </Group>
                                         </Table.Td>
                                     </Table.Tr>
-                                )}
+                                    {selectedCurriculum?.id === curriculum.id && (
+                                        <Table.Tr>
+                                            <Table.Td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                                                <Paper
+                                                    p="xl"
+                                                    style={{
+                                                        border: '2px solid black',
+                                                        background: '#fff9db',
+                                                        borderRadius: '0px',
+                                                        margin: '0.5rem',
+                                                    }}
+                                                >
+                                                    <Stack gap="lg">
+                                                        <Group justify="space-between">
+                                                            <Box>
+                                                                <Title order={4} style={{ fontWeight: 900 }}>{selectedCurriculum.title}</Title>
+                                                                <Text c="dimmed" size="sm">{selectedCurriculum.description}</Text>
+                                                            </Box>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingItem(null);
+                                                                    itemForm.reset();
+                                                                    setSelectedMaterialId(null);
+                                                                    setItemModalOpened(true);
+                                                                }}
+                                                                style={{
+                                                                    background: '#FFD93D',
+                                                                    color: 'black',
+                                                                    border: '2px solid black',
+                                                                    borderRadius: '0px',
+                                                                    boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                                                    fontSize: '0.9rem',
+                                                                    fontWeight: 700,
+                                                                    padding: '0.5rem 1rem',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.5rem',
+                                                                }}
+                                                            >
+                                                                <IconPlus size={16} />
+                                                                항목 추가
+                                                            </button>
+                                                        </Group>
+
+                                                        <Table size="sm">
+                                                            <Table.Thead>
+                                                                <Table.Tr>
+                                                                    <Table.Th>순서</Table.Th>
+                                                                    <Table.Th>유형</Table.Th>
+                                                                    <Table.Th>교재명</Table.Th>
+                                                                    <Table.Th>일일 학습량</Table.Th>
+                                                                    <Table.Th>제한 시간</Table.Th>
+                                                                    <Table.Th>합격 기준</Table.Th>
+                                                                    <Table.Th style={{ textAlign: 'right' }}>관리</Table.Th>
+                                                                </Table.Tr>
+                                                            </Table.Thead>
+                                                            <Table.Tbody>
+                                                                {selectedCurriculum.items.map((item, index) => (
+                                                                    <Table.Tr key={item.id}>
+                                                                        <Table.Td>{index + 1}</Table.Td>
+                                                                        <Table.Td>
+                                                                            <Badge
+                                                                                color={item.type === 'word' ? 'blue' : 'green'}
+                                                                                variant="filled"
+                                                                                radius="xs"
+                                                                                size="sm"
+                                                                                style={{ border: '1px solid black' }}
+                                                                            >
+                                                                                {item.type === 'word' ? '단어' : '듣기'}
+                                                                            </Badge>
+                                                                        </Table.Td>
+                                                                        <Table.Td style={{ fontWeight: 600 }}>{item.title}</Table.Td>
+                                                                        <Table.Td>
+                                                                            {item.daily_amount_type === 'count'
+                                                                                ? `${item.daily_word_count}문제`
+                                                                                : `${item.daily_section_amount}소단원 (시작: ${item.section_start})`}
+                                                                        </Table.Td>
+                                                                        <Table.Td>{item.time_limit_seconds}초/문제</Table.Td>
+                                                                        <Table.Td>{item.passing_score}점</Table.Td>
+                                                                        <Table.Td>
+                                                                            <Group justify="flex-end" gap={4}>
+                                                                                <ActionIcon
+                                                                                    variant="subtle"
+                                                                                    color="dark"
+                                                                                    size="sm"
+                                                                                    onClick={() => moveItem(index, 'up')}
+                                                                                    disabled={index === 0}
+                                                                                >
+                                                                                    <IconArrowUp size={14} />
+                                                                                </ActionIcon>
+                                                                                <ActionIcon
+                                                                                    variant="subtle"
+                                                                                    color="dark"
+                                                                                    size="sm"
+                                                                                    onClick={() => moveItem(index, 'down')}
+                                                                                    disabled={index === selectedCurriculum.items.length - 1}
+                                                                                >
+                                                                                    <IconArrowDown size={14} />
+                                                                                </ActionIcon>
+                                                                                <ActionIcon
+                                                                                    variant="filled"
+                                                                                    color="gray"
+                                                                                    size="sm"
+                                                                                    radius={0}
+                                                                                    style={{ border: '2px solid black' }}
+                                                                                    onClick={() => {
+                                                                                        setEditingItem(item);
+                                                                                        itemForm.setValues({
+                                                                                            type: item.type,
+                                                                                            title: item.title,
+                                                                                            daily_amount_type: item.daily_amount_type,
+                                                                                            daily_word_count: item.daily_word_count || 20,
+                                                                                            daily_section_amount: item.daily_section_amount || 1,
+                                                                                            section_start: item.section_start || '',
+                                                                                            time_limit_seconds: item.time_limit_seconds,
+                                                                                            passing_score: item.passing_score,
+                                                                                            word_count: item.daily_word_count || 20,
+                                                                                            section_count: 1,
+                                                                                        });
+                                                                                        setItemModalOpened(true);
+                                                                                    }}
+                                                                                >
+                                                                                    <IconEdit size={12} />
+                                                                                </ActionIcon>
+                                                                                <ActionIcon
+                                                                                    variant="filled"
+                                                                                    color="red"
+                                                                                    size="sm"
+                                                                                    radius={0}
+                                                                                    style={{ border: '2px solid black' }}
+                                                                                    onClick={() => handleDeleteItem(item.id)}
+                                                                                >
+                                                                                    <IconTrash size={12} />
+                                                                                </ActionIcon>
+                                                                            </Group>
+                                                                        </Table.Td>
+                                                                    </Table.Tr>
+                                                                ))}
+                                                            </Table.Tbody>
+                                                        </Table>
+                                                    </Stack>
+                                                </Paper>
+                                            </Table.Td>
+                                        </Table.Tr>
+                                    )}
                                 </React.Fragment>
                             ))}
                         </Table.Tbody>
                     </Table>
                 </Paper>
 
-                
+
 
                 <Modal
                     opened={modalOpened}

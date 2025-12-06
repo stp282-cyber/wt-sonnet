@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
             .from('curriculum_items')
             .select('*')
             .eq('curriculum_id', curriculumId)
-            .order('order_index', { ascending: true });
+            .order('sequence', { ascending: true });
 
         if (error) {
             console.error('Curriculum items fetch error:', error);
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
                 section_start,
                 time_limit_seconds,
                 passing_score,
-                order_index: order_index || 0,
+                sequence: order_index || 0,
             })
             .select()
             .single();

@@ -100,15 +100,32 @@ export async function GET(
                 const itemsWithDetails = await Promise.all(
                     (curriculumItems || []).map(async (item) => {
                         if (item.item_type === 'wordbook') {
+                            // 단어장 기본 정보
                             const { data: wordbook } = await supabase
                                 .from('wordbooks')
                                 .select('id, title, word_count')
                                 .eq('id', item.item_id)
                                 .single();
 
+                            // 단어장의 소단원(sections) 정보 가져오기
+                            const { data: sections } = await supabase
+                                .from('wordbook_sections')
+                                .select('id, major_unit, minor_unit, unit_name, words')
+                                .eq('wordbook_id', item.item_id)
+                                .order('major_unit', { ascending: true })
+                                .order('minor_unit', { ascending: true });
+
+                            // 소단원을 대단원-소단원 순서로 정렬하여 학습 순서 결정
+                            const sortedSections = (sections || []).map((section: any, index: number) => ({
+                                ...section,
+                                sequence: index + 1,
+                                word_count: section.words?.length || 0,
+                            }));
+
                             return {
                                 ...item,
                                 item_details: wordbook,
+                                sections: sortedSections,
                             };
                         } else if (item.item_type === 'listening') {
                             const { data: listening } = await supabase
@@ -120,9 +137,10 @@ export async function GET(
                             return {
                                 ...item,
                                 item_details: listening,
+                                sections: [],
                             };
                         }
-                        return item;
+                        return { ...item, sections: [] };
                     })
                 );
 
