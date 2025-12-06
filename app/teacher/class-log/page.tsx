@@ -385,6 +385,17 @@ export default function ClassLogPage() {
                                 placeholder="날짜를 선택하세요"
                                 valueFormat="YYYY-MM-DD"
                                 leftSection={<IconCalendar size={18} />}
+                                popoverProps={{
+                                    width: 300,
+                                    shadow: 'md',
+                                    styles: {
+                                        dropdown: {
+                                            border: '3px solid black',
+                                            borderRadius: '0px',
+                                            boxShadow: '6px 6px 0px black',
+                                        }
+                                    }
+                                }}
                                 styles={{
                                     input: {
                                         border: '3px solid black',

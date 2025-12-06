@@ -132,3 +132,107 @@ body {
 .no-copy {
   user-select: none;
 }
+
+/* DateInput 달력 스타일 */
+.mantine-DateInput-calendarHeader {
+  gap: 0 !important;
+  padding: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.mantine-DateInput-calendarHeader button {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  min-height: 26px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.mantine-DateInput-calendarHeader button svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.mantine-DateInput-calendarHeaderLevel {
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  padding: 0.25rem 0.5rem !important;
+  flex: 1 !important;
+  text-align: center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 요일 헤더 - 날짜와 동일한 크기 */
+.mantine-DateInput-weekdaysRow {
+  display: flex !important;
+  justify-content: space-around !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.mantine-DateInput-weekday {
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  color: #666 !important;
+  width: 36px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  text-align: center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 날짜 행 */
+.mantine-DateInput-monthRow {
+  display: flex !important;
+  justify-content: space-around !important;
+}
+
+/* 날짜 셀 - 요일과 동일한 너비 */
+.mantine-DateInput-day {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0 !important;
+}
+
+.mantine-DateInput-day[data-selected] {
+  background-color: #FFD93D !important;
+  color: black !important;
+  border: 2px solid black !important;
+  font-weight: 900 !important;
+}
+
+.mantine-DateInput-day:hover:not([data-selected]) {
+  background-color: #FFF4CC !important;
+}
+
+.mantine-DateInput-day[data-outside] {
+  color: #ccc !important;
+}
+
+/* 달력 전체 */
+.mantine-DateInput-calendar {
+  padding: 0.5rem !important;
+}
+
+.mantine-DateInput-month {
+  width: 100% !important;
+}
