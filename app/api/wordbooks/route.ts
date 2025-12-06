@@ -61,11 +61,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: wordbookError.message }, { status: 500 });
         }
 
-        // 2. 소단원별로 단어 그룹화
+        // 2. 소단원별로 단어 그룹화 (숫자를 문자열로 변환)
         const sectionMap = new Map<string, any[]>();
 
         words.forEach((word: any) => {
-            const minorUnit = word.minor_unit || '기타';
+            // minor_unit을 문자열로 변환 (숫자일 수 있음)
+            const minorUnit = word.minor_unit != null ? String(word.minor_unit) : '기타';
+            const majorUnit = word.major_unit != null ? String(word.major_unit) : null;
+
             if (!sectionMap.has(minorUnit)) {
                 sectionMap.set(minorUnit, []);
             }
@@ -73,20 +76,30 @@ export async function POST(request: NextRequest) {
                 no: word.no,
                 english: word.english,
                 korean: word.korean,
+                major_unit: majorUnit,
+                unit_name: word.unit_name,
             });
         });
 
         // 3. 각 소단원을 wordbook_sections에 저장
         const sections = Array.from(sectionMap.entries()).map(([minorUnit, sectionWords]) => {
-            const representativeWord = words.find((w: any) => w.minor_unit === minorUnit);
+            // 첫 번째 단어에서 major_unit과 unit_name 가져오기
+            const firstWord = sectionWords[0];
             return {
                 wordbook_id: wordbook.id,
-                major_unit: representativeWord?.major_unit || null,
+                major_unit: firstWord?.major_unit || null,
                 minor_unit: minorUnit,
-                unit_name: representativeWord?.unit_name || minorUnit,
-                words: sectionWords,
+                unit_name: firstWord?.unit_name || minorUnit,
+                words: sectionWords.map(w => ({
+                    no: w.no,
+                    english: w.english,
+                    korean: w.korean,
+                })),
             };
         });
+
+        console.log('Creating sections:', sections.length);
+        console.log('First section:', sections[0]);
 
         const { error: sectionsError } = await supabase
             .from('wordbook_sections')

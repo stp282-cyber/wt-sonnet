@@ -67,11 +67,22 @@ export async function POST(request: NextRequest) {
         }
 
         // 여러 학생에게 동일한 커리큘럼 등록
+        // 한글 요일을 영문 코드로 변환
+        const dayMap: { [key: string]: string } = {
+            '월': 'mon',
+            '화': 'tue',
+            '수': 'wed',
+            '목': 'thu',
+            '금': 'fri',
+        };
+
+        const studyDaysEnglish = class_days.map((day: string) => dayMap[day] || day);
+
         const insertData = student_ids.map((studentId: string) => ({
             student_id: studentId,
             curriculum_id,
             start_date,
-            class_days: class_days.join(','), // 예: "월,수,금"
+            study_days: studyDaysEnglish, // JSONB 배열로 저장: ["mon", "wed", "fri"]
             status: 'active',
         }));
 
