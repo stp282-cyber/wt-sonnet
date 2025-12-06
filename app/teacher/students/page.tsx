@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Container,
     Title,
@@ -16,6 +16,7 @@ import {
     ActionIcon,
     Text,
     Box,
+    Loader,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -31,25 +32,8 @@ interface Student {
 }
 
 export default function StudentsPage() {
-    const [students, setStudents] = useState<Student[]>([
-        {
-            id: '1',
-            username: '홍길동',
-            full_name: '홍길동',
-            status: 'active',
-            class_name: '초급반',
-            created_at: '2024-01-01',
-        },
-        {
-            id: '2',
-            username: '김영희',
-            full_name: '김영희',
-            status: 'active',
-            class_name: '중급반',
-            created_at: '2024-01-02',
-        },
-    ]);
-
+    const [students, setStudents] = useState<Student[]>([]);
+    const [loading, setLoading] = useState(true);
     const [modalOpened, setModalOpened] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
@@ -68,6 +52,30 @@ export default function StudentsPage() {
         },
     });
 
+    // 학생 목록 로드
+    const fetchStudents = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/students');
+            if (!response.ok) throw new Error('Failed to fetch students');
+
+            const data = await response.json();
+            setStudents(data.students || []);
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '학생 목록을 불러오는데 실패했습니다.',
+                color: 'red',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchStudents();
+    }, []);
+
     const handleOpenModal = (student?: Student) => {
         if (student) {
             setEditingStudent(student);
@@ -85,50 +93,87 @@ export default function StudentsPage() {
         setModalOpened(true);
     };
 
-    const handleSubmit = (values: typeof form.values) => {
-        if (editingStudent) {
-            // 수정
-            setStudents(students.map(s =>
-                s.id === editingStudent.id
-                    ? { ...s, ...values }
-                    : s
-            ));
+    const handleSubmit = async (values: typeof form.values) => {
+        try {
+            if (editingStudent) {
+                // 수정
+                const response = await fetch(`/api/students/${editingStudent.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(values),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to update student');
+                }
+
+                notifications.show({
+                    title: '학생 정보 수정 완료',
+                    message: `${values.full_name} 학생 정보가 수정되었습니다.`,
+                    color: 'blue',
+                });
+            } else {
+                // 추가
+                const response = await fetch('/api/students', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(values),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create student');
+                }
+
+                notifications.show({
+                    title: '학생 등록 완료',
+                    message: `${values.full_name} 학생이 등록되었습니다.`,
+                    color: 'green',
+                });
+            }
+
+            setModalOpened(false);
+            form.reset();
+            fetchStudents(); // 목록 새로고침
+        } catch (error: any) {
             notifications.show({
-                title: '학생 정보 수정 완료',
-                message: `${values.full_name} 학생 정보가 수정되었습니다.`,
-                color: 'blue',
-            });
-        } else {
-            // 추가
-            const newStudent: Student = {
-                id: Date.now().toString(),
-                username: values.username,
-                full_name: values.full_name,
-                status: values.status as 'active' | 'on_break',
-                class_name: values.class_name,
-                created_at: new Date().toISOString(),
-            };
-            setStudents([...students, newStudent]);
-            notifications.show({
-                title: '학생 등록 완료',
-                message: `${values.full_name} 학생이 등록되었습니다.`,
-                color: 'green',
+                title: '오류',
+                message: error.message || '작업에 실패했습니다.',
+                color: 'red',
             });
         }
-        setModalOpened(false);
-        form.reset();
     };
 
-    const handleDelete = (student: Student) => {
-        if (confirm(`${student.full_name} 학생을 삭제하시겠습니까?`)) {
-            setStudents(students.filter(s => s.id !== student.id));
+    const handleDelete = async (student: Student) => {
+        if (!confirm(`${student.full_name} 학생을 삭제하시겠습니까?`)) return;
+
+        try {
+            const response = await fetch(`/api/students/${student.id}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete student');
+            }
+
             notifications.show({
                 title: '학생 삭제 완료',
                 message: `${student.full_name} 학생이 삭제되었습니다.`,
                 color: 'red',
             });
+
+            fetchStudents(); // 목록 새로고침
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '삭제에 실패했습니다.',
+                color: 'red',
+            });
         }
     };
+
 
     return (
         <Container size="xl" py={40}>
