@@ -27,16 +27,20 @@ export async function GET(
         }
 
         // 2. 섹션 및 단어 조회
-        const { data: sections, error: sectionsError } = await supabase
+        const { data: sectionsData, error: sectionsError } = await supabase
             .from('wordbook_sections')
             .select('*')
-            .eq('wordbook_id', id)
-            .order('minor_unit');
+            .eq('wordbook_id', id);
 
         if (sectionsError) {
             console.error('Sections fetch error:', sectionsError);
             return NextResponse.json({ error: sectionsError.message }, { status: 500 });
         }
+
+        // minor_unit 기준 숫자 정렬 (1, 2, ..., 10, 11)
+        const sections = sectionsData?.sort((a: any, b: any) => {
+            return a.minor_unit.localeCompare(b.minor_unit, undefined, { numeric: true });
+        });
 
         // 3. 모든 단어를 평탄화
         const allWords: any[] = [];

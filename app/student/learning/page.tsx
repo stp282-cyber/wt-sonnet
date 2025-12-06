@@ -107,8 +107,32 @@ export default function StudentLearningPage() {
         fetchStudentCurriculums();
     }, []);
 
+    // 레슨 번호 계산 함수 (시작일부터 해당 날짜까지 수업일 수 계산)
+    const calculateLessonNumber = (startDateStr: string, classDays: string[], targetDateStr: string) => {
+        const start = new Date(startDateStr);
+        const target = new Date(targetDateStr);
+
+        // 시작일보다 이전이면 0 반환
+        if (target < start) return 0;
+
+        let count = 0;
+        const current = new Date(start);
+
+        while (current <= target) {
+            const dayMap = ['일', '월', '화', '수', '목', '금', '토'];
+            const dayName = dayMap[current.getDay()];
+
+            if (classDays.includes(dayName)) {
+                count++;
+            }
+            current.setDate(current.getDate() + 1);
+        }
+
+        return count;
+    };
+
     // 주간 일정 생성 함수
-    const getCurriculumDetails = useMemo((): { schedules: { title: string, dates: DailyStudy[], period: string }[], curriculum: any }[] => {
+    const getCurriculumDetails = useMemo((): { schedules: { title: string, dates: (DailyStudy & { lessonNumber: number })[], period: string }[], curriculum: any }[] => {
         if (!searchStartDate || studentCurriculums.length === 0) return [];
 
         return studentCurriculums.map((curriculum) => {
@@ -119,7 +143,7 @@ export default function StudentLearningPage() {
             ];
 
             const weeklySchedules = weeksConfig.map((week) => {
-                const dates: DailyStudy[] = [];
+                const dates: (DailyStudy & { lessonNumber: number })[] = [];
                 const days = ['월', '화', '수', '목', '금'];
                 const baseDate = new Date(searchStartDate);
                 baseDate.setDate(baseDate.getDate() + week.offset); // offset 만큼 이동
@@ -131,6 +155,7 @@ export default function StudentLearningPage() {
                     const dayName = days[i];
 
                     let status: 'completed' | 'today' | 'upcoming' | 'none' = 'none';
+                    let lessonNumber = 0;
 
                     if (curriculum.class_days.includes(dayName)) {
                         if (dateStr === '2025-12-06') {
@@ -140,12 +165,16 @@ export default function StudentLearningPage() {
                         } else {
                             status = 'upcoming';
                         }
+
+                        // 레슨 번호 계산
+                        lessonNumber = calculateLessonNumber(curriculum.start_date, curriculum.class_days, dateStr);
                     }
 
                     dates.push({
                         date: dateStr,
                         day: dayName,
                         status,
+                        lessonNumber,
                     });
                 }
 
@@ -338,14 +367,14 @@ export default function StudentLearningPage() {
                                                                         <Stack gap="sm">
                                                                             <Box>
                                                                                 <Badge color="black" radius="sm" size="sm" variant="filled">
-                                                                                    소단원 {index + 1}
+                                                                                    소단원 {day.lessonNumber}
                                                                                 </Badge>
                                                                                 <Text fw={700} size="sm" mt={4} lineClamp={1}>
-                                                                                    {index === 0 && '왜 잘지기 않는 거야'}
-                                                                                    {index === 1 && '작은 상자엔의 비밀'}
-                                                                                    {index === 2 && '이 단추의 용도가 뭐야?'}
-                                                                                    {index === 3 && '왜 잘지기 않는 거야'}
-                                                                                    {index === 4 && '이 단추의 용도가 뭐야?'}
+                                                                                    {day.lessonNumber % 5 === 1 && '왜 잘지기 않는 거야'}
+                                                                                    {day.lessonNumber % 5 === 2 && '작은 상자엔의 비밀'}
+                                                                                    {day.lessonNumber % 5 === 3 && '이 단추의 용도가 뭐야?'}
+                                                                                    {day.lessonNumber % 5 === 4 && '왜 잘지기 않는 거야'}
+                                                                                    {day.lessonNumber % 5 === 0 && '이 단추의 용도가 뭐야?'}
                                                                                 </Text>
                                                                             </Box>
 
