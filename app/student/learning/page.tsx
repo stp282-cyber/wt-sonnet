@@ -44,7 +44,38 @@ export default function StudentLearningPage() {
     const fetchStudentCurriculums = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/student-curriculums/me');
+
+            // 클라이언트 사이드에서만 실행
+            if (typeof window === 'undefined') {
+                setLoading(false);
+                return;
+            }
+
+            // localStorage에서 사용자 정보 가져오기
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                notifications.show({
+                    title: '인증 오류',
+                    message: '로그인이 필요합니다.',
+                    color: 'red',
+                });
+                router.push('/');
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+
+            // 학생 권한 확인
+            if (user.role !== 'student') {
+                notifications.show({
+                    title: '권한 오류',
+                    message: '학생만 접근 가능합니다.',
+                    color: 'red',
+                });
+                return;
+            }
+
+            const response = await fetch(`/api/student-curriculums?student_id=${user.id}`);
             if (!response.ok) throw new Error('Failed to fetch student curriculums');
 
             const data = await response.json();
@@ -55,7 +86,16 @@ export default function StudentLearningPage() {
                 curriculum_id: sc.curriculum_id,
                 curriculum_name: sc.curriculums?.name || '커리큘럼 없음',
                 start_date: sc.start_date || new Date().toISOString().split('T')[0],
-                class_days: sc.class_days || [],
+                class_days: sc.study_days ? sc.study_days.map((day: string) => {
+                    const dayMap: { [key: string]: string } = {
+                        'mon': '월',
+                        'tue': '화',
+                        'wed': '수',
+                        'thu': '목',
+                        'fri': '금',
+                    };
+                    return dayMap[day] || day;
+                }) : [],
                 current_progress: sc.current_progress || 0,
                 total_items: 50, // TODO: calculate by curriculum_items count
             }));
