@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Container,
     Title,
@@ -55,6 +56,7 @@ interface StudentDetail {
 }
 
 export default function ClassLogPage() {
+    const router = useRouter();
     const [selectedClass, setSelectedClass] = useState<string>('all');
     const [selectedWeek, setSelectedWeek] = useState<string>('2024-W03');
     const [detailModalOpened, setDetailModalOpened] = useState(false);
@@ -469,13 +471,10 @@ export default function ClassLogPage() {
                                         size="xs"
                                         variant="filled"
                                         color="dark"
-                                        onClick={() => {
-                                            setSelectedStudent(student);
-                                            setDetailModalOpened(true);
-                                        }}
+                                        onClick={() => router.push(`/teacher/schedule/${student.id}`)}
                                         style={{ border: '2px solid black', borderRadius: '0px' }}
                                     >
-                                        상세보기
+                                        학습일정
                                     </Button>
                                 </Table.Td>
                             </Table.Tr>

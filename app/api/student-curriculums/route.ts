@@ -14,11 +14,20 @@ export async function GET(request: NextRequest) {
                 student_id,
                 curriculum_id,
                 start_date,
-                class_days,
-                status,
+                study_days,
                 current_item_id,
+                current_progress,
                 created_at,
-                curriculums (
+                users:student_id (
+                    id,
+                    full_name,
+                    username,
+                    classes:class_id (
+                        id,
+                        name
+                    )
+                ),
+                curriculums:curriculum_id (
                     id,
                     name,
                     description

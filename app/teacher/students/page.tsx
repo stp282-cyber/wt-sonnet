@@ -528,11 +528,7 @@ export default function StudentsPage() {
                 <Modal
                     opened={modalOpened}
                     onClose={() => setModalOpened(false)}
-                    title={
-                        <Title order={3} style={{ fontWeight: 900 }}>
-                            {editingStudent ? '학생 정보 수정' : '새 학생 등록'}
-                        </Title>
-                    }
+                    title={editingStudent ? '학생 정보 수정' : '새 학생 등록'}
                     size="md"
                     styles={{
                         content: {
@@ -652,11 +648,7 @@ export default function StudentsPage() {
                 <Modal
                     opened={classModalOpened}
                     onClose={() => setClassModalOpened(false)}
-                    title={
-                        <Title order={3} style={{ fontWeight: 900 }}>
-                            새 반 추가
-                        </Title>
-                    }
+                    title="새 반 추가"
                     size="sm"
                     styles={{
                         content: {
