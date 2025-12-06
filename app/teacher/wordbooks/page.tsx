@@ -258,6 +258,10 @@ export default function WordbooksPage() {
                 color: 'red',
             });
 
+            // 모달 닫기
+            setModalOpened(false);
+            setSelectedWordbook(null);
+
             fetchWordbooks(); // 목록 새로고침
         } catch (error: any) {
             notifications.show({
@@ -317,8 +321,12 @@ export default function WordbooksPage() {
     // 대단원 목록 추출
     const majorUnits = useMemo(() => {
         if (!selectedWordbook) return [];
-        const units = new Set(selectedWordbook.words.map(w => w.major_unit).filter(Boolean));
-        return Array.from(units);
+        const units = new Set(
+            selectedWordbook.words
+                .map(w => w.major_unit)
+                .filter(unit => unit && unit.trim() !== '')
+        );
+        return Array.from(units).sort();
     }, [selectedWordbook]);
 
     // 소단원 목록 추출 (선택된 대단원에 따라)
@@ -327,8 +335,12 @@ export default function WordbooksPage() {
         const filtered = selectedMajorUnit
             ? selectedWordbook.words.filter(w => w.major_unit === selectedMajorUnit)
             : selectedWordbook.words;
-        const units = new Set(filtered.map(w => w.minor_unit).filter(Boolean));
-        return Array.from(units);
+        const units = new Set(
+            filtered
+                .map(w => w.minor_unit)
+                .filter(unit => unit && unit.trim() !== '')
+        );
+        return Array.from(units).sort();
     }, [selectedWordbook, selectedMajorUnit]);
 
     // 필터링 및 검색된 단어 목록
@@ -359,7 +371,8 @@ export default function WordbooksPage() {
             );
         }
 
-        return filtered;
+        // 번호순으로 정렬
+        return filtered.sort((a, b) => a.no - b.no);
     }, [selectedWordbook, selectedMajorUnit, selectedMinorUnit, searchQuery]);
 
     return (
@@ -550,30 +563,56 @@ export default function WordbooksPage() {
                                     필터링된 단어: {filteredWords.length}개
                                 </Text>
                             </Box>
-                            <button
-                                onClick={() => {
-                                    setEditingWord(null);
-                                    wordForm.reset();
-                                    setWordModalOpened(true);
-                                }}
-                                style={{
-                                    background: '#FFD93D',
-                                    color: 'black',
-                                    border: '2px solid black',
-                                    borderRadius: '0px',
-                                    boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                    fontSize: '0.9rem',
-                                    fontWeight: 700,
-                                    padding: '0.5rem 1rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                }}
-                            >
-                                <IconPlus size={16} />
-                                단어 추가
-                            </button>
+                            <Group>
+                                <button
+                                    onClick={() => {
+                                        if (selectedWordbook) {
+                                            handleDeleteWordbook(selectedWordbook);
+                                        }
+                                    }}
+                                    style={{
+                                        background: '#FF6B6B',
+                                        color: 'white',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
+                                        boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                        fontSize: '0.9rem',
+                                        fontWeight: 700,
+                                        padding: '0.5rem 1rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                    }}
+                                >
+                                    <IconTrash size={16} />
+                                    단어장 삭제
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingWord(null);
+                                        wordForm.reset();
+                                        setWordModalOpened(true);
+                                    }}
+                                    style={{
+                                        background: '#FFD93D',
+                                        color: 'black',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
+                                        boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                        fontSize: '0.9rem',
+                                        fontWeight: 700,
+                                        padding: '0.5rem 1rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                    }}
+                                >
+                                    <IconPlus size={16} />
+                                    단어 추가
+                                </button>
+                            </Group>
                         </Group>
 
                         {/* 검색 및 필터 */}
