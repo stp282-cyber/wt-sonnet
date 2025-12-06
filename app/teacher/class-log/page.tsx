@@ -107,7 +107,7 @@ export default function ClassLogPage() {
             <Group justify="space-between" mb="xl">
                 <div>
                     <Title order={1} style={{ fontWeight: 900 }}>
-                        📊 수업 일지
+                        수업 일지
                     </Title>
                     <Text c="dimmed" mt="xs">
                         학생별 커리큘럼 진도 및 학습 현황을 확인하세요
@@ -123,6 +123,7 @@ export default function ClassLogPage() {
                     border: '4px solid black',
                     background: 'white',
                     boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                    borderRadius: '0px',
                 }}
             >
                 <Group>
@@ -137,6 +138,7 @@ export default function ClassLogPage() {
                             { value: 'C반', label: 'C반' },
                         ]}
                         style={{ width: 200 }}
+                        styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                     />
                     <Select
                         label="주차 선택"
@@ -148,6 +150,7 @@ export default function ClassLogPage() {
                             { value: '2024-W03', label: '2024년 3주차' },
                         ]}
                         style={{ width: 200 }}
+                        styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                     />
                 </Group>
             </Paper>
@@ -159,11 +162,12 @@ export default function ClassLogPage() {
                     border: '4px solid black',
                     background: 'white',
                     boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                    borderRadius: '0px',
                 }}
             >
                 <Table>
                     <Table.Thead>
-                        <Table.Tr>
+                        <Table.Tr style={{ borderBottom: '3px solid black' }}>
                             <Table.Th>학생</Table.Th>
                             <Table.Th>반</Table.Th>
                             <Table.Th>커리큘럼</Table.Th>
@@ -180,7 +184,7 @@ export default function ClassLogPage() {
                                     <Text fw={700}>{student.student_name}</Text>
                                 </Table.Td>
                                 <Table.Td>
-                                    <Badge variant="light">{student.class_name}</Badge>
+                                    <Badge variant="filled" color="yellow" radius={0} style={{ border: '2px solid black', color: 'black' }}>{student.class_name}</Badge>
                                 </Table.Td>
                                 <Table.Td>
                                     <Text size="sm">{student.curriculum_name}</Text>
@@ -193,8 +197,9 @@ export default function ClassLogPage() {
                                         <Progress
                                             value={(student.current_progress / student.total_items) * 100}
                                             size="lg"
-                                            radius="xl"
-                                            style={{ flex: 1, minWidth: 100 }}
+                                            radius={0}
+                                            style={{ flex: 1, minWidth: 100, border: '1px solid black' }}
+                                            color="yellow"
                                         />
                                         <Text size="sm" fw={700}>
                                             {student.current_progress}/{student.total_items}
@@ -206,9 +211,9 @@ export default function ClassLogPage() {
                                         <Progress
                                             value={getWeekProgress(student.this_week_completed, student.this_week_total)}
                                             size="lg"
-                                            radius="xl"
-                                            color={student.this_week_completed === student.this_week_total ? 'green' : 'yellow'}
-                                            style={{ flex: 1, minWidth: 80 }}
+                                            radius={0}
+                                            color={student.this_week_completed === student.this_week_total ? 'green' : 'cyan'}
+                                            style={{ flex: 1, minWidth: 80, border: '1px solid black' }}
                                         />
                                         <Text size="sm" fw={700}>
                                             {student.this_week_completed}/{student.this_week_total}
@@ -216,18 +221,20 @@ export default function ClassLogPage() {
                                     </Group>
                                 </Table.Td>
                                 <Table.Td>
-                                    <Badge color={getStatusColor(student.status)} variant="filled">
+                                    <Badge color={getStatusColor(student.status)} variant="filled" radius={0} style={{ border: '2px solid black', color: 'black' }}>
                                         {getStatusText(student.status)}
                                     </Badge>
                                 </Table.Td>
                                 <Table.Td>
                                     <Button
                                         size="xs"
-                                        variant="light"
+                                        variant="filled"
+                                        color="dark"
                                         onClick={() => {
                                             setSelectedStudent(student);
                                             setDetailModalOpened(true);
                                         }}
+                                        style={{ border: '2px solid black', borderRadius: '0px' }}
                                     >
                                         상세보기
                                     </Button>
@@ -248,6 +255,16 @@ export default function ClassLogPage() {
                     </Text>
                 }
                 size="lg"
+                radius={0}
+                styles={{
+                    content: {
+                        border: '4px solid black',
+                        borderRadius: '0px',
+                    },
+                    header: {
+                        borderBottom: '2px solid black',
+                    }
+                }}
             >
                 {selectedStudent && (
                     <Stack gap="lg">
@@ -256,6 +273,7 @@ export default function ClassLogPage() {
                             style={{
                                 border: '3px solid black',
                                 background: '#f8f9fa',
+                                borderRadius: '0px',
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -277,6 +295,7 @@ export default function ClassLogPage() {
                             style={{
                                 border: '3px solid black',
                                 background: '#f8f9fa',
+                                borderRadius: '0px',
                             }}
                         >
                             <Group gap="xs" mb="md">
@@ -286,8 +305,10 @@ export default function ClassLogPage() {
                             <Progress
                                 value={(selectedStudent.current_progress / selectedStudent.total_items) * 100}
                                 size="xl"
-                                radius="xl"
+                                radius={0}
                                 mb="xs"
+                                style={{ border: '1px solid black' }}
+                                color="yellow"
                             />
                             <Text ta="center" fw={900} size="xl">
                                 {selectedStudent.current_progress} / {selectedStudent.total_items} 완료
@@ -299,6 +320,7 @@ export default function ClassLogPage() {
                             style={{
                                 border: '3px solid black',
                                 background: '#f8f9fa',
+                                borderRadius: '0px',
                             }}
                         >
                             <Group gap="xs" mb="md">
@@ -308,9 +330,10 @@ export default function ClassLogPage() {
                             <Progress
                                 value={getWeekProgress(selectedStudent.this_week_completed, selectedStudent.this_week_total)}
                                 size="xl"
-                                radius="xl"
-                                color={selectedStudent.this_week_completed === selectedStudent.this_week_total ? 'green' : 'yellow'}
+                                radius={0}
+                                color={selectedStudent.this_week_completed === selectedStudent.this_week_total ? 'green' : 'cyan'}
                                 mb="xs"
+                                style={{ border: '1px solid black' }}
                             />
                             <Text ta="center" fw={900} size="xl">
                                 {selectedStudent.this_week_completed} / {selectedStudent.this_week_total} 완료
@@ -324,6 +347,7 @@ export default function ClassLogPage() {
                                     background: '#7950f2',
                                     border: '3px solid black',
                                     boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                    borderRadius: '0px',
                                 }}
                             >
                                 학습 설정 변경

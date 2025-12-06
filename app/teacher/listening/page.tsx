@@ -10,25 +10,25 @@ import {
     Group,
     Modal,
     TextInput,
+    Textarea,
+    NumberInput,
+    FileButton,
     Stack,
     ActionIcon,
     Text,
     Box,
-    FileInput,
     Badge,
-    Textarea,
-    NumberInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import {
-    IconPlus,
     IconEdit,
     IconTrash,
     IconDownload,
     IconUpload,
     IconHeadphones,
     IconPlayerPlay,
+    IconPlus,
 } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 
@@ -171,7 +171,7 @@ export default function ListeningPage() {
 
                 const newTest: ListeningTest = {
                     id: Date.now().toString(),
-                    title: jsonData[0]?.['교재명'] || '새 듣기 시험',
+                    title: (jsonData[0] as any)?.['교재명'] || '새 듣기 시험',
                     question_count: questions.length,
                     questions: questions,
                     created_at: new Date().toISOString(),
@@ -295,7 +295,7 @@ export default function ListeningPage() {
                 <Group justify="space-between" mb={30}>
                     <Box>
                         <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                            🎧 듣기 문제 관리
+                            듣기 문제 관리
                         </Title>
                         <Text c="dimmed" size="lg">
                             듣기 문제 등록, Excel 업로드/다운로드, 개별 문제 수정
@@ -305,11 +305,11 @@ export default function ListeningPage() {
                         <button
                             onClick={handleDownloadTemplate}
                             style={{
-                                background: '#4ECDC4',
-                                color: 'white',
-                                border: '4px solid black',
-                                borderRadius: '12px',
-                                boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                                background: '#FFFFFF',
+                                color: 'black',
+                                border: '2px solid black',
+                                borderRadius: '0px',
+                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                 fontSize: '1rem',
                                 fontWeight: 900,
                                 padding: '1rem 1.5rem',
@@ -322,36 +322,45 @@ export default function ListeningPage() {
                             <IconDownload size={20} />
                             템플릿 다운로드
                         </button>
-                        <FileInput
-                            placeholder="Excel 파일 선택"
-                            accept=".xlsx,.xls"
-                            onChange={handleExcelUpload}
-                            styles={{
-                                input: {
-                                    border: '4px solid black',
-                                    background: '#FF6B9D',
-                                    color: 'white',
-                                    fontWeight: 900,
-                                    cursor: 'pointer',
-                                },
-                            }}
-                            leftSection={<IconUpload size={20} />}
-                        />
+                        <FileButton onChange={handleExcelUpload} accept=".xlsx,.xls">
+                            {(props) => (
+                                <button
+                                    {...props}
+                                    style={{
+                                        background: '#FFD93D',
+                                        color: 'black',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
+                                        boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                        fontSize: '1rem',
+                                        fontWeight: 900,
+                                        padding: '1rem 1.5rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                    }}
+                                >
+                                    <IconUpload size={20} />
+                                    Excel 파일 선택
+                                </button>
+                            )}
+                        </FileButton>
                     </Group>
                 </Group>
 
                 <Paper
                     p="xl"
-                    radius="lg"
                     className="neo-card"
                     style={{
-                        border: '4px solid black',
+                        border: '2px solid black',
+                        borderRadius: '0px',
                         background: 'white',
                     }}
                 >
                     <Table highlightOnHover>
                         <Table.Thead>
-                            <Table.Tr style={{ borderBottom: '3px solid black' }}>
+                            <Table.Tr style={{ borderBottom: '2px solid black' }}>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>듣기 시험 제목</Table.Th>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>문제 수</Table.Th>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>등록일</Table.Th>
@@ -377,21 +386,22 @@ export default function ListeningPage() {
                                                 fontSize: '1rem',
                                                 fontWeight: 600,
                                                 cursor: 'pointer',
-                                                color: '#7950f2',
+                                                color: 'black',
                                             }}
                                             onClick={() => {
                                                 setSelectedTest(test);
                                                 setModalOpened(true);
                                             }}
                                         >
-                                            🎧 {test.title}
+                                            {test.title}
                                         </Table.Td>
                                         <Table.Td>
                                             <Badge
-                                                color="violet"
+                                                color="yellow"
                                                 variant="filled"
                                                 size="lg"
-                                                style={{ border: '2px solid black' }}
+                                                radius="xs"
+                                                style={{ border: '2px solid black', color: 'black' }}
                                             >
                                                 {test.question_count}개
                                             </Badge>
@@ -403,10 +413,10 @@ export default function ListeningPage() {
                                             <Group justify="flex-end" gap="xs">
                                                 <ActionIcon
                                                     variant="filled"
-                                                    color="blue"
+                                                    color="gray"
                                                     size="lg"
                                                     onClick={() => handleDownloadTest(test)}
-                                                    style={{ border: '2px solid black' }}
+                                                    style={{ border: '2px solid black', borderRadius: '0px', boxShadow: '2px 2px 0px black' }}
                                                 >
                                                     <IconDownload size={18} />
                                                 </ActionIcon>
@@ -415,7 +425,7 @@ export default function ListeningPage() {
                                                     color="red"
                                                     size="lg"
                                                     onClick={() => handleDeleteTest(test)}
-                                                    style={{ border: '2px solid black' }}
+                                                    style={{ border: '2px solid black', borderRadius: '0px', boxShadow: '2px 2px 0px black' }}
                                                 >
                                                     <IconTrash size={18} />
                                                 </ActionIcon>
@@ -438,11 +448,17 @@ export default function ListeningPage() {
                         </Title>
                     }
                     size="xl"
+                    radius={0}
                     styles={{
                         content: {
-                            border: '4px solid black',
-                            borderRadius: '15px',
+                            border: '2px solid black',
+                            borderRadius: '0px',
+                            boxShadow: '8px 8px 0px black',
                         },
+                        header: {
+                            backgroundColor: '#FFD93D',
+                            borderBottom: '2px solid black',
+                        }
                     }}
                 >
                     <Stack gap="md">
@@ -459,8 +475,8 @@ export default function ListeningPage() {
                                 style={{
                                     background: '#FFD93D',
                                     color: 'black',
-                                    border: '3px solid black',
-                                    borderRadius: '8px',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
                                     boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                     fontSize: '0.9rem',
                                     fontWeight: 700,
@@ -492,7 +508,7 @@ export default function ListeningPage() {
                                         <Table.Td>{question.question_no}</Table.Td>
                                         <Table.Td style={{ fontWeight: 600 }}>{question.question_text}</Table.Td>
                                         <Table.Td>
-                                            <Badge color="green" variant="filled">
+                                            <Badge color="green" variant="filled" radius="xs" style={{ border: '1px solid black' }}>
                                                 {question.correct_answer + 1}번
                                             </Badge>
                                         </Table.Td>
@@ -505,8 +521,10 @@ export default function ListeningPage() {
                                             <Group justify="flex-end">
                                                 <ActionIcon
                                                     variant="filled"
-                                                    color="blue"
+                                                    color="gray"
                                                     size="sm"
+                                                    radius={0}
+                                                    style={{ border: '2px solid black' }}
                                                     onClick={() => {
                                                         setEditingQuestion(question);
                                                         questionForm.setValues({
@@ -545,6 +563,17 @@ export default function ListeningPage() {
                         </Title>
                     }
                     size="lg"
+                    radius={0}
+                    styles={{
+                        content: {
+                            border: '2px solid black',
+                            borderRadius: '0px',
+                            boxShadow: '8px 8px 0px black',
+                        },
+                        header: {
+                            borderBottom: '2px solid black',
+                        }
+                    }}
                 >
                     <form onSubmit={questionForm.onSubmit(handleQuestionSubmit)}>
                         <Stack gap="md">
@@ -553,20 +582,20 @@ export default function ListeningPage() {
                                 placeholder="What is the man doing?"
                                 required
                                 {...questionForm.getInputProps('question_text')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <Group grow>
                                 <TextInput
                                     label="대단원"
                                     placeholder="1단원"
                                     {...questionForm.getInputProps('major_unit')}
-                                    styles={{ input: { border: '3px solid black' } }}
+                                    styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                                 />
                                 <TextInput
                                     label="소단원"
                                     placeholder="1-1"
                                     {...questionForm.getInputProps('minor_unit')}
-                                    styles={{ input: { border: '3px solid black' } }}
+                                    styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                                 />
                             </Group>
                             <TextInput
@@ -574,28 +603,28 @@ export default function ListeningPage() {
                                 placeholder="Reading a book"
                                 required
                                 {...questionForm.getInputProps('choice1')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <TextInput
                                 label="보기 2"
                                 placeholder="Watching TV"
                                 required
                                 {...questionForm.getInputProps('choice2')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <TextInput
                                 label="보기 3"
                                 placeholder="Cooking dinner"
                                 required
                                 {...questionForm.getInputProps('choice3')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <TextInput
                                 label="보기 4"
                                 placeholder="Playing games"
                                 required
                                 {...questionForm.getInputProps('choice4')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <NumberInput
                                 label="정답 (1-4)"
@@ -604,7 +633,7 @@ export default function ListeningPage() {
                                 min={1}
                                 max={4}
                                 {...questionForm.getInputProps('correct_answer')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <Textarea
                                 label="스크립트"
@@ -612,19 +641,24 @@ export default function ListeningPage() {
                                 required
                                 rows={4}
                                 {...questionForm.getInputProps('script')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <Group justify="flex-end" mt="md">
-                                <Button variant="outline" onClick={() => setQuestionModalOpened(false)}>
+                                <Button
+                                    variant="subtle"
+                                    color="dark"
+                                    onClick={() => setQuestionModalOpened(false)}
+                                    radius={0}
+                                >
                                     취소
                                 </Button>
                                 <button
                                     type="submit"
                                     style={{
-                                        background: '#7950f2',
-                                        color: 'white',
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        background: '#FFD93D',
+                                        color: 'black',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                         fontSize: '1rem',
                                         fontWeight: 700,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Container, Title, Paper, Text, Box, Group, Grid, Badge, Modal, Stack, Button } from '@mantine/core';
-import { IconChevronLeft, IconChevronRight, IconClock, IconBook, IconTarget } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconClock, IconBook, IconTarget, IconPlayerPlay } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 
 interface LearningItem {
@@ -131,13 +131,13 @@ export default function StudentLearningPage() {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'completed':
-                return '#D3F9D8';
+                return '#A3E635'; // Lime Green
             case 'in_progress':
-                return '#FFF3BF';
+                return '#FACC15'; // Yellow
             case 'pending':
-                return '#F1F3F5';
+                return '#FFFFFF'; // White
             default:
-                return '#F1F3F5';
+                return '#FFFFFF';
         }
     };
 
@@ -171,7 +171,7 @@ export default function StudentLearningPage() {
                 {/* 페이지 헤더 */}
                 <Box mb={30}>
                     <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                        📖 나의 학습
+                        나의 학습
                     </Title>
                     <Text size="lg" c="dimmed">
                         이번 주 학습 일정을 확인하세요
@@ -183,9 +183,10 @@ export default function StudentLearningPage() {
                     p="lg"
                     mb={30}
                     style={{
-                        border: '4px solid black',
+                        border: '2px solid black',
                         background: 'white',
                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                        borderRadius: 0,
                     }}
                 >
                     <Group justify="space-between">
@@ -193,8 +194,8 @@ export default function StudentLearningPage() {
                             onClick={() => setCurrentWeek(currentWeek - 1)}
                             style={{
                                 background: '#F1F3F5',
-                                border: '3px solid black',
-                                borderRadius: '10px',
+                                border: '2px solid black',
+                                borderRadius: '0px',
                                 boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                 padding: '0.5rem 1rem',
                                 cursor: 'pointer',
@@ -216,8 +217,8 @@ export default function StudentLearningPage() {
                             onClick={() => setCurrentWeek(currentWeek + 1)}
                             style={{
                                 background: '#F1F3F5',
-                                border: '3px solid black',
-                                borderRadius: '10px',
+                                border: '2px solid black',
+                                borderRadius: '0px',
                                 boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                 padding: '0.5rem 1rem',
                                 cursor: 'pointer',
@@ -240,27 +241,29 @@ export default function StudentLearningPage() {
                             <Paper
                                 p="lg"
                                 style={{
-                                    border: '4px solid black',
+                                    border: '2px solid black',
                                     background: 'white',
                                     boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
                                     minHeight: '300px',
+                                    borderRadius: 0,
                                 }}
                             >
                                 {/* 요일 헤더 */}
                                 <Box
                                     mb="md"
                                     style={{
-                                        background: '#7950f2',
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        background: 'black',
+                                        color: 'white',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         padding: '0.5rem',
                                         textAlign: 'center',
                                     }}
                                 >
-                                    <Text fw={900} c="white" size="lg">
+                                    <Text fw={900} size="lg">
                                         {day.dayOfWeek}
                                     </Text>
-                                    <Text fw={600} c="white" size="sm">
+                                    <Text fw={600} size="sm">
                                         {day.date}
                                     </Text>
                                 </Box>
@@ -272,44 +275,44 @@ export default function StudentLearningPage() {
                                             key={item.id}
                                             p="md"
                                             style={{
-                                                border: '3px solid black',
+                                                border: '2px solid black',
                                                 background: getStatusColor(item.status),
                                                 cursor: 'pointer',
                                                 transition: 'transform 0.2s',
+                                                borderRadius: 0,
                                             }}
                                             onClick={() => handleItemClick(item)}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(-4px)';
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
                                             }}
                                             onMouseLeave={(e) => {
                                                 e.currentTarget.style.transform = 'translateY(0)';
                                             }}
                                         >
-                                            <Text size="2rem" ta="center" mb="xs">
-                                                {getStatusIcon(item.status)}
-                                            </Text>
-                                            <Text fw={700} size="sm" ta="center" mb="xs">
+                                            <Group justify="center" mb="xs">
+                                                {item.type === 'wordbook' ? (
+                                                    <IconBook size={24} color="black" />
+                                                ) : (
+                                                    <IconClock size={24} color="black" />
+                                                )}
+                                            </Group>
+                                            <Text fw={700} size="sm" ta="center" mb="xs" c="black">
                                                 {item.curriculum}
                                             </Text>
-                                            <Text size="xs" c="dimmed" ta="center" mb="xs">
+                                            <Text size="xs" ta="center" mb="xs" style={{ color: 'rgba(0,0,0,0.6)' }}>
                                                 {item.section}
                                             </Text>
                                             <Badge
                                                 variant="filled"
-                                                color={
-                                                    item.status === 'completed'
-                                                        ? 'green'
-                                                        : item.status === 'in_progress'
-                                                            ? 'yellow'
-                                                            : 'gray'
-                                                }
+                                                color="black"
                                                 fullWidth
-                                                style={{ border: '2px solid black' }}
+                                                radius={0}
+                                                style={{ border: '1px solid black' }}
                                             >
                                                 {getStatusText(item.status)}
                                             </Badge>
                                             {item.score && (
-                                                <Text fw={900} size="lg" c="green" ta="center" mt="xs">
+                                                <Text fw={900} size="lg" ta="center" mt="xs" c="black">
                                                     {item.score}점
                                                 </Text>
                                             )}
@@ -326,25 +329,26 @@ export default function StudentLearningPage() {
                     p="lg"
                     mt={30}
                     style={{
-                        border: '4px solid black',
+                        border: '2px solid black',
                         background: 'white',
                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                        borderRadius: 0,
                     }}
                 >
                     <Text fw={900} mb="md">
-                        📌 상태 범례
+                        상태 범례
                     </Text>
                     <Group>
                         <Group gap="xs">
-                            <Text size="xl">✅</Text>
+                            <Box w={20} h={20} style={{ border: '2px solid black', background: '#A3E635' }} />
                             <Text fw={700}>완료</Text>
                         </Group>
                         <Group gap="xs">
-                            <Text size="xl">📝</Text>
+                            <Box w={20} h={20} style={{ border: '2px solid black', background: '#FACC15' }} />
                             <Text fw={700}>진행중</Text>
                         </Group>
                         <Group gap="xs">
-                            <Text size="xl">⏰</Text>
+                            <Box w={20} h={20} style={{ border: '2px solid black', background: '#FFFFFF' }} />
                             <Text fw={700}>대기</Text>
                         </Group>
                     </Group>
@@ -362,99 +366,137 @@ export default function StudentLearningPage() {
                     size="lg"
                     styles={{
                         header: {
-                            borderBottom: '3px solid black',
+                            borderBottom: '2px solid black',
                         },
                         body: {
                             padding: '2rem',
                         },
+                        content: {
+                            border: '2px solid black',
+                            borderRadius: 0,
+                            boxShadow: '8px 8px 0px black'
+                        }
                     }}
                 >
                     {selectedItem && (
                         <Stack gap="lg">
+                            {/* 헤더 카드 */}
                             <Paper
                                 p="xl"
                                 style={{
-                                    border: '4px solid black',
-                                    background: getStatusColor(selectedItem.status),
+                                    border: '2px solid black',
+                                    background: '#FFD93D',
+                                    borderRadius: 0,
+                                    boxShadow: '4px 4px 0px black',
                                 }}
                             >
-                                <Text size="3rem" ta="center" mb="md">
-                                    {getStatusIcon(selectedItem.status)}
-                                </Text>
+                                <Group justify="center" mb="md">
+                                    <Box
+                                        p="md"
+                                        style={{
+                                            background: 'black',
+                                            border: '2px solid black',
+                                            display: 'inline-flex',
+                                        }}
+                                    >
+                                        {selectedItem.type === 'wordbook' ? (
+                                            <IconBook size={48} color="white" stroke={1.5} />
+                                        ) : (
+                                            <IconClock size={48} color="white" stroke={1.5} />
+                                        )}
+                                    </Box>
+                                </Group>
                                 <Text size="xl" fw={900} ta="center" mb="xs">
                                     {selectedItem.curriculum}
                                 </Text>
-                                <Text size="lg" c="dimmed" ta="center">
+                                <Text size="lg" ta="center" fw={700}>
                                     {selectedItem.section}
                                 </Text>
                             </Paper>
 
-                            <Stack gap="md">
-                                <Group justify="space-between">
-                                    <Group gap="xs">
-                                        <IconBook size={24} color="#7950f2" />
-                                        <Text fw={700}>학습 유형</Text>
-                                    </Group>
-                                    <Text fw={900}>{selectedItem.type === 'wordbook' ? '단어장' : '듣기'}</Text>
-                                </Group>
-
-                                <Group justify="space-between">
-                                    <Group gap="xs">
-                                        <IconTarget size={24} color="#4ECDC4" />
-                                        <Text fw={700}>단어 수</Text>
-                                    </Group>
-                                    <Text fw={900}>{selectedItem.wordCount}개</Text>
-                                </Group>
-
-                                <Group justify="space-between">
-                                    <Group gap="xs">
-                                        <IconClock size={24} color="#FFA94D" />
-                                        <Text fw={700}>제한 시간</Text>
-                                    </Group>
-                                    <Text fw={900}>{selectedItem.timeLimit}초</Text>
-                                </Group>
-
-                                <Group justify="space-between">
-                                    <Text fw={700}>합격 점수</Text>
-                                    <Text fw={900}>{selectedItem.passingScore}점</Text>
-                                </Group>
-
-                                {selectedItem.score && (
-                                    <Paper
-                                        p="md"
-                                        style={{
-                                            border: '3px solid black',
-                                            background: '#D3F9D8',
-                                            textAlign: 'center',
-                                        }}
-                                    >
-                                        <Text size="sm" c="dimmed" mb="xs">
-                                            이전 시험 결과
-                                        </Text>
-                                        <Text size="3rem" fw={900} c="green">
-                                            {selectedItem.score}점
-                                        </Text>
+                            {/* 정보 그리드 */}
+                            <Grid>
+                                <Grid.Col span={6}>
+                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
+                                        <Group gap="xs" mb={5}>
+                                            <IconBook size={20} />
+                                            <Text size="sm" c="dimmed" fw={700}>학습 유형</Text>
+                                        </Group>
+                                        <Text fw={900} size="lg">{selectedItem.type === 'wordbook' ? '단어장' : '듣기'}</Text>
                                     </Paper>
-                                )}
-                            </Stack>
+                                </Grid.Col>
+                                <Grid.Col span={6}>
+                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
+                                        <Group gap="xs" mb={5}>
+                                            <IconTarget size={20} />
+                                            <Text size="sm" c="dimmed" fw={700}>문항 수</Text>
+                                        </Group>
+                                        <Text fw={900} size="lg">{selectedItem.wordCount}개</Text>
+                                    </Paper>
+                                </Grid.Col>
+                                <Grid.Col span={6}>
+                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
+                                        <Group gap="xs" mb={5}>
+                                            <IconClock size={20} />
+                                            <Text size="sm" c="dimmed" fw={700}>제한 시간</Text>
+                                        </Group>
+                                        <Text fw={900} size="lg">{selectedItem.timeLimit}초</Text>
+                                    </Paper>
+                                </Grid.Col>
+                                <Grid.Col span={6}>
+                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
+                                        <Group gap="xs" mb={5}>
+                                            <IconTarget size={20} />
+                                            <Text size="sm" c="dimmed" fw={700}>합격 점수</Text>
+                                        </Group>
+                                        <Text fw={900} size="lg">{selectedItem.passingScore}점</Text>
+                                    </Paper>
+                                </Grid.Col>
+                            </Grid>
+
+                            {selectedItem.score && (
+                                <Paper
+                                    p="md"
+                                    style={{
+                                        border: '2px solid black',
+                                        background: '#D3F9D8',
+                                        textAlign: 'center',
+                                        borderRadius: 0,
+                                        boxShadow: '4px 4px 0px black',
+                                    }}
+                                >
+                                    <Text size="sm" fw={700} mb="xs">
+                                        이전 시험 결과
+                                    </Text>
+                                    <Text size="3rem" fw={900} c="black">
+                                        {selectedItem.score}점
+                                    </Text>
+                                </Paper>
+                            )}
 
                             {selectedItem.status !== 'completed' && (
                                 <button
                                     onClick={handleStartTest}
                                     style={{
-                                        background: '#7950f2',
-                                        color: 'white',
-                                        border: '4px solid black',
-                                        borderRadius: '12px',
+                                        background: 'black',
+                                        color: '#FFD93D',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                        fontSize: '1.2rem',
+                                        fontSize: '1.5rem',
                                         fontWeight: 900,
                                         padding: '1.2rem 2rem',
                                         cursor: 'pointer',
                                         width: '100%',
+                                        marginTop: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
                                     }}
                                 >
-                                    🚀 시험 시작하기
+                                    <IconPlayerPlay size={32} />
+                                    시험 시작하기
                                 </button>
                             )}
                         </Stack>

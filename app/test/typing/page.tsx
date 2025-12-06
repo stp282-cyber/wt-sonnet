@@ -15,7 +15,7 @@ import {
     Badge,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconClock, IconCheck, IconX } from '@tabler/icons-react';
+import { IconClock, IconCheck, IconX, IconKeyboard, IconAlertTriangle } from '@tabler/icons-react';
 
 interface Word {
     no: number;
@@ -163,7 +163,7 @@ export default function TypingTestPage() {
         <Box
             style={{
                 minHeight: '100vh',
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                background: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -174,27 +174,31 @@ export default function TypingTestPage() {
                 <div className="animate-fade-in">
                     {/* 헤더 */}
                     <Box mb={30} style={{ textAlign: 'center' }}>
+                        <Group justify="center" mb="md">
+                            <Box p="sm" style={{ background: '#FFD93D', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
+                                <IconKeyboard size={32} stroke={2} color="black" />
+                            </Box>
+                        </Group>
                         <Title
                             order={1}
                             style={{
-                                color: 'white',
+                                color: 'black',
                                 fontWeight: 900,
                                 fontSize: '2.5rem',
-                                textShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
-                                marginBottom: '1rem',
+                                marginBottom: '0.5rem',
                             }}
                         >
-                            ✍️ 타이핑 시험
+                            타이핑 시험
                         </Title>
                         <Text
                             size="xl"
                             style={{
-                                color: 'white',
-                                fontWeight: 600,
-                                textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)',
+                                color: 'black',
+                                fontWeight: 500,
                             }}
+                            c="dimmed"
                         >
-                            한글을 보고 영어로 입력하세요!
+                            한글을 보고 영어로 입력하세요
                         </Text>
                     </Box>
 
@@ -203,15 +207,16 @@ export default function TypingTestPage() {
                         <Paper
                             p="md"
                             style={{
-                                border: '4px solid black',
-                                borderRadius: '12px',
+                                border: '2px solid black',
+                                borderRadius: '0px',
                                 background: 'white',
+                                boxShadow: '4px 4px 0px black',
                                 flex: 1,
                             }}
                         >
                             <Group gap="xs">
-                                <IconClock size={24} color="#7950f2" />
-                                <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'violet'}>
+                                <IconClock size={24} color="black" />
+                                <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'black'}>
                                     {timeLeft}초
                                 </Text>
                             </Group>
@@ -220,21 +225,22 @@ export default function TypingTestPage() {
                         <Paper
                             p="md"
                             style={{
-                                border: '4px solid black',
-                                borderRadius: '12px',
+                                border: '2px solid black',
+                                borderRadius: '0px',
                                 background: 'white',
+                                boxShadow: '4px 4px 0px black',
                             }}
                         >
                             <Group gap="md">
                                 <Group gap="xs">
-                                    <IconCheck size={20} color="green" />
-                                    <Text fw={700} c="green">
+                                    <IconCheck size={20} color="#37b24d" />
+                                    <Text fw={700} c="black">
                                         {correctCount}
                                     </Text>
                                 </Group>
                                 <Group gap="xs">
-                                    <IconX size={20} color="red" />
-                                    <Text fw={700} c="red">
+                                    <IconX size={20} color="#f03e3e" />
+                                    <Text fw={700} c="black">
                                         {wrongCount}
                                     </Text>
                                 </Group>
@@ -247,30 +253,34 @@ export default function TypingTestPage() {
                         p="md"
                         mb={20}
                         style={{
-                            border: '4px solid black',
-                            borderRadius: '12px',
+                            border: '2px solid black',
+                            borderRadius: '0px',
                             background: 'white',
+                            boxShadow: '4px 4px 0px black',
                         }}
                     >
                         <Group justify="space-between" mb={10}>
                             <Text fw={700} size="lg">
                                 진행률
                             </Text>
-                            <Text fw={900} size="lg" c="violet">
+                            <Text fw={900} size="lg">
                                 {currentIndex + 1} / {sampleWords.length}
                             </Text>
                         </Group>
                         <Progress
                             value={progress}
                             size="xl"
-                            radius="xl"
+                            radius="0"
                             styles={{
                                 root: {
-                                    border: '3px solid black',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
+                                    backgroundColor: '#F1F3F5',
                                 },
-                                bar: {
-                                    background: 'linear-gradient(90deg, #f093fb 0%, #f5576c 100%)',
-                                },
+                                section: {
+                                    backgroundColor: '#FFD93D',
+                                    borderRight: '2px solid black',
+                                }
                             }}
                         />
                     </Paper>
@@ -279,42 +289,41 @@ export default function TypingTestPage() {
                     <Paper
                         p={60}
                         style={{
-                            border: '6px solid black',
-                            borderRadius: '20px',
+                            border: '2px solid black',
+                            borderRadius: '0px',
                             background: isAnswered
                                 ? results[results.length - 1]
-                                    ? '#d3f9d8'
-                                    : '#ffe3e3'
-                                : 'white',
-                            boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
+                                    ? '#D3F9D8' // 정답 시 연두색
+                                    : '#FFE3E3' // 오답 시 붉은색
+                                : 'white', // 기본 흰색
+                            boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
                             minHeight: '400px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
                         }}
-                        className="animate-bounce-in"
                     >
                         <Stack align="center" gap="xl" style={{ width: '100%' }}>
                             {/* 한글 문제 */}
-                            <Badge
-                                size="xl"
-                                variant="filled"
-                                color="violet"
+                            <Box
                                 style={{
-                                    border: '3px solid black',
+                                    border: '2px solid black',
+                                    background: 'black',
+                                    color: 'white',
+                                    padding: '0.5rem 1.5rem',
+                                    fontWeight: 700,
                                     fontSize: '1.2rem',
-                                    padding: '1rem 2rem',
                                 }}
                             >
                                 문제 {currentWord.no}
-                            </Badge>
+                            </Box>
 
                             <Text
                                 size="4rem"
                                 fw={900}
                                 style={{
-                                    color: '#7950f2',
+                                    color: 'black',
                                     textAlign: 'center',
                                 }}
                             >
@@ -332,13 +341,15 @@ export default function TypingTestPage() {
                                 disabled={isAnswered}
                                 styles={{
                                     input: {
-                                        border: '5px solid black',
+                                        border: '2px solid black',
                                         fontSize: '2rem',
                                         textAlign: 'center',
                                         fontWeight: 700,
                                         padding: '2rem',
-                                        borderRadius: '15px',
-                                        background: isAnswered ? '#f1f3f5' : 'white',
+                                        borderRadius: '0px',
+                                        background: isAnswered ? 'rgba(0,0,0,0.05)' : 'white',
+                                        color: 'black',
+                                        boxShadow: '4px 4px 0px black',
                                     },
                                 }}
                                 style={{ width: '100%', maxWidth: '500px' }}
@@ -349,10 +360,10 @@ export default function TypingTestPage() {
                                 <Box
                                     className="animate-slide-in-right"
                                     style={{
-                                        background: results[results.length - 1] ? '#51cf66' : '#ff6b6b',
-                                        color: 'white',
-                                        border: '4px solid black',
-                                        borderRadius: '12px',
+                                        background: results[results.length - 1] ? 'black' : 'black',
+                                        color: results[results.length - 1] ? '#A3E635' : '#FF6B6B', // 라임 / 레드
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         padding: '1rem 2rem',
                                         boxShadow: '6px 6px 0px rgba(0, 0, 0, 1)',
                                     }}
@@ -361,7 +372,7 @@ export default function TypingTestPage() {
                                         {results[results.length - 1] ? '✅ 정답!' : '❌ 오답!'}
                                     </Text>
                                     {!results[results.length - 1] && (
-                                        <Text fw={700} size="lg" ta="center" mt={5}>
+                                        <Text fw={700} size="lg" ta="center" mt={5} c="white">
                                             정답: {currentWord.english}
                                         </Text>
                                     )}
@@ -374,34 +385,29 @@ export default function TypingTestPage() {
                                     onClick={() => handleSubmit()}
                                     disabled={!userAnswer.trim()}
                                     style={{
-                                        background: userAnswer.trim() ? '#7950f2' : '#ccc',
-                                        color: 'white',
-                                        border: '5px solid black',
-                                        borderRadius: '15px',
-                                        boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+                                        background: userAnswer.trim() ? 'black' : '#e9ecef',
+                                        color: userAnswer.trim() ? '#FFD93D' : '#adb5bd',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
+                                        boxShadow: userAnswer.trim() ? '6px 6px 0px 0px rgba(0, 0, 0, 1)' : 'none',
                                         fontSize: '1.5rem',
                                         fontWeight: 900,
-                                        padding: '1.5rem 3rem',
+                                        padding: '1.2rem 3rem',
                                         cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
                                         transition: 'all 0.15s ease',
-                                        opacity: userAnswer.trim() ? 1 : 0.5,
+                                        width: '100%',
+                                        maxWidth: '500px',
                                     }}
                                     onMouseDown={(e) => {
                                         if (userAnswer.trim()) {
-                                            e.currentTarget.style.transform = 'translate(8px, 8px)';
-                                            e.currentTarget.style.boxShadow = '0px 0px 0px 0px rgba(0, 0, 0, 1)';
+                                            e.currentTarget.style.transform = 'translate(2px, 2px)';
+                                            e.currentTarget.style.boxShadow = '4px 4px 0px 0px rgba(0, 0, 0, 1)';
                                         }
                                     }}
                                     onMouseUp={(e) => {
                                         if (userAnswer.trim()) {
                                             e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                            e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (userAnswer.trim()) {
-                                            e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                            e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
+                                            e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
                                         }
                                     }}
                                 >
@@ -416,15 +422,18 @@ export default function TypingTestPage() {
                         p="md"
                         mt={20}
                         style={{
-                            border: '3px solid white',
-                            background: 'rgba(255, 255, 255, 0.2)',
-                            backdropFilter: 'blur(10px)',
-                            borderRadius: '12px',
+                            border: '2px solid black',
+                            background: '#F1F3F5',
+                            borderRadius: '0px',
+                            boxShadow: '4px 4px 0px black',
                         }}
                     >
-                        <Text c="white" ta="center" fw={600}>
-                            ⚠️ 복사/붙여넣기 및 우클릭이 금지되어 있습니다
-                        </Text>
+                        <Group justify="center" gap="xs">
+                            <IconAlertTriangle size={20} color="black" />
+                            <Text c="black" ta="center" fw={700}>
+                                복사/붙여넣기 및 우클릭이 금지되어 있습니다
+                            </Text>
+                        </Group>
                     </Paper>
                 </div>
             </Container>

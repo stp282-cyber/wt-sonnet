@@ -11,8 +11,9 @@ import {
     Group,
     Progress,
     Stack,
+    ThemeIcon,
 } from '@mantine/core';
-import { IconVolume, IconArrowRight } from '@tabler/icons-react';
+import { IconVolume, IconArrowRight, IconBulb, IconCards } from '@tabler/icons-react';
 
 interface Word {
     no: number;
@@ -67,16 +68,18 @@ export default function FlashcardPage() {
         }
     };
 
-    // 자동 음성 재생
+    // 자동 음성 재생 (영어 면이 나올 때)
     useEffect(() => {
-        speakWord(currentWord.english);
-    }, [currentIndex]);
+        if (showAnswer) {
+            speakWord(currentWord.english);
+        }
+    }, [showAnswer, currentWord]); // 의존성 showAnswer로 변경하여 답이 보일 때 재생 선호
 
     return (
         <Box
             style={{
                 minHeight: '100vh',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -87,27 +90,31 @@ export default function FlashcardPage() {
                 <div className="animate-fade-in">
                     {/* 헤더 */}
                     <Box mb={30} style={{ textAlign: 'center' }}>
+                        <Group justify="center" mb="md">
+                            <Box p="sm" style={{ background: '#FFD93D', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
+                                <IconCards size={32} stroke={2} color="black" />
+                            </Box>
+                        </Group>
                         <Title
                             order={1}
                             style={{
-                                color: 'white',
+                                color: 'black',
                                 fontWeight: 900,
                                 fontSize: '2.5rem',
-                                textShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
-                                marginBottom: '1rem',
+                                marginBottom: '0.5rem',
                             }}
                         >
-                            📚 플래시카드 학습
+                            플래시카드 학습
                         </Title>
                         <Text
                             size="xl"
                             style={{
-                                color: 'white',
-                                fontWeight: 600,
-                                textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)',
+                                color: 'black',
+                                fontWeight: 500,
                             }}
+                            c="dimmed"
                         >
-                            단어를 익히고 발음을 들어보세요!
+                            단어를 익히고 발음을 들어보세요
                         </Text>
                     </Box>
 
@@ -116,30 +123,35 @@ export default function FlashcardPage() {
                         p="md"
                         mb={20}
                         style={{
-                            border: '4px solid black',
-                            borderRadius: '12px',
+                            border: '2px solid black',
+                            borderRadius: '0px',
                             background: 'white',
+                            boxShadow: '4px 4px 0px black',
                         }}
                     >
                         <Group justify="space-between" mb={10}>
                             <Text fw={700} size="lg">
                                 진행률
                             </Text>
-                            <Text fw={900} size="lg" c="violet">
+                            <Text fw={900} size="lg">
                                 {currentIndex + 1} / {sampleWords.length}
                             </Text>
                         </Group>
                         <Progress
                             value={progress}
                             size="xl"
-                            radius="xl"
+                            radius="0"
+                            color="black"
                             styles={{
                                 root: {
-                                    border: '3px solid black',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
+                                    backgroundColor: '#F1F3F5',
                                 },
-                                bar: {
-                                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                                },
+                                section: {
+                                    backgroundColor: '#FFD93D',
+                                    borderRight: '2px solid black',
+                                }
                             }}
                         />
                     </Paper>
@@ -148,21 +160,20 @@ export default function FlashcardPage() {
                     <Paper
                         p={60}
                         style={{
-                            border: '6px solid black',
-                            borderRadius: '20px',
+                            border: '2px solid black',
+                            borderRadius: '0px',
                             background: showAnswer ? '#FFD93D' : 'white',
-                            boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
+                            boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
                             minHeight: '350px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            transform: isFlipping ? 'scale(0.95)' : 'scale(1)',
+                            transition: 'all 0.2s ease',
+                            transform: isFlipping ? 'scale(0.98)' : 'scale(1)',
                         }}
                         onClick={handleFlip}
-                        className="animate-bounce-in"
                     >
                         <Stack align="center" gap="xl">
                             {!showAnswer ? (
@@ -172,7 +183,7 @@ export default function FlashcardPage() {
                                         size="3rem"
                                         fw={900}
                                         style={{
-                                            color: '#7950f2',
+                                            color: 'black',
                                             textAlign: 'center',
                                         }}
                                     >
@@ -201,33 +212,31 @@ export default function FlashcardPage() {
                                             speakWord(currentWord.english);
                                         }}
                                         style={{
-                                            background: '#7950f2',
+                                            background: 'black',
                                             color: 'white',
-                                            border: '4px solid black',
-                                            borderRadius: '50%',
-                                            width: '80px',
-                                            height: '80px',
+                                            border: '2px solid black',
+                                            borderRadius: '0px', // 네모난 버튼
+                                            width: '60px',
+                                            height: '60px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             cursor: 'pointer',
-                                            boxShadow: '6px 6px 0px rgba(0, 0, 0, 1)',
-                                            transition: 'all 0.15s ease',
+                                            marginTop: '1rem',
+                                            boxShadow: '4px 4px 0px white', // 대비를 위해 흰색 그림자? 아니면 검정? 배경이 노랑이라 검정이 나음
                                         }}
                                         onMouseDown={(e) => {
-                                            e.currentTarget.style.transform = 'translate(6px, 6px)';
-                                            e.currentTarget.style.boxShadow = '0px 0px 0px rgba(0, 0, 0, 1)';
+                                            const target = e.currentTarget;
+                                            target.style.transform = 'translate(2px, 2px)';
+                                            target.style.boxShadow = '2px 2px 0px white';
                                         }}
                                         onMouseUp={(e) => {
-                                            e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                            e.currentTarget.style.boxShadow = '6px 6px 0px rgba(0, 0, 0, 1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                            e.currentTarget.style.boxShadow = '6px 6px 0px rgba(0, 0, 0, 1)';
+                                            const target = e.currentTarget;
+                                            target.style.transform = 'translate(0px, 0px)';
+                                            target.style.boxShadow = '4px 4px 0px white';
                                         }}
                                     >
-                                        <IconVolume size={40} />
+                                        <IconVolume size={32} />
                                     </button>
                                 </>
                             )}
@@ -240,42 +249,37 @@ export default function FlashcardPage() {
                             onClick={handleNext}
                             disabled={!showAnswer}
                             style={{
-                                background: showAnswer ? '#4ECDC4' : '#ccc',
-                                color: 'white',
-                                border: '5px solid black',
-                                borderRadius: '15px',
-                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+                                background: showAnswer ? 'black' : '#e9ecef',
+                                color: showAnswer ? '#FFD93D' : '#adb5bd', // 노란 텍스트
+                                border: '2px solid black',
+                                borderRadius: '0px',
+                                boxShadow: showAnswer ? '6px 6px 0px 0px rgba(0, 0, 0, 1)' : 'none',
                                 fontSize: '1.5rem',
                                 fontWeight: 900,
-                                padding: '1.5rem 3rem',
+                                padding: '1.2rem 2.5rem',
                                 cursor: showAnswer ? 'pointer' : 'not-allowed',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '1rem',
                                 transition: 'all 0.15s ease',
-                                opacity: showAnswer ? 1 : 0.5,
+                                width: '100%',
+                                justifyContent: 'center',
                             }}
                             onMouseDown={(e) => {
                                 if (showAnswer) {
-                                    e.currentTarget.style.transform = 'translate(8px, 8px)';
-                                    e.currentTarget.style.boxShadow = '0px 0px 0px 0px rgba(0, 0, 0, 1)';
+                                    e.currentTarget.style.transform = 'translate(2px, 2px)';
+                                    e.currentTarget.style.boxShadow = '4px 4px 0px 0px rgba(0, 0, 0, 1)';
                                 }
                             }}
                             onMouseUp={(e) => {
                                 if (showAnswer) {
                                     e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                    e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (showAnswer) {
-                                    e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                    e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
+                                    e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
                                 }
                             }}
                         >
-                            {currentIndex < sampleWords.length - 1 ? '다음 단어' : '시험 시작'}
-                            <IconArrowRight size={30} />
+                            {currentIndex < sampleWords.length - 1 ? '다음 단어' : '시험 종료'}
+                            <IconArrowRight size={24} />
                         </button>
                     </Group>
 
@@ -284,15 +288,18 @@ export default function FlashcardPage() {
                         p="md"
                         mt={20}
                         style={{
-                            border: '3px solid white',
-                            background: 'rgba(255, 255, 255, 0.2)',
-                            backdropFilter: 'blur(10px)',
-                            borderRadius: '12px',
+                            border: '2px solid black',
+                            background: '#F1F3F5',
+                            borderRadius: '0px',
+                            boxShadow: '4px 4px 0px black',
                         }}
                     >
-                        <Text c="white" ta="center" fw={600}>
-                            💡 팁: 카드를 클릭하면 답을 확인할 수 있어요!
-                        </Text>
+                        <Group justify="center" gap="xs">
+                            <IconBulb size={20} />
+                            <Text c="black" ta="center" fw={700}>
+                                팁: 카드를 클릭하면 답을 확인할 수 있어요!
+                            </Text>
+                        </Group>
                     </Paper>
                 </div>
             </Container>

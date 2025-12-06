@@ -181,7 +181,7 @@ export default function StudentsPage() {
                 <Group justify="space-between" mb={30}>
                     <Box>
                         <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                            👥 학생 관리
+                            학생 관리
                         </Title>
                         <Text c="dimmed" size="lg">
                             학생 등록, 수정, 삭제 및 상태 관리
@@ -189,11 +189,12 @@ export default function StudentsPage() {
                     </Box>
                     <button
                         onClick={() => handleOpenModal()}
+                        // Button style update at line 196
                         style={{
                             background: '#FFD93D',
                             color: 'black',
                             border: '4px solid black',
-                            borderRadius: '12px',
+                            borderRadius: '0px',
                             boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
                             fontSize: '1.1rem',
                             fontWeight: 900,
@@ -204,23 +205,13 @@ export default function StudentsPage() {
                             alignItems: 'center',
                             gap: '0.5rem',
                         }}
-                        onMouseDown={(e) => {
-                            e.currentTarget.style.transform = 'translate(6px, 6px)';
-                            e.currentTarget.style.boxShadow = '0px 0px 0px 0px rgba(0, 0, 0, 1)';
-                        }}
-                        onMouseUp={(e) => {
-                            e.currentTarget.style.transform = 'translate(0px, 0px)';
-                            e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translate(0px, 0px)';
-                            e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
-                        }}
                     >
                         <IconUserPlus size={24} />
                         학생 추가
                     </button>
                 </Group>
+
+
 
                 <Paper
                     p="xl"
@@ -426,6 +417,6 @@ export default function StudentsPage() {
                     </form>
                 </Modal>
             </div>
-        </Container>
+        </Container >
     );
 }

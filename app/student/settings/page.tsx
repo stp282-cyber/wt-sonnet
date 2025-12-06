@@ -16,12 +16,13 @@ export default function StudentSettingsPage() {
     };
 
     return (
+
         <Container size="md" py={40}>
             <div className="animate-fade-in">
                 {/* 페이지 헤더 */}
                 <Box mb={30}>
                     <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                        ⚙️ 설정
+                        설정
                     </Title>
                     <Text size="lg" c="dimmed">
                         개인 정보 및 환경 설정
@@ -33,13 +34,16 @@ export default function StudentSettingsPage() {
                     <Paper
                         p="xl"
                         style={{
-                            border: '4px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="md">
-                            <IconUser size={28} color="#7950f2" />
+                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
+                                <IconUser size={24} color="white" stroke={2} />
+                            </Box>
                             <Text size="xl" fw={900}>
                                 프로필 정보
                             </Text>
@@ -52,8 +56,8 @@ export default function StudentSettingsPage() {
                                 onChange={(e) => setName(e.target.value)}
                                 styles={{
                                     input: {
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         fontSize: '1rem',
                                     },
                                     label: {
@@ -69,10 +73,11 @@ export default function StudentSettingsPage() {
                                 disabled
                                 styles={{
                                     input: {
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         fontSize: '1rem',
                                         background: '#F1F3F5',
+                                        color: 'black',
                                     },
                                     label: {
                                         fontWeight: 700,
@@ -87,13 +92,16 @@ export default function StudentSettingsPage() {
                     <Paper
                         p="xl"
                         style={{
-                            border: '4px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="md">
-                            <IconLock size={28} color="#FF6B9D" />
+                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
+                                <IconLock size={24} color="white" stroke={2} />
+                            </Box>
                             <Text size="xl" fw={900}>
                                 비밀번호 변경
                             </Text>
@@ -105,14 +113,17 @@ export default function StudentSettingsPage() {
                                 placeholder="현재 비밀번호를 입력하세요"
                                 styles={{
                                     input: {
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         fontSize: '1rem',
                                     },
                                     label: {
                                         fontWeight: 700,
                                         marginBottom: '0.5rem',
                                     },
+                                    innerInput: {
+                                        fontSize: '1rem',
+                                    }
                                 }}
                             />
 
@@ -121,14 +132,17 @@ export default function StudentSettingsPage() {
                                 placeholder="새 비밀번호를 입력하세요"
                                 styles={{
                                     input: {
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         fontSize: '1rem',
                                     },
                                     label: {
                                         fontWeight: 700,
                                         marginBottom: '0.5rem',
                                     },
+                                    innerInput: {
+                                        fontSize: '1rem',
+                                    }
                                 }}
                             />
 
@@ -137,14 +151,17 @@ export default function StudentSettingsPage() {
                                 placeholder="새 비밀번호를 다시 입력하세요"
                                 styles={{
                                     input: {
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         fontSize: '1rem',
                                     },
                                     label: {
                                         fontWeight: 700,
                                         marginBottom: '0.5rem',
                                     },
+                                    innerInput: {
+                                        fontSize: '1rem',
+                                    }
                                 }}
                             />
                         </Stack>
@@ -154,13 +171,16 @@ export default function StudentSettingsPage() {
                     <Paper
                         p="xl"
                         style={{
-                            border: '4px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="md">
-                            <IconBell size={28} color="#4ECDC4" />
+                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
+                                <IconBell size={24} color="white" stroke={2} />
+                            </Box>
                             <Text size="xl" fw={900}>
                                 알림 설정
                             </Text>
@@ -178,10 +198,16 @@ export default function StudentSettingsPage() {
                                     checked={notifications}
                                     onChange={(e) => setNotifications(e.currentTarget.checked)}
                                     size="lg"
+                                    color="gray"
                                     styles={{
                                         track: {
-                                            border: '3px solid black',
+                                            border: '2px solid black',
+                                            cursor: 'pointer',
+                                            backgroundColor: notifications ? 'black' : '#e9ecef',
                                         },
+                                        thumb: {
+                                            border: '2px solid black',
+                                        }
                                     }}
                                 />
                             </Group>
@@ -192,13 +218,16 @@ export default function StudentSettingsPage() {
                     <Paper
                         p="xl"
                         style={{
-                            border: '4px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                            borderRadius: 0,
                         }}
                     >
                         <Group mb="md">
-                            <IconPalette size={28} color="#FFA94D" />
+                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
+                                <IconPalette size={24} color="white" stroke={2} />
+                            </Box>
                             <Text size="xl" fw={900}>
                                 테마 설정
                             </Text>
@@ -214,14 +243,22 @@ export default function StudentSettingsPage() {
                             ]}
                             styles={{
                                 input: {
-                                    border: '3px solid black',
-                                    borderRadius: '8px',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
                                     fontSize: '1rem',
                                 },
                                 label: {
                                     fontWeight: 700,
                                     marginBottom: '0.5rem',
                                 },
+                                dropdown: {
+                                    border: '2px solid black',
+                                    borderRadius: 0,
+                                    boxShadow: '4px 4px 0px black',
+                                },
+                                option: {
+                                    borderRadius: 0,
+                                }
                             }}
                         />
                     </Paper>
@@ -230,10 +267,10 @@ export default function StudentSettingsPage() {
                     <button
                         onClick={handleSave}
                         style={{
-                            background: '#7950f2',
+                            background: 'black',
                             color: 'white',
-                            border: '4px solid black',
-                            borderRadius: '12px',
+                            border: '2px solid black',
+                            borderRadius: '0px',
                             boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
                             fontSize: '1.2rem',
                             fontWeight: 900,
@@ -242,7 +279,7 @@ export default function StudentSettingsPage() {
                             width: '100%',
                         }}
                     >
-                        💾 설정 저장
+                        설정 저장
                     </button>
                 </Stack>
             </div>

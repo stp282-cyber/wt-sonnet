@@ -14,19 +14,18 @@ import {
     ActionIcon,
     Text,
     Box,
-    FileInput,
     Badge,
-    Loader,
+    FileButton,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import {
-    IconPlus,
     IconEdit,
     IconTrash,
     IconDownload,
     IconUpload,
     IconFileSpreadsheet,
+    IconPlus,
 } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 
@@ -314,7 +313,7 @@ export default function WordbooksPage() {
                 <Group justify="space-between" mb={30}>
                     <Box>
                         <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                            📚 단어장 관리
+                            단어장 관리
                         </Title>
                         <Text c="dimmed" size="lg">
                             단어장 등록, Excel 업로드/다운로드, 개별 단어 수정
@@ -324,11 +323,11 @@ export default function WordbooksPage() {
                         <button
                             onClick={handleDownloadTemplate}
                             style={{
-                                background: '#4ECDC4',
-                                color: 'white',
-                                border: '4px solid black',
-                                borderRadius: '12px',
-                                boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                                background: '#FFFFFF',
+                                color: 'black',
+                                border: '2px solid black',
+                                borderRadius: '0px',
+                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                 fontSize: '1rem',
                                 fontWeight: 900,
                                 padding: '1rem 1.5rem',
@@ -341,36 +340,45 @@ export default function WordbooksPage() {
                             <IconDownload size={20} />
                             템플릿 다운로드
                         </button>
-                        <FileInput
-                            placeholder="Excel 파일 선택"
-                            accept=".xlsx,.xls"
-                            onChange={handleExcelUpload}
-                            styles={{
-                                input: {
-                                    border: '4px solid black',
-                                    background: '#FF6B9D',
-                                    color: 'white',
-                                    fontWeight: 900,
-                                    cursor: 'pointer',
-                                },
-                            }}
-                            leftSection={<IconUpload size={20} />}
-                        />
+                        <FileButton onChange={handleExcelUpload} accept=".xlsx,.xls">
+                            {(props) => (
+                                <button
+                                    {...props}
+                                    style={{
+                                        background: '#FFD93D',
+                                        color: 'black',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
+                                        boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                        fontSize: '1rem',
+                                        fontWeight: 900,
+                                        padding: '1rem 1.5rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                    }}
+                                >
+                                    <IconUpload size={20} />
+                                    Excel 파일 선택
+                                </button>
+                            )}
+                        </FileButton>
                     </Group>
                 </Group>
 
                 <Paper
                     p="xl"
-                    radius="lg"
                     className="neo-card"
                     style={{
-                        border: '4px solid black',
+                        border: '2px solid black',
+                        borderRadius: '0px',
                         background: 'white',
                     }}
                 >
                     <Table highlightOnHover>
                         <Table.Thead>
-                            <Table.Tr style={{ borderBottom: '3px solid black' }}>
+                            <Table.Tr style={{ borderBottom: '2px solid black' }}>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>단어장 제목</Table.Th>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>단어 수</Table.Th>
                                 <Table.Th style={{ fontWeight: 900, fontSize: '1.1rem' }}>등록일</Table.Th>
@@ -396,21 +404,22 @@ export default function WordbooksPage() {
                                                 fontSize: '1rem',
                                                 fontWeight: 600,
                                                 cursor: 'pointer',
-                                                color: '#7950f2',
+                                                color: 'black',
                                             }}
                                             onClick={() => {
                                                 setSelectedWordbook(wordbook);
                                                 setModalOpened(true);
                                             }}
                                         >
-                                            📖 {wordbook.title}
+                                            {wordbook.title}
                                         </Table.Td>
                                         <Table.Td>
                                             <Badge
-                                                color="violet"
+                                                color="yellow"
                                                 variant="filled"
                                                 size="lg"
-                                                style={{ border: '2px solid black' }}
+                                                radius="xs"
+                                                style={{ border: '2px solid black', color: 'black' }}
                                             >
                                                 {wordbook.word_count}개
                                             </Badge>
@@ -422,10 +431,10 @@ export default function WordbooksPage() {
                                             <Group justify="flex-end" gap="xs">
                                                 <ActionIcon
                                                     variant="filled"
-                                                    color="blue"
+                                                    color="gray"
                                                     size="lg"
                                                     onClick={() => handleDownloadWordbook(wordbook)}
-                                                    style={{ border: '2px solid black' }}
+                                                    style={{ border: '2px solid black', borderRadius: '0px', boxShadow: '2px 2px 0px black' }}
                                                 >
                                                     <IconDownload size={18} />
                                                 </ActionIcon>
@@ -434,7 +443,7 @@ export default function WordbooksPage() {
                                                     color="red"
                                                     size="lg"
                                                     onClick={() => handleDeleteWordbook(wordbook)}
-                                                    style={{ border: '2px solid black' }}
+                                                    style={{ border: '2px solid black', borderRadius: '0px', boxShadow: '2px 2px 0px black' }}
                                                 >
                                                     <IconTrash size={18} />
                                                 </ActionIcon>
@@ -453,15 +462,21 @@ export default function WordbooksPage() {
                     onClose={() => setModalOpened(false)}
                     title={
                         <Title order={3} style={{ fontWeight: 900 }}>
-                            📖 {selectedWordbook?.title}
+                            {selectedWordbook?.title}
                         </Title>
                     }
                     size="xl"
+                    radius={0}
                     styles={{
                         content: {
-                            border: '4px solid black',
-                            borderRadius: '15px',
+                            border: '2px solid black',
+                            borderRadius: '0px',
+                            boxShadow: '8px 8px 0px black',
                         },
+                        header: {
+                            backgroundColor: '#FFD93D',
+                            borderBottom: '2px solid black',
+                        }
                     }}
                 >
                     <Stack gap="md">
@@ -478,8 +493,8 @@ export default function WordbooksPage() {
                                 style={{
                                     background: '#FFD93D',
                                     color: 'black',
-                                    border: '3px solid black',
-                                    borderRadius: '8px',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
                                     boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                     fontSize: '0.9rem',
                                     fontWeight: 700,
@@ -520,8 +535,10 @@ export default function WordbooksPage() {
                                             <Group justify="flex-end">
                                                 <ActionIcon
                                                     variant="filled"
-                                                    color="blue"
+                                                    color="gray"
                                                     size="sm"
+                                                    radius={0}
+                                                    style={{ border: '2px solid black' }}
                                                     onClick={() => {
                                                         setEditingWord(word);
                                                         wordForm.setValues(word);
@@ -549,6 +566,17 @@ export default function WordbooksPage() {
                         </Title>
                     }
                     size="md"
+                    radius={0}
+                    styles={{
+                        content: {
+                            border: '2px solid black',
+                            borderRadius: '0px',
+                            boxShadow: '8px 8px 0px black',
+                        },
+                        header: {
+                            borderBottom: '2px solid black',
+                        }
+                    }}
                 >
                     <form onSubmit={wordForm.onSubmit(handleWordSubmit)}>
                         <Stack gap="md">
@@ -557,44 +585,49 @@ export default function WordbooksPage() {
                                 placeholder="apple"
                                 required
                                 {...wordForm.getInputProps('english')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <TextInput
                                 label="한글 뜻"
                                 placeholder="사과"
                                 required
                                 {...wordForm.getInputProps('korean')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <TextInput
                                 label="대단원"
                                 placeholder="1단원"
                                 {...wordForm.getInputProps('major_unit')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <TextInput
                                 label="소단원"
                                 placeholder="1-1"
                                 {...wordForm.getInputProps('minor_unit')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <TextInput
                                 label="단원명"
                                 placeholder="과일"
                                 {...wordForm.getInputProps('unit_name')}
-                                styles={{ input: { border: '3px solid black' } }}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                             <Group justify="flex-end" mt="md">
-                                <Button variant="outline" onClick={() => setWordModalOpened(false)}>
+                                <Button
+                                    variant="subtle"
+                                    color="dark"
+                                    onClick={() => setWordModalOpened(false)}
+                                    radius={0}
+                                >
                                     취소
                                 </Button>
                                 <button
                                     type="submit"
                                     style={{
-                                        background: '#7950f2',
-                                        color: 'white',
-                                        border: '3px solid black',
-                                        borderRadius: '8px',
+                                        background: '#FFD93D',
+                                        color: 'black',
+                                        border: '2px solid black',
+                                        borderRadius: '0px',
                                         boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                         fontSize: '1rem',
                                         fontWeight: 700,

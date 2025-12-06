@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AppShell, Burger, Group, Text, NavLink, Box, Badge, Paper } from '@mantine/core';
+import { AppShell, Burger, Group, Text, NavLink, Box, Badge, Paper, Stack } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
     IconHome,
@@ -49,7 +49,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             {/* 헤더 */}
             <AppShell.Header
                 style={{
-                    borderBottom: '3px solid black',
+                    borderBottom: '2px solid black',
                     backgroundColor: 'white',
                     zIndex: 101
                 }}
@@ -61,8 +61,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         {/* 로고 영역 */}
                         <Box
                             style={{
-                                background: '#FF6B9D', // Pink
-                                border: '3px solid black',
+                                background: '#FFD93D', // Yellow
+                                border: '2px solid black',
                                 padding: '0.4rem 1rem',
                                 boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
                                 transform: 'rotate(2deg)',
@@ -72,14 +72,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                 size="xl"
                                 fw={900}
                                 style={{
-                                    color: 'white',
-                                    textShadow: '2px 2px 0px black',
+                                    color: 'black',
+                                    textShadow: 'none',
                                     fontFamily: "'Montserrat', sans-serif",
                                     letterSpacing: '-1px'
                                 }}
                             >
                                 WORDTEST
-                                <span style={{ fontSize: '0.8em', marginLeft: '5px', fontWeight: 500, color: 'black', textShadow: 'none' }}>
+                                <span style={{ fontSize: '0.8em', marginLeft: '5px', fontWeight: 500, color: 'black' }}>
                                     STUDENT
                                 </span>
                             </Text>
@@ -91,7 +91,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         <Box
                             style={{
                                 background: '#FFD93D', // Yellow
-                                border: '3px solid black',
+                                border: '2px solid black',
                                 padding: '0.5rem 1rem',
                                 boxShadow: '3px 3px 0px black',
                                 display: 'flex',
@@ -99,7 +99,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                 gap: '0.5rem',
                             }}
                         >
-                            <IconCoin size={24} color="black" stroke={2.5} />
+                            <IconCoin size={24} color="black" stroke={2} />
                             <Text fw={900} size="lg" c="black">
                                 {studentDollars}
                             </Text>
@@ -114,7 +114,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             style={{
                                 background: 'white',
                                 color: 'black',
-                                border: '3px solid black',
+                                border: '2px solid black',
                                 fontSize: '0.9rem',
                                 fontWeight: 800,
                                 padding: '0.5rem 1rem',
@@ -126,21 +126,23 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             }}
                             className="neo-button"
                         >
-                            <IconLogout size={18} stroke={2.5} />
+                            <IconLogout size={18} stroke={2} />
                         </button>
                     </Group>
                 </Group>
             </AppShell.Header>
 
             {/* 사이드바 */}
-            <AppShell.Navbar p="md" style={{ borderRight: '3px solid black', backgroundColor: '#FFF0F6' }}>
-                <Box mb="xl">
+            <AppShell.Navbar p="md" style={{ borderRight: '3px solid black', backgroundColor: '#FACC15' }}>
+                <Box>
                     <Paper
                         p="md"
+                        mb="xl"
                         style={{
                             background: 'white',
                             border: '3px solid black',
                             boxShadow: '4px 4px 0px black',
+                            borderRadius: 0,
                         }}
                     >
                         <Text size="sm" c="dimmed" mb="xs" fw={700}>
@@ -149,58 +151,59 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         <Text size="xl" fw={900} style={{ fontFamily: 'Pretendard' }}>
                             {studentName}님
                         </Text>
-                        <Text size="sm" fw={600} c="blue">
-                            오늘도 파이팅! 🔥
+                        <Text size="sm" fw={600} c="black">
+                            오늘도 파이팅!
                         </Text>
                     </Paper>
-                </Box>
 
-                {navItems.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                        <NavLink
-                            key={item.href}
-                            label={item.label}
-                            leftSection={<item.icon size={24} stroke={2.5} />}
-                            rightSection={
-                                item.badge ? (
-                                    <Badge
-                                        size="sm"
-                                        variant="filled"
-                                        color="red"
-                                        style={{ border: '2px solid black', fontWeight: 900 }}
-                                    >
-                                        {item.badge}
-                                    </Badge>
-                                ) : null
-                            }
-                            onClick={() => {
-                                router.push(item.href);
-                                toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
-                            }}
-                            style={{
-                                borderRadius: '0px',
-                                marginBottom: '0.8rem',
-                                border: '3px solid black',
-                                background: isActive ? '#FF6B9D' : 'white', // Pink for active
-                                color: isActive ? 'white' : 'black',
-                                fontWeight: isActive ? 900 : 700,
-                                padding: '1rem',
-                                boxShadow: isActive ? '4px 4px 0px black' : '2px 2px 0px rgba(0,0,0,0.1)',
-                                transform: isActive ? 'translate(-2px, -2px)' : 'none',
-                                transition: 'all 0.1s',
-                            }}
-                        />
-                    );
-                })}
+                    <Stack gap="xs">
+                        {navItems.map((item) => {
+                            const isActive = pathname === item.href;
+                            return (
+                                <NavLink
+                                    key={item.href}
+                                    label={item.label}
+                                    leftSection={<item.icon size={24} stroke={2} />}
+                                    rightSection={
+                                        item.badge ? (
+                                            <Badge
+                                                size="sm"
+                                                variant="filled"
+                                                color="dark"
+                                                radius={0}
+                                                style={{ border: '1px solid black', fontWeight: 900 }}
+                                            >
+                                                {item.badge}
+                                            </Badge>
+                                        ) : null
+                                    }
+                                    onClick={() => {
+                                        router.push(item.href);
+                                        toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
+                                    }}
+                                    style={{
+                                        borderRadius: '0px',
+                                        border: '3px solid black',
+                                        backgroundColor: isActive ? '#2563EB' : 'white',
+                                        color: isActive ? 'white' : 'black',
+                                        fontWeight: isActive ? 900 : 700,
+                                        padding: '1rem',
+                                        fontSize: '1rem',
+                                        boxShadow: '4px 4px 0px black',
+                                        transform: isActive ? 'translate(-2px, -2px)' : 'none',
+                                        transition: 'all 0.1s',
+                                    }}
+                                />
+                            );
+                        })}
+                    </Stack>
+                </Box>
             </AppShell.Navbar>
 
             {/* 메인 콘텐츠 */}
             <AppShell.Main
                 style={{
-                    background: '#FDF2F8', // Very light pink
-                    backgroundImage: 'radial-gradient(#FBCFE8 1px, transparent 1px)',
-                    backgroundSize: '20px 20px',
+                    background: 'white',
                     minHeight: '100vh',
                 }}
             >

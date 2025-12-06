@@ -125,7 +125,7 @@ export default function TodayManagementPage() {
             <Group justify="space-between" mb="xl">
                 <div>
                     <Title order={1} style={{ fontWeight: 900 }}>
-                        📅 당일 학습 관리
+                        당일 학습 관리
                     </Title>
                     <Text c="dimmed" mt="xs">
                         오늘의 학습 현황을 확인하고 관리하세요
@@ -141,6 +141,7 @@ export default function TodayManagementPage() {
                         border: '4px solid black',
                         background: '#d3f9d8',
                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                        borderRadius: '0px',
                     }}
                 >
                     <Group gap="xs">
@@ -158,6 +159,7 @@ export default function TodayManagementPage() {
                         border: '4px solid black',
                         background: '#ffe3e3',
                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                        borderRadius: '0px',
                     }}
                 >
                     <Group gap="xs">
@@ -175,6 +177,7 @@ export default function TodayManagementPage() {
                         border: '4px solid black',
                         background: '#f1f3f5',
                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                        borderRadius: '0px',
                     }}
                 >
                     <Group gap="xs">
@@ -195,6 +198,7 @@ export default function TodayManagementPage() {
                     border: '4px solid black',
                     background: 'white',
                     boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                    borderRadius: '0px',
                 }}
             >
                 <Select
@@ -208,6 +212,7 @@ export default function TodayManagementPage() {
                         { value: 'C반', label: 'C반' },
                     ]}
                     style={{ width: 200 }}
+                    styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                 />
             </Paper>
 
@@ -218,11 +223,12 @@ export default function TodayManagementPage() {
                     border: '4px solid black',
                     background: 'white',
                     boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                    borderRadius: '0px',
                 }}
             >
                 <Table>
                     <Table.Thead>
-                        <Table.Tr>
+                        <Table.Tr style={{ borderBottom: '3px solid black' }}>
                             <Table.Th>시간</Table.Th>
                             <Table.Th>학생</Table.Th>
                             <Table.Th>반</Table.Th>
@@ -243,7 +249,7 @@ export default function TodayManagementPage() {
                                     <Text fw={700}>{learning.student_name}</Text>
                                 </Table.Td>
                                 <Table.Td>
-                                    <Badge variant="light">{learning.class_name}</Badge>
+                                    <Badge variant="filled" color="yellow" radius={0} style={{ border: '2px solid black', color: 'black' }}>{learning.class_name}</Badge>
                                 </Table.Td>
                                 <Table.Td>
                                     <Text size="sm">{learning.curriculum_name}</Text>
@@ -252,7 +258,7 @@ export default function TodayManagementPage() {
                                     <Text size="sm">{learning.item_name}</Text>
                                 </Table.Td>
                                 <Table.Td>
-                                    <Badge color={getStatusColor(learning.status)} variant="filled">
+                                    <Badge color={getStatusColor(learning.status)} variant="filled" radius={0} style={{ border: '2px solid black', color: 'black' }}>
                                         {getStatusText(learning.status)}
                                     </Badge>
                                 </Table.Td>
@@ -272,14 +278,16 @@ export default function TodayManagementPage() {
                                                 size="xs"
                                                 color="green"
                                                 onClick={() => handleMarkAsCompleted(learning.id)}
+                                                style={{ border: '2px solid black', borderRadius: '0px' }}
                                             >
                                                 완료 처리
                                             </Button>
                                         )}
                                         <ActionIcon
-                                            variant="light"
+                                            variant="filled"
                                             color="red"
                                             onClick={() => handleDelete(learning.id)}
+                                            style={{ border: '2px solid black', borderRadius: '0px' }}
                                         >
                                             <IconTrash size={18} />
                                         </ActionIcon>

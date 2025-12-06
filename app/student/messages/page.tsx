@@ -56,7 +56,7 @@ export default function StudentMessagesPage() {
                 {/* 페이지 헤더 */}
                 <Box mb={30}>
                     <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                        💬 쪽지함
+                        쪽지함
                     </Title>
                     <Text size="lg" c="dimmed">
                         선생님과 대화하세요
@@ -67,12 +67,13 @@ export default function StudentMessagesPage() {
                 <Paper
                     p="xl"
                     style={{
-                        border: '4px solid black',
+                        border: '2px solid black',
                         background: 'white',
                         boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
                         height: '600px',
                         display: 'flex',
                         flexDirection: 'column',
+                        borderRadius: 0,
                     }}
                 >
                     {/* 대화 상대 정보 */}
@@ -80,7 +81,7 @@ export default function StudentMessagesPage() {
                         mb="md"
                         pb="md"
                         style={{
-                            borderBottom: '3px solid black',
+                            borderBottom: '2px solid black',
                         }}
                     >
                         <Group>
@@ -88,12 +89,12 @@ export default function StudentMessagesPage() {
                                 style={{
                                     width: '50px',
                                     height: '50px',
-                                    borderRadius: '50%',
-                                    background: '#7950f2',
-                                    border: '3px solid black',
+                                    background: 'black',
+                                    border: '2px solid black',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
+                                    borderRadius: 0,
                                 }}
                             >
                                 <IconUser size={28} color="white" />
@@ -124,12 +125,13 @@ export default function StudentMessagesPage() {
                                         p="md"
                                         style={{
                                             maxWidth: '70%',
-                                            border: '3px solid black',
+                                            border: '2px solid black',
                                             background: message.sender === 'student' ? '#FFD93D' : '#F1F3F5',
-                                            borderRadius: message.sender === 'student' ? '20px 20px 0 20px' : '20px 20px 20px 0',
+                                            borderRadius: 0,
+                                            boxShadow: '4px 4px 0px black',
                                         }}
                                     >
-                                        <Text fw={600}>{message.content}</Text>
+                                        <Text fw={600} c={message.sender === 'student' ? 'black' : 'black'}>{message.content}</Text>
                                         <Text size="xs" c="dimmed" mt="xs" ta="right">
                                             {message.timestamp}
                                         </Text>
@@ -153,8 +155,8 @@ export default function StudentMessagesPage() {
                             }}
                             styles={{
                                 input: {
-                                    border: '3px solid black',
-                                    borderRadius: '12px',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
                                     fontSize: '1rem',
                                     padding: '1rem',
                                 },
@@ -165,10 +167,10 @@ export default function StudentMessagesPage() {
                         <button
                             onClick={handleSend}
                             style={{
-                                background: '#7950f2',
+                                background: 'black',
                                 color: 'white',
-                                border: '3px solid black',
-                                borderRadius: '12px',
+                                border: '2px solid black',
+                                borderRadius: '0px',
                                 boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                 padding: '1rem 1.5rem',
                                 cursor: 'pointer',

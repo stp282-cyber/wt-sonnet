@@ -11,6 +11,7 @@ import {
     Box,
     Text,
     Paper,
+    Stack,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -35,7 +36,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
         { icon: IconBook, label: '단어장 관리', href: '/teacher/wordbooks' },
         { icon: IconHeadphones, label: '듣기 문제 관리', href: '/teacher/listening' },
         { icon: IconList, label: '커리큘럼 관리', href: '/teacher/curriculums' },
-        { icon: IconBell, label: '공지/쪽지', href: '/teacher/notices' },
+        { icon: IconBell, label: '공지관리', href: '/teacher/notices' },
         { icon: IconList, label: '수업 일지', href: '/teacher/class-log' },
         { icon: IconList, label: '당일 관리', href: '/teacher/today' },
         { icon: IconSettings, label: '설정', href: '/teacher/settings' },
@@ -132,7 +133,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                 </Group>
             </AppShell.Header>
 
-            <AppShell.Navbar p="md" style={{ borderRight: '3px solid black', backgroundColor: '#F8F9FA' }}>
+            <AppShell.Navbar p="md" style={{ borderRight: '3px solid black', backgroundColor: '#FACC15' }}>
                 <Box>
                     {/* 프로필 카드 */}
                     <Paper
@@ -142,7 +143,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                             background: 'white',
                             border: '3px solid black',
                             borderRadius: '0px',
-                            boxShadow: '6px 6px 0px black',
+                            boxShadow: '4px 4px 0px black',
                         }}
                     >
                         <Group>
@@ -157,7 +158,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                             />
                             <Box>
                                 <Text size="sm" c="dimmed" fw={700} style={{ textTransform: 'uppercase' }}>
-                                    Current User
+                                    Create User
                                 </Text>
                                 <Text size="lg" fw={900} style={{ fontFamily: 'Pretendard' }}>
                                     선생님
@@ -166,44 +167,43 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                         </Group>
                     </Paper>
 
-                    {menuItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = pathname === item.href;
+                    <Stack gap="xs">
+                        {menuItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = pathname === item.href;
 
-                        return (
-                            <NavLink
-                                key={item.href}
-                                label={item.label}
-                                leftSection={<Icon size={22} stroke={2.5} />}
-                                active={isActive}
-                                onClick={() => {
-                                    router.push(item.href);
-                                    toggle();
-                                }}
-                                style={{
-                                    borderRadius: '0px',
-                                    marginBottom: '0.8rem',
-                                    border: '3px solid black',
-                                    backgroundColor: isActive ? 'var(--accent)' : 'white',
-                                    color: 'black',
-                                    fontWeight: isActive ? 900 : 700,
-                                    fontSize: '1rem',
-                                    padding: '0.8rem',
-                                    boxShadow: isActive ? '4px 4px 0px black' : '2px 2px 0px rgba(0,0,0,0.1)',
-                                    transform: isActive ? 'translate(-2px, -2px)' : 'none',
-                                    transition: 'all 0.1s',
-                                }}
-                            />
-                        );
-                    })}
+                            return (
+                                <NavLink
+                                    key={item.href}
+                                    label={item.label}
+                                    leftSection={<Icon size={22} stroke={2.5} />}
+                                    active={isActive}
+                                    onClick={() => {
+                                        router.push(item.href);
+                                        toggle();
+                                    }}
+                                    style={{
+                                        borderRadius: '0px',
+                                        border: '3px solid black',
+                                        backgroundColor: isActive ? '#2563EB' : 'white',
+                                        color: isActive ? 'white' : 'black',
+                                        fontWeight: 800,
+                                        fontSize: '1rem',
+                                        padding: '1rem',
+                                        boxShadow: '4px 4px 0px black',
+                                        transform: isActive ? 'translate(-2px, -2px)' : 'none',
+                                        transition: 'all 0.1s',
+                                    }}
+                                />
+                            );
+                        })}
+                    </Stack>
                 </Box>
             </AppShell.Navbar>
 
             <AppShell.Main
                 style={{
                     background: '#F3F4F6',
-                    backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
-                    backgroundSize: '20px 20px',
                     minHeight: '100vh',
                 }}
             >

@@ -214,7 +214,7 @@ export default function NoticesPage() {
             <Group justify="space-between" mb="xl">
                 <div>
                     <Title order={1} style={{ fontWeight: 900 }}>
-                        📢 공지사항 관리
+                        공지사항 관리
                     </Title>
                     <Text c="dimmed" mt="xs">
                         학생들에게 공지사항을 전달하세요
@@ -233,6 +233,7 @@ export default function NoticesPage() {
                         border: '3px solid black',
                         boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                         fontWeight: 700,
+                        borderRadius: '0px',
                     }}
                 >
                     새 공지 작성
@@ -245,11 +246,13 @@ export default function NoticesPage() {
                     border: '4px solid black',
                     background: 'white',
                     boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                    borderRadius: '0px',
                 }}
             >
+                {/* ... (table content - no changes needed inside table structure related to radius, unless Badge or ActionIcon needs it) */}
                 <Table>
                     <Table.Thead>
-                        <Table.Tr>
+                        <Table.Tr style={{ borderBottom: '3px solid black' }}>
                             <Table.Th>중요도</Table.Th>
                             <Table.Th>제목</Table.Th>
                             <Table.Th>대상</Table.Th>
@@ -262,7 +265,7 @@ export default function NoticesPage() {
                         {notices.map((notice) => (
                             <Table.Tr key={notice.id}>
                                 <Table.Td>
-                                    <Badge color={getPriorityColor(notice.priority)} variant="filled">
+                                    <Badge color={getPriorityColor(notice.priority)} variant="filled" radius="xs" style={{ border: '2px solid black', color: 'black' }}>
                                         {getPriorityText(notice.priority)}
                                     </Badge>
                                 </Table.Td>
@@ -289,16 +292,18 @@ export default function NoticesPage() {
                                 <Table.Td>
                                     <Group gap="xs">
                                         <ActionIcon
-                                            variant="light"
+                                            variant="filled"
                                             color="blue"
                                             onClick={() => handleEdit(notice)}
+                                            style={{ border: '2px solid black', borderRadius: '0px' }}
                                         >
                                             <IconEdit size={18} />
                                         </ActionIcon>
                                         <ActionIcon
-                                            variant="light"
+                                            variant="filled"
                                             color="red"
                                             onClick={() => handleDelete(notice.id)}
+                                            style={{ border: '2px solid black', borderRadius: '0px' }}
                                         >
                                             <IconTrash size={18} />
                                         </ActionIcon>
@@ -324,6 +329,16 @@ export default function NoticesPage() {
                     </Text>
                 }
                 size="lg"
+                radius={0}
+                styles={{
+                    content: {
+                        border: '4px solid black',
+                        borderRadius: '0px',
+                    },
+                    header: {
+                        borderBottom: '2px solid black',
+                    }
+                }}
             >
                 <form onSubmit={form.onSubmit(handleSubmit)}>
                     <Stack gap="md">
@@ -332,6 +347,7 @@ export default function NoticesPage() {
                             placeholder="공지사항 제목을 입력하세요"
                             required
                             {...form.getInputProps('title')}
+                            styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                         />
 
                         <Textarea
@@ -340,6 +356,7 @@ export default function NoticesPage() {
                             required
                             minRows={4}
                             {...form.getInputProps('content')}
+                            styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                         />
 
                         <Select
@@ -350,6 +367,7 @@ export default function NoticesPage() {
                                 { value: 'low', label: '낮음' },
                             ]}
                             {...form.getInputProps('priority')}
+                            styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                         />
 
                         <Select
@@ -359,6 +377,7 @@ export default function NoticesPage() {
                                 { value: 'class', label: '특정 반' },
                             ]}
                             {...form.getInputProps('target_type')}
+                            styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                         />
 
                         {form.values.target_type === 'class' && (
@@ -370,6 +389,7 @@ export default function NoticesPage() {
                                     { value: 'C반', label: 'C반' },
                                 ]}
                                 {...form.getInputProps('target_class')}
+                                styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                             />
                         )}
 
@@ -378,6 +398,7 @@ export default function NoticesPage() {
                             placeholder="게시 시작일을 선택하세요"
                             required
                             {...form.getInputProps('start_date')}
+                            styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                         />
 
                         <DateInput
@@ -385,15 +406,21 @@ export default function NoticesPage() {
                             placeholder="종료일을 선택하세요 (영구 게시는 비워두세요)"
                             clearable
                             {...form.getInputProps('end_date')}
+                            styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                         />
 
                         <Group justify="flex-end" mt="md">
                             <Button
-                                variant="default"
+                                variant="outline"
+                                color="dark"
                                 onClick={() => {
                                     setModalOpened(false);
                                     setEditingNotice(null);
                                     form.reset();
+                                }}
+                                style={{
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
                                 }}
                             >
                                 취소
@@ -401,8 +428,10 @@ export default function NoticesPage() {
                             <Button
                                 type="submit"
                                 style={{
-                                    background: '#7950f2',
-                                    border: '3px solid black',
+                                    background: '#FFD93D',
+                                    color: 'black',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
                                     boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
                                 }}
                             >

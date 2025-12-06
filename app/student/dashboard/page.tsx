@@ -62,7 +62,7 @@ export default function StudentDashboardPage() {
                     style={{
                         display: 'inline-block',
                         background: '#FFD93D',
-                        border: '3px solid black',
+                        border: '2px solid black',
                         padding: '0.5rem 1rem',
                         boxShadow: '4px 4px 0px black',
                         marginBottom: '1rem',
@@ -84,7 +84,7 @@ export default function StudentDashboardPage() {
                         p="xl"
                         className="neo-card"
                         style={{
-                            border: '3px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px black',
                             height: '100%',
@@ -93,7 +93,7 @@ export default function StudentDashboardPage() {
                     >
                         <Group mb="lg">
                             <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconBell size={24} color="white" stroke={2.5} />
+                                <IconBell size={24} color="white" stroke={2} />
                             </Box>
                             <Title order={3} fw={900}>공지사항</Title>
                         </Group>
@@ -133,7 +133,7 @@ export default function StudentDashboardPage() {
                         p="xl"
                         className="neo-card"
                         style={{
-                            border: '3px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px black',
                             height: '100%',
@@ -142,7 +142,7 @@ export default function StudentDashboardPage() {
                     >
                         <Group mb="lg">
                             <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconBook size={24} color="white" stroke={2.5} />
+                                <IconBook size={24} color="white" stroke={2} />
                             </Box>
                             <Title order={3} fw={900}>오늘의 학습</Title>
                         </Group>
@@ -155,7 +155,7 @@ export default function StudentDashboardPage() {
                                         key={item.id}
                                         p="md"
                                         style={{
-                                            border: '3px solid black',
+                                            border: '2px solid black',
                                             background: '#F8F9FA',
                                             borderRadius: 0,
                                         }}
@@ -206,7 +206,7 @@ export default function StudentDashboardPage() {
                         p="xl"
                         className="neo-card"
                         style={{
-                            border: '3px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px black',
                             borderRadius: 0,
@@ -214,12 +214,12 @@ export default function StudentDashboardPage() {
                     >
                         <Group mb="lg">
                             <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconCoin size={24} color="white" stroke={2.5} />
+                                <IconCoin size={24} color="white" stroke={2} />
                             </Box>
                             <Title order={3} fw={900}>내 지갑</Title>
                         </Group>
 
-                        <Box mb="lg" style={{ textAlign: 'center', background: '#FFF9DB', border: '3px solid black', padding: '1rem' }}>
+                        <Box mb="lg" style={{ textAlign: 'center', background: '#FFF9DB', border: '2px solid black', padding: '1rem' }}>
                             <Text size="3rem" fw={900} style={{ color: 'black', lineHeight: 1 }}>
                                 $150
                             </Text>
@@ -243,7 +243,7 @@ export default function StudentDashboardPage() {
                         p="xl"
                         className="neo-card"
                         style={{
-                            border: '3px solid black',
+                            border: '2px solid black',
                             background: 'white',
                             boxShadow: '6px 6px 0px black',
                             borderRadius: 0,
@@ -251,7 +251,7 @@ export default function StudentDashboardPage() {
                     >
                         <Group mb="lg">
                             <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconTrophy size={24} color="white" stroke={2.5} />
+                                <IconTrophy size={24} color="white" stroke={2} />
                             </Box>
                             <Title order={3} fw={900}>주간 통계</Title>
                         </Group>
