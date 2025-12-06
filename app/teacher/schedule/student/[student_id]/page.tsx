@@ -496,8 +496,34 @@ export default function StudentSchedulePage() {
                         <Box key={weekOffset}>
                             <Text fw={900} size="lg" mb="xs">{weekLabel}</Text>
 
+                            {/* 공통 헤더 (요일/날짜) */}
+                            <div style={{ display: 'flex', marginBottom: -3 }}> {/* 음수 마진으로 아래 테이블과 연결된 느낌 */}
+                                <Box style={{ width: '200px', minWidth: '200px' }} />
+                                <Box style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    border: '3px solid black',
+                                    background: '#FFD93D'
+                                }}>
+                                    {weekDays.map((day, idx) => (
+                                        <Box
+                                            key={idx}
+                                            style={{
+                                                flex: 1,
+                                                padding: '8px',
+                                                borderRight: idx < 4 ? '2px solid black' : 'none',
+                                                textAlign: 'center'
+                                            }}
+                                        >
+                                            <Text fw={900} size="lg">{day.dayOfWeek}</Text>
+                                            <Text size="xs" fw={700}>{day.date}</Text>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </div>
+
                             {curriculums.map((curr) => (
-                                <Paper key={curr.id} mb="md" style={{ border: '3px solid black', borderRadius: '0px', overflow: 'hidden' }}>
+                                <Paper key={curr.id} mb="xs" style={{ border: '3px solid black', borderRadius: '0px', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex' }}>
                                         {/* 좌측 커리큘럼 정보 */}
                                         <Box style={{
@@ -558,7 +584,7 @@ export default function StudentSchedulePage() {
                                             </Stack>
                                         </Box>
 
-                                        {/* 우측 달력 영역 */}
+                                        {/* 우측 달력 영역 (헤더 없음) */}
                                         <Box style={{ flex: 1, display: 'flex' }}>
                                             {weekDays.map((day, idx) => {
                                                 const schedule = getScheduleForDate(curr, day.date);
@@ -573,17 +599,6 @@ export default function StudentSchedulePage() {
                                                             flexDirection: 'column'
                                                         }}
                                                     >
-                                                        {/* 요일 헤더 */}
-                                                        <Box style={{
-                                                            background: '#FFD93D',
-                                                            padding: '8px',
-                                                            borderBottom: '2px solid black',
-                                                            textAlign: 'center'
-                                                        }}>
-                                                            <Text fw={900} size="lg">{day.dayOfWeek}</Text>
-                                                            <Text size="xs" fw={700}>{day.date}</Text>
-                                                        </Box>
-
                                                         {/* 학습 내용 */}
                                                         <Box style={{
                                                             padding: '10px',
@@ -608,7 +623,7 @@ export default function StudentSchedulePage() {
 
                                                                     <Group gap={4}>
                                                                         <Text size="xs" c="dimmed">단원명:</Text>
-                                                                        <Text size="xs" fw={600}>{schedule.dayIndex}일차</Text>
+                                                                        <Text size="xs" fw={600}>{schedule.unitName}</Text>
                                                                     </Group>
 
                                                                     <Box style={{
