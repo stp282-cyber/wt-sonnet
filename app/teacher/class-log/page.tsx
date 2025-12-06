@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     Container,
     Title,
@@ -14,8 +14,25 @@ import {
     Modal,
     Stack,
     Progress,
+    Box,
+    Grid,
 } from '@mantine/core';
+import { DateInput } from '@mantine/dates';
+import { notifications } from '@mantine/notifications';
 import { IconCalendar, IconBook, IconTrendingUp, IconSettings } from '@tabler/icons-react';
+
+interface DailyStudy {
+    date: string;
+    day: string;
+    status: 'completed' | 'today' | 'upcoming' | 'none';
+}
+
+interface CurriculumDetail {
+    id: string;
+    name: string;
+    period: string;
+    weeklySchedule: DailyStudy[];
+}
 
 interface StudentCurriculum {
     id: string;
@@ -30,51 +47,112 @@ interface StudentCurriculum {
     this_week_total: number;
 }
 
+interface StudentDetail {
+    student_name: string;
+    curriculums: CurriculumDetail[];
+}
+
 export default function ClassLogPage() {
     const [selectedClass, setSelectedClass] = useState<string>('all');
     const [selectedWeek, setSelectedWeek] = useState<string>('2024-W03');
     const [detailModalOpened, setDetailModalOpened] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<StudentCurriculum | null>(null);
+    const [searchStartDate, setSearchStartDate] = useState<Date | null>(new Date('2025-12-06'));
+    const [studentCurriculums, setStudentCurriculums] = useState<StudentCurriculum[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // 샘플 데이터
-    const [studentCurriculums] = useState<StudentCurriculum[]>([
-        {
-            id: '1',
-            student_name: '김철수',
-            class_name: 'A반',
-            curriculum_name: '중학 영단어 1000',
-            start_date: '2024-01-08',
-            current_progress: 15,
-            total_items: 50,
-            status: 'active',
-            this_week_completed: 4,
-            this_week_total: 5,
-        },
-        {
-            id: '2',
-            student_name: '이영희',
-            class_name: 'A반',
-            curriculum_name: '중학 영단어 1000',
-            start_date: '2024-01-08',
-            current_progress: 20,
-            total_items: 50,
-            status: 'active',
-            this_week_completed: 5,
-            this_week_total: 5,
-        },
-        {
-            id: '3',
-            student_name: '박민수',
-            class_name: 'B반',
-            curriculum_name: 'CHAPTER 5: TRAVEL',
-            start_date: '2024-01-10',
-            current_progress: 8,
-            total_items: 30,
-            status: 'active',
-            this_week_completed: 2,
-            this_week_total: 5,
-        },
-    ]);
+    // 오늘 날짜
+    const today = new Date().toISOString().split('T')[0];
+
+    // 학생 목록 로드
+    const fetchStudents = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/students');
+            if (!response.ok) throw new Error('Failed to fetch students');
+
+            const data = await response.json();
+            const students = data.students || [];
+
+            // 학생 데이터를 StudentCurriculum 형식으로 변환
+            const curriculums: StudentCurriculum[] = students.map((student: any) => ({
+                id: student.id,
+                student_name: student.full_name,
+                class_name: student.class_name || '-',
+                curriculum_name: '중학 영단어 1000', // 임시 데이터
+                start_date: new Date(student.created_at).toISOString().split('T')[0],
+                current_progress: 15, // 임시 데이터
+                total_items: 50, // 임시 데이터
+                status: 'active',
+                this_week_completed: 4, // 임시 데이터
+                this_week_total: 5, // 임시 데이터
+            }));
+
+            setStudentCurriculums(curriculums);
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '학생 목록을 불러오는데 실패했습니다.',
+                color: 'red',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchStudents();
+    }, []);
+
+    // 학생 상세 정보 (커리큘럼별 주간 일정)
+    const getStudentDetail = (studentName: string): StudentDetail => {
+        // 현재 주의 날짜 생성 (월~금)
+        const generateWeekDates = () => {
+            const dates: DailyStudy[] = [];
+            const days = ['월', '화', '수', '목', '금'];
+            const baseDate = new Date('2025-12-01'); // 시작 날짜
+
+            for (let i = 0; i < 5; i++) {
+                const currentDate = new Date(baseDate);
+                currentDate.setDate(baseDate.getDate() + i);
+                const dateStr = currentDate.toISOString().split('T')[0];
+
+                let status: 'completed' | 'today' | 'upcoming' | 'none' = 'upcoming';
+
+                // 오늘 날짜 확인 (2025-12-06이 금요일이라고 가정)
+                if (dateStr === '2025-12-06') {
+                    status = 'today';
+                } else if (i < 4) { // 월~목은 완료
+                    status = 'completed';
+                }
+
+                dates.push({
+                    date: dateStr,
+                    day: days[i],
+                    status,
+                });
+            }
+            return dates;
+        };
+
+        return {
+            student_name: studentName,
+            curriculums: [
+                {
+                    id: '1',
+                    name: '이번주',
+                    period: '(2025/12/01 - 2025/12/05)',
+                    weeklySchedule: generateWeekDates(),
+                },
+                {
+                    id: '2',
+                    name: '1주후',
+                    period: '(2025/12/08 - 2025/12/12)',
+                    weeklySchedule: generateWeekDates().map(d => ({ ...d, status: 'none' as const })),
+                },
+            ],
+        };
+    };
 
     const filteredData = selectedClass === 'all'
         ? studentCurriculums
@@ -101,6 +179,21 @@ export default function ClassLogPage() {
     const getWeekProgress = (completed: number, total: number) => {
         return total > 0 ? (completed / total) * 100 : 0;
     };
+
+    const getDayColor = (status: string) => {
+        switch (status) {
+            case 'completed': return '#90EE90'; // 연한 초록 (완료)
+            case 'today': return '#FFD93D'; // 노란색 (오늘)
+            case 'upcoming': return '#FFFFFF'; // 흰색 (예정)
+            case 'none': return '#F0F0F0'; // 회색 (없음)
+            default: return '#FFFFFF';
+        }
+    };
+
+    const studentDetail = useMemo(() =>
+        selectedStudent ? getStudentDetail(selectedStudent.student_name) : null,
+        [selectedStudent]
+    );
 
     return (
         <Container size="xl" py={40}>
@@ -250,109 +343,163 @@ export default function ClassLogPage() {
                 opened={detailModalOpened}
                 onClose={() => setDetailModalOpened(false)}
                 title={
-                    <Text size="xl" fw={900}>
-                        {selectedStudent?.student_name} - 학습 상세
-                    </Text>
+                    <Box>
+                        <Text size="xl" fw={900} style={{ fontFamily: 'Pretendard' }}>
+                            {selectedStudent?.student_name}의 학습 일정
+                        </Text>
+                        <Group gap="xs" mt="xs">
+                            <Badge color="yellow" variant="filled" radius={0} style={{ border: '2px solid black', color: 'black' }}>
+                                {selectedStudent?.class_name}
+                            </Badge>
+                            <Text size="sm" c="dimmed">
+                                주간 학습 계획을 확인하세요
+                            </Text>
+                        </Group>
+                    </Box>
                 }
-                size="lg"
+                size="90%"
                 radius={0}
                 styles={{
                     content: {
                         border: '4px solid black',
                         borderRadius: '0px',
+                        boxShadow: '8px 8px 0px black',
                     },
                     header: {
-                        borderBottom: '2px solid black',
+                        borderBottom: '3px solid black',
+                        padding: '1.5rem',
+                    },
+                    body: {
+                        padding: '2rem',
                     }
                 }}
             >
-                {selectedStudent && (
-                    <Stack gap="lg">
-                        <Paper
-                            p="lg"
-                            style={{
-                                border: '3px solid black',
-                                background: '#f8f9fa',
-                                borderRadius: '0px',
-                            }}
-                        >
-                            <Group justify="space-between" mb="md">
-                                <Group gap="xs">
-                                    <IconBook size={24} color="#7950f2" />
-                                    <Text fw={700}>커리큘럼 정보</Text>
-                                </Group>
-                            </Group>
-                            <Text size="lg" fw={900} mb="xs">
-                                {selectedStudent.curriculum_name}
-                            </Text>
-                            <Text size="sm" c="dimmed">
-                                시작일: {selectedStudent.start_date}
-                            </Text>
-                        </Paper>
-
-                        <Paper
-                            p="lg"
-                            style={{
-                                border: '3px solid black',
-                                background: '#f8f9fa',
-                                borderRadius: '0px',
-                            }}
-                        >
-                            <Group gap="xs" mb="md">
-                                <IconTrendingUp size={24} color="#4ECDC4" />
-                                <Text fw={700}>전체 진도</Text>
-                            </Group>
-                            <Progress
-                                value={(selectedStudent.current_progress / selectedStudent.total_items) * 100}
-                                size="xl"
-                                radius={0}
-                                mb="xs"
-                                style={{ border: '1px solid black' }}
-                                color="yellow"
-                            />
-                            <Text ta="center" fw={900} size="xl">
-                                {selectedStudent.current_progress} / {selectedStudent.total_items} 완료
-                            </Text>
-                        </Paper>
-
-                        <Paper
-                            p="lg"
-                            style={{
-                                border: '3px solid black',
-                                background: '#f8f9fa',
-                                borderRadius: '0px',
-                            }}
-                        >
-                            <Group gap="xs" mb="md">
-                                <IconCalendar size={24} color="#FFD93D" />
-                                <Text fw={700}>이번 주 진도</Text>
-                            </Group>
-                            <Progress
-                                value={getWeekProgress(selectedStudent.this_week_completed, selectedStudent.this_week_total)}
-                                size="xl"
-                                radius={0}
-                                color={selectedStudent.this_week_completed === selectedStudent.this_week_total ? 'green' : 'cyan'}
-                                mb="xs"
-                                style={{ border: '1px solid black' }}
-                            />
-                            <Text ta="center" fw={900} size="xl">
-                                {selectedStudent.this_week_completed} / {selectedStudent.this_week_total} 완료
-                            </Text>
-                        </Paper>
-
+                {studentDetail && (
+                    <Stack gap="xl">
+                        {/* 검색 시작일 선택 */}
                         <Group justify="flex-end">
-                            <Button
-                                leftSection={<IconSettings size={18} />}
+                            <DateInput
+                                value={searchStartDate}
+                                onChange={(value) => setSearchStartDate(value as Date | null)}
+                                label="검색 시작일"
+                                placeholder="날짜를 선택하세요"
+                                valueFormat="YYYY-MM-DD"
+                                leftSection={<IconCalendar size={18} />}
+                                styles={{
+                                    input: {
+                                        border: '3px solid black',
+                                        borderRadius: '0px',
+                                        background: '#FFD93D',
+                                        fontWeight: 900,
+                                        fontSize: '1rem',
+                                    },
+                                    label: {
+                                        fontWeight: 900,
+                                        marginBottom: '0.5rem',
+                                    }
+                                }}
+                                style={{ width: 250 }}
+                            />
+                        </Group>
+
+                        {/* 커리큘럼별 주간 일정 */}
+                        {studentDetail.curriculums.map((curriculum) => (
+                            <Paper
+                                key={curriculum.id}
+                                p="xl"
                                 style={{
-                                    background: '#7950f2',
-                                    border: '3px solid black',
-                                    boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                    border: '4px solid black',
                                     borderRadius: '0px',
+                                    background: 'white',
                                 }}
                             >
-                                학습 설정 변경
-                            </Button>
-                        </Group>
+                                {/* 커리큘럼 헤더 */}
+                                <Paper
+                                    p="md"
+                                    mb="lg"
+                                    style={{
+                                        border: '3px solid black',
+                                        background: '#FFD93D',
+                                        borderRadius: '0px',
+                                    }}
+                                >
+                                    <Text fw={900} size="lg">
+                                        {curriculum.name} {curriculum.period}
+                                    </Text>
+                                </Paper>
+
+                                {/* 주간 일정 테이블 */}
+                                <Box
+                                    style={{
+                                        border: '3px solid black',
+                                        borderRadius: '0px',
+                                        overflow: 'hidden',
+                                    }}
+                                >
+                                    <Table>
+                                        <Table.Thead>
+                                            <Table.Tr style={{ background: 'black' }}>
+                                                <Table.Th style={{ color: 'white', textAlign: 'center', padding: '1rem', fontWeight: 900, fontStyle: 'italic' }}>
+                                                    CURRICULUM
+                                                </Table.Th>
+                                                {curriculum.weeklySchedule.map((day) => (
+                                                    <Table.Th
+                                                        key={day.date}
+                                                        style={{
+                                                            background: '#FFD93D',
+                                                            color: 'black',
+                                                            textAlign: 'center',
+                                                            padding: '1rem',
+                                                            fontWeight: 900,
+                                                            border: '2px solid black',
+                                                        }}
+                                                    >
+                                                        <div>{day.day}</div>
+                                                        <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                                                            {day.date}
+                                                        </div>
+                                                    </Table.Th>
+                                                ))}
+                                            </Table.Tr>
+                                        </Table.Thead>
+                                        <Table.Tbody>
+                                            <Table.Tr>
+                                                <Table.Td
+                                                    style={{
+                                                        background: 'black',
+                                                        color: 'white',
+                                                        textAlign: 'center',
+                                                        padding: '3rem 1rem',
+                                                        fontWeight: 900,
+                                                        fontStyle: 'italic',
+                                                    }}
+                                                >
+                                                    {curriculum.name}
+                                                </Table.Td>
+                                                {curriculum.weeklySchedule.map((day) => (
+                                                    <Table.Td
+                                                        key={day.date}
+                                                        style={{
+                                                            background: getDayColor(day.status),
+                                                            border: day.status === 'today' ? '4px solid black' : '2px solid black',
+                                                            textAlign: 'center',
+                                                            padding: '3rem 1rem',
+                                                            position: 'relative',
+                                                        }}
+                                                    >
+                                                        {day.status === 'none' && (
+                                                            <Text c="dimmed" size="sm">
+                                                                등록된 커리큘럼이 없습니다.
+                                                            </Text>
+                                                        )}
+                                                    </Table.Td>
+                                                ))}
+                                            </Table.Tr>
+                                        </Table.Tbody>
+                                    </Table>
+                                </Box>
+                            </Paper>
+                        ))}
                     </Stack>
                 )}
             </Modal>
