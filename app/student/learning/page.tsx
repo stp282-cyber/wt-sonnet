@@ -1,168 +1,148 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Container, Title, Paper, Text, Box, Group, Grid, Badge, Modal, Stack, Button } from '@mantine/core';
-import { IconChevronLeft, IconChevronRight, IconClock, IconBook, IconTarget, IconPlayerPlay } from '@tabler/icons-react';
+import { DateInput } from '@mantine/dates';
+import { notifications } from '@mantine/notifications';
+import { IconChevronLeft, IconChevronRight, IconClock, IconBook, IconTarget, IconPlayerPlay, IconCalendar } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 
-interface LearningItem {
-    id: string;
-    curriculum: string;
-    type: 'wordbook' | 'listening';
-    section: string;
-    wordCount: number;
-    timeLimit: number;
-    passingScore: number;
-    status: 'pending' | 'in_progress' | 'completed';
-    score?: number;
+interface DailyStudy {
+    date: string;
+    day: string;
+    status: 'completed' | 'today' | 'upcoming' | 'none';
+    section?: string;
 }
 
-interface DaySchedule {
-    date: string;
-    dayOfWeek: string;
-    items: LearningItem[];
+interface CurriculumDetail {
+    id: string;
+    name: string;
+    period: string;
+    weeklySchedule: DailyStudy[];
+}
+
+interface StudentCurriculum {
+    id: string;
+    curriculum_id: string;
+    curriculum_name: string;
+    start_date: string;
+    class_days: string[];
+    current_progress: number;
+    total_items: number;
 }
 
 export default function StudentLearningPage() {
     const router = useRouter();
-    const [currentWeek, setCurrentWeek] = useState(0);
-    const [selectedItem, setSelectedItem] = useState<LearningItem | null>(null);
-    const [modalOpened, setModalOpened] = useState(false);
+    const [searchStartDate, setSearchStartDate] = useState<Date | null>(new Date('2025-12-06'));
+    const [studentCurriculums, setStudentCurriculums] = useState<StudentCurriculum[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // 샘플 주별 데이터
-    const weekSchedule: DaySchedule[] = [
-        {
-            date: '2024-01-15',
-            dayOfWeek: '월',
-            items: [
-                {
-                    id: '1',
-                    curriculum: '중학 영단어 1000',
-                    type: 'wordbook',
-                    section: '1-1',
-                    wordCount: 20,
-                    timeLimit: 20,
-                    passingScore: 80,
-                    status: 'completed',
-                    score: 95,
-                },
-            ],
-        },
-        {
-            date: '2024-01-16',
-            dayOfWeek: '화',
-            items: [
-                {
-                    id: '2',
-                    curriculum: '중학 영단어 1000',
-                    type: 'wordbook',
-                    section: '1-2',
-                    wordCount: 20,
-                    timeLimit: 20,
-                    passingScore: 80,
-                    status: 'completed',
-                    score: 88,
-                },
-            ],
-        },
-        {
-            date: '2024-01-17',
-            dayOfWeek: '수',
-            items: [
-                {
-                    id: '3',
-                    curriculum: '중학 영단어 1000',
-                    type: 'wordbook',
-                    section: '2-1',
-                    wordCount: 20,
-                    timeLimit: 20,
-                    passingScore: 80,
-                    status: 'in_progress',
-                },
-            ],
-        },
-        {
-            date: '2024-01-18',
-            dayOfWeek: '목',
-            items: [
-                {
-                    id: '4',
-                    curriculum: 'CHAPTER 5: TRAVEL',
-                    type: 'listening',
-                    section: '5-1',
-                    wordCount: 15,
-                    timeLimit: 25,
-                    passingScore: 80,
-                    status: 'pending',
-                },
-            ],
-        },
-        {
-            date: '2024-01-19',
-            dayOfWeek: '금',
-            items: [
-                {
-                    id: '5',
-                    curriculum: '중학 영단어 1000',
-                    type: 'wordbook',
-                    section: '2-2',
-                    wordCount: 20,
-                    timeLimit: 20,
-                    passingScore: 80,
-                    status: 'pending',
-                },
-            ],
-        },
-    ];
+    // 오늘 날짜
+    const today = new Date().toISOString().split('T')[0];
 
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return '✅';
-            case 'in_progress':
-                return '📝';
-            case 'pending':
-                return '⏰';
-            default:
-                return '⏰';
+    // 학생 커리큘럼 데이터 로드
+    const fetchStudentCurriculums = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/student-curriculums/me');
+            if (!response.ok) throw new Error('Failed to fetch student curriculums');
+
+            const data = await response.json();
+            const curriculumsData = data.studentCurriculums || [];
+
+            const curriculums: StudentCurriculum[] = curriculumsData.map((sc: any) => ({
+                id: sc.id,
+                curriculum_id: sc.curriculum_id,
+                curriculum_name: sc.curriculums?.name || '커리큘럼 없음',
+                start_date: sc.start_date || new Date().toISOString().split('T')[0],
+                class_days: sc.class_days || [],
+                current_progress: sc.current_progress || 0,
+                total_items: 50, // TODO: calculate by curriculum_items count
+            }));
+
+            setStudentCurriculums(curriculums);
+        } catch (error: any) {
+            notifications.show({
+                title: '오류',
+                message: error.message || '커리큘럼을 불러오는데 실패했습니다.',
+                color: 'red',
+            });
+        } finally {
+            setLoading(false);
         }
     };
 
-    const getStatusColor = (status: string) => {
+    useEffect(() => {
+        fetchStudentCurriculums();
+    }, []);
+
+    // 주간 일정 생성 함수
+    const getCurriculumDetails = useMemo((): CurriculumDetail[] => {
+        if (!searchStartDate || studentCurriculums.length === 0) return [];
+
+        return studentCurriculums.map((curriculum) => {
+            const generateWeekDates = () => {
+                const dates: DailyStudy[] = [];
+                const days = ['월', '화', '수', '목', '금'];
+                const baseDate = new Date(searchStartDate);
+
+                for (let i = 0; i < 5; i++) {
+                    const currentDate = new Date(baseDate);
+                    currentDate.setDate(baseDate.getDate() + i);
+                    const dateStr = currentDate.toISOString().split('T')[0];
+
+                    let status: 'completed' | 'today' | 'upcoming' | 'none' = 'none';
+
+                    // 수업 요일인지 확인
+                    if (curriculum.class_days.includes(days[i])) {
+                        // 시작일 이후인지 확인
+                        const startDate = new Date(curriculum.start_date);
+                        const currentDateObj = new Date(dateStr);
+
+                        if (currentDateObj >= startDate) {
+                            if (dateStr === today) {
+                                status = 'today';
+                            } else if (currentDateObj < new Date(today)) {
+                                status = 'completed';
+                            } else {
+                                status = 'upcoming';
+                            }
+                        }
+                    }
+
+                    dates.push({
+                        date: dateStr,
+                        day: days[i],
+                        status,
+                        section: status !== 'none' ? `소단원 ${i + 1}` : undefined,
+                    });
+                }
+                return dates;
+            };
+
+            const weekDates = generateWeekDates();
+            const startDateStr = searchStartDate.toISOString().split('T')[0];
+            const endDate = new Date(searchStartDate);
+            endDate.setDate(searchStartDate.getDate() + 4);
+            const endDateStr = endDate.toISOString().split('T')[0];
+
+            return {
+                id: curriculum.id,
+                name: curriculum.curriculum_name,
+                period: `(${startDateStr} - ${endDateStr})`,
+                weeklySchedule: weekDates,
+            };
+        });
+    }, [searchStartDate, studentCurriculums, today]);
+
+    const getDayColor = (status: string) => {
         switch (status) {
-            case 'completed':
-                return '#A3E635'; // Lime Green
-            case 'in_progress':
-                return '#FACC15'; // Yellow
-            case 'pending':
-                return '#FFFFFF'; // White
-            default:
-                return '#FFFFFF';
+            case 'completed': return '#90EE90'; // 연한 초록 (완료)
+            case 'today': return '#FFD93D'; // 노란색 (오늘)
+            case 'upcoming': return '#FFFFFF'; // 흰색 (예정)
+            case 'none': return '#F0F0F0'; // 회색 (없음)
+            default: return '#FFFFFF';
         }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return '완료';
-            case 'in_progress':
-                return '진행중';
-            case 'pending':
-                return '대기';
-            default:
-                return '대기';
-        }
-    };
-
-    const handleItemClick = (item: LearningItem) => {
-        setSelectedItem(item);
-        setModalOpened(true);
-    };
-
-    const handleStartTest = () => {
-        setModalOpened(false);
-        // 시험 시작 (플래시카드로 이동)
-        router.push('/test/flashcard');
     };
 
     return (
@@ -174,334 +154,181 @@ export default function StudentLearningPage() {
                         나의 학습
                     </Title>
                     <Text size="lg" c="dimmed">
-                        이번 주 학습 일정을 확인하세요
+                        주간 학습 일정을 확인하세요
                     </Text>
                 </Box>
 
-                {/* 주차 선택 */}
+                {/* 검색 시작일 선택 */}
                 <Paper
                     p="lg"
                     mb={30}
                     style={{
-                        border: '2px solid black',
+                        border: '4px solid black',
                         background: 'white',
                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                        borderRadius: 0,
+                        borderRadius: '0px',
                     }}
                 >
-                    <Group justify="space-between">
-                        <button
-                            onClick={() => setCurrentWeek(currentWeek - 1)}
-                            style={{
-                                background: '#F1F3F5',
-                                border: '2px solid black',
-                                borderRadius: '0px',
-                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                padding: '0.5rem 1rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                fontWeight: 700,
+                    <Group justify="flex-end">
+                        <DateInput
+                            value={searchStartDate}
+                            onChange={(value) => setSearchStartDate(value as Date | null)}
+                            label="검색 시작일"
+                            placeholder="날짜를 선택하세요"
+                            valueFormat="YYYY-MM-DD"
+                            leftSection={<IconCalendar size={18} />}
+                            popoverProps={{
+                                width: 300,
+                                shadow: 'md',
+                                styles: {
+                                    dropdown: {
+                                        border: '3px solid black',
+                                        borderRadius: '0px',
+                                        boxShadow: '6px 6px 0px black',
+                                    }
+                                }
                             }}
-                        >
-                            <IconChevronLeft size={20} />
-                            이전 주
-                        </button>
-
-                        <Text size="xl" fw={900}>
-                            2024년 1월 3주차 (1/15 - 1/19)
-                        </Text>
-
-                        <button
-                            onClick={() => setCurrentWeek(currentWeek + 1)}
-                            style={{
-                                background: '#F1F3F5',
-                                border: '2px solid black',
-                                borderRadius: '0px',
-                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                padding: '0.5rem 1rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                fontWeight: 700,
+                            styles={{
+                                input: {
+                                    border: '3px solid black',
+                                    borderRadius: '0px',
+                                    background: '#FFD93D',
+                                    fontWeight: 900,
+                                    fontSize: '1rem',
+                                },
+                                label: {
+                                    fontWeight: 900,
+                                    marginBottom: '0.5rem',
+                                }
                             }}
-                        >
-                            다음 주
-                            <IconChevronRight size={20} />
-                        </button>
+                            style={{ width: 250 }}
+                        />
                     </Group>
                 </Paper>
 
-                {/* 주별 캘린더 */}
-                <Grid>
-                    {weekSchedule.map((day) => (
-                        <Grid.Col key={day.date} span={{ base: 12, sm: 6, md: 2.4 }}>
+                {/* 커리큘럼별 주간 일정 */}
+                <Stack gap="xl">
+                    {loading ? (
+                        <Text ta="center" c="dimmed">로딩 중...</Text>
+                    ) : getCurriculumDetails.length === 0 ? (
+                        <Paper
+                            p="xl"
+                            style={{
+                                border: '4px solid black',
+                                borderRadius: '0px',
+                                background: 'white',
+                                boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                            }}
+                        >
+                            <Text ta="center" c="dimmed" size="lg">
+                                등록된 커리큘럼이 없습니다.
+                            </Text>
+                        </Paper>
+                    ) : (
+                        getCurriculumDetails.map((curriculum) => (
                             <Paper
-                                p="lg"
+                                key={curriculum.id}
+                                p="xl"
                                 style={{
-                                    border: '2px solid black',
+                                    border: '4px solid black',
+                                    borderRadius: '0px',
                                     background: 'white',
                                     boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                    minHeight: '300px',
-                                    borderRadius: 0,
                                 }}
                             >
-                                {/* 요일 헤더 */}
-                                <Box
-                                    mb="md"
+                                {/* 커리큘럼 헤더 */}
+                                <Paper
+                                    p="md"
+                                    mb="lg"
                                     style={{
-                                        background: 'black',
-                                        color: 'white',
-                                        border: '2px solid black',
+                                        border: '3px solid black',
+                                        background: '#FFD93D',
                                         borderRadius: '0px',
-                                        padding: '0.5rem',
-                                        textAlign: 'center',
                                     }}
                                 >
                                     <Text fw={900} size="lg">
-                                        {day.dayOfWeek}
-                                    </Text>
-                                    <Text fw={600} size="sm">
-                                        {day.date}
-                                    </Text>
-                                </Box>
-
-                                {/* 학습 항목 */}
-                                <Stack gap="sm">
-                                    {day.items.map((item) => (
-                                        <Paper
-                                            key={item.id}
-                                            p="md"
-                                            style={{
-                                                border: '2px solid black',
-                                                background: getStatusColor(item.status),
-                                                cursor: 'pointer',
-                                                transition: 'transform 0.2s',
-                                                borderRadius: 0,
-                                            }}
-                                            onClick={() => handleItemClick(item)}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(0)';
-                                            }}
-                                        >
-                                            <Group justify="center" mb="xs">
-                                                {item.type === 'wordbook' ? (
-                                                    <IconBook size={24} color="black" />
-                                                ) : (
-                                                    <IconClock size={24} color="black" />
-                                                )}
-                                            </Group>
-                                            <Text fw={700} size="sm" ta="center" mb="xs" c="black">
-                                                {item.curriculum}
-                                            </Text>
-                                            <Text size="xs" ta="center" mb="xs" style={{ color: 'rgba(0,0,0,0.6)' }}>
-                                                {item.section}
-                                            </Text>
-                                            <Badge
-                                                variant="filled"
-                                                color="black"
-                                                fullWidth
-                                                radius={0}
-                                                style={{ border: '1px solid black' }}
-                                            >
-                                                {getStatusText(item.status)}
-                                            </Badge>
-                                            {item.score && (
-                                                <Text fw={900} size="lg" ta="center" mt="xs" c="black">
-                                                    {item.score}점
-                                                </Text>
-                                            )}
-                                        </Paper>
-                                    ))}
-                                </Stack>
-                            </Paper>
-                        </Grid.Col>
-                    ))}
-                </Grid>
-
-                {/* 범례 */}
-                <Paper
-                    p="lg"
-                    mt={30}
-                    style={{
-                        border: '2px solid black',
-                        background: 'white',
-                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                        borderRadius: 0,
-                    }}
-                >
-                    <Text fw={900} mb="md">
-                        상태 범례
-                    </Text>
-                    <Group>
-                        <Group gap="xs">
-                            <Box w={20} h={20} style={{ border: '2px solid black', background: '#A3E635' }} />
-                            <Text fw={700}>완료</Text>
-                        </Group>
-                        <Group gap="xs">
-                            <Box w={20} h={20} style={{ border: '2px solid black', background: '#FACC15' }} />
-                            <Text fw={700}>진행중</Text>
-                        </Group>
-                        <Group gap="xs">
-                            <Box w={20} h={20} style={{ border: '2px solid black', background: '#FFFFFF' }} />
-                            <Text fw={700}>대기</Text>
-                        </Group>
-                    </Group>
-                </Paper>
-
-                {/* 상세 정보 모달 */}
-                <Modal
-                    opened={modalOpened}
-                    onClose={() => setModalOpened(false)}
-                    title={
-                        <Text size="xl" fw={900}>
-                            학습 상세 정보
-                        </Text>
-                    }
-                    size="lg"
-                    styles={{
-                        header: {
-                            borderBottom: '2px solid black',
-                        },
-                        body: {
-                            padding: '2rem',
-                        },
-                        content: {
-                            border: '2px solid black',
-                            borderRadius: 0,
-                            boxShadow: '8px 8px 0px black'
-                        }
-                    }}
-                >
-                    {selectedItem && (
-                        <Stack gap="lg">
-                            {/* 헤더 카드 */}
-                            <Paper
-                                p="xl"
-                                style={{
-                                    border: '2px solid black',
-                                    background: '#FFD93D',
-                                    borderRadius: 0,
-                                    boxShadow: '4px 4px 0px black',
-                                }}
-                            >
-                                <Group justify="center" mb="md">
-                                    <Box
-                                        p="md"
-                                        style={{
-                                            background: 'black',
-                                            border: '2px solid black',
-                                            display: 'inline-flex',
-                                        }}
-                                    >
-                                        {selectedItem.type === 'wordbook' ? (
-                                            <IconBook size={48} color="white" stroke={1.5} />
-                                        ) : (
-                                            <IconClock size={48} color="white" stroke={1.5} />
-                                        )}
-                                    </Box>
-                                </Group>
-                                <Text size="xl" fw={900} ta="center" mb="xs">
-                                    {selectedItem.curriculum}
-                                </Text>
-                                <Text size="lg" ta="center" fw={700}>
-                                    {selectedItem.section}
-                                </Text>
-                            </Paper>
-
-                            {/* 정보 그리드 */}
-                            <Grid>
-                                <Grid.Col span={6}>
-                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
-                                        <Group gap="xs" mb={5}>
-                                            <IconBook size={20} />
-                                            <Text size="sm" c="dimmed" fw={700}>학습 유형</Text>
-                                        </Group>
-                                        <Text fw={900} size="lg">{selectedItem.type === 'wordbook' ? '단어장' : '듣기'}</Text>
-                                    </Paper>
-                                </Grid.Col>
-                                <Grid.Col span={6}>
-                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
-                                        <Group gap="xs" mb={5}>
-                                            <IconTarget size={20} />
-                                            <Text size="sm" c="dimmed" fw={700}>문항 수</Text>
-                                        </Group>
-                                        <Text fw={900} size="lg">{selectedItem.wordCount}개</Text>
-                                    </Paper>
-                                </Grid.Col>
-                                <Grid.Col span={6}>
-                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
-                                        <Group gap="xs" mb={5}>
-                                            <IconClock size={20} />
-                                            <Text size="sm" c="dimmed" fw={700}>제한 시간</Text>
-                                        </Group>
-                                        <Text fw={900} size="lg">{selectedItem.timeLimit}초</Text>
-                                    </Paper>
-                                </Grid.Col>
-                                <Grid.Col span={6}>
-                                    <Paper p="md" style={{ border: '2px solid black', borderRadius: 0, background: 'white', boxShadow: '4px 4px 0px black' }}>
-                                        <Group gap="xs" mb={5}>
-                                            <IconTarget size={20} />
-                                            <Text size="sm" c="dimmed" fw={700}>합격 점수</Text>
-                                        </Group>
-                                        <Text fw={900} size="lg">{selectedItem.passingScore}점</Text>
-                                    </Paper>
-                                </Grid.Col>
-                            </Grid>
-
-                            {selectedItem.score && (
-                                <Paper
-                                    p="md"
-                                    style={{
-                                        border: '2px solid black',
-                                        background: '#D3F9D8',
-                                        textAlign: 'center',
-                                        borderRadius: 0,
-                                        boxShadow: '4px 4px 0px black',
-                                    }}
-                                >
-                                    <Text size="sm" fw={700} mb="xs">
-                                        이전 시험 결과
-                                    </Text>
-                                    <Text size="3rem" fw={900} c="black">
-                                        {selectedItem.score}점
+                                        {curriculum.name} {curriculum.period}
                                     </Text>
                                 </Paper>
-                            )}
 
-                            {selectedItem.status !== 'completed' && (
-                                <button
-                                    onClick={handleStartTest}
+                                {/* 주간 일정 테이블 */}
+                                <Box
                                     style={{
-                                        background: 'black',
-                                        color: '#FFD93D',
-                                        border: '2px solid black',
+                                        border: '3px solid black',
                                         borderRadius: '0px',
-                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                        fontSize: '1.5rem',
-                                        fontWeight: 900,
-                                        padding: '1.2rem 2rem',
-                                        cursor: 'pointer',
-                                        width: '100%',
-                                        marginTop: '0.5rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem',
+                                        overflow: 'hidden',
                                     }}
                                 >
-                                    <IconPlayerPlay size={32} />
-                                    시험 시작하기
-                                </button>
-                            )}
-                        </Stack>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ background: 'black' }}>
+                                                <th style={{ color: 'white', textAlign: 'center', padding: '1rem', fontWeight: 900, fontStyle: 'italic' }}>
+                                                    CURRICULUM
+                                                </th>
+                                                {curriculum.weeklySchedule.map((day) => (
+                                                    <th
+                                                        key={day.date}
+                                                        style={{
+                                                            background: '#FFD93D',
+                                                            color: 'black',
+                                                            textAlign: 'center',
+                                                            padding: '1rem',
+                                                            fontWeight: 900,
+                                                            border: '2px solid black',
+                                                        }}
+                                                    >
+                                                        <div>{day.day}</div>
+                                                        <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                                                            {day.date}
+                                                        </div>
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td
+                                                    style={{
+                                                        background: 'black',
+                                                        color: 'white',
+                                                        textAlign: 'center',
+                                                        padding: '3rem 1rem',
+                                                        fontWeight: 900,
+                                                        fontStyle: 'italic',
+                                                    }}
+                                                >
+                                                    {curriculum.name}
+                                                </td>
+                                                {curriculum.weeklySchedule.map((day) => (
+                                                    <td
+                                                        key={day.date}
+                                                        style={{
+                                                            background: getDayColor(day.status),
+                                                            border: day.status === 'today' ? '4px solid black' : '2px solid black',
+                                                            textAlign: 'center',
+                                                            padding: '3rem 1rem',
+                                                            position: 'relative',
+                                                        }}
+                                                    >
+                                                        {day.status === 'none' ? (
+                                                            <Text c="dimmed" size="sm">
+                                                                등록된 커리큘럼이 없습니다.
+                                                            </Text>
+                                                        ) : (
+                                                            <Text fw={700} size="sm">
+                                                                {day.section}
+                                                            </Text>
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </Box>
+                            </Paper>
+                        ))
                     )}
-                </Modal>
+                </Stack>
             </div>
         </Container>
     );

@@ -52,10 +52,22 @@ export async function POST(request: NextRequest) {
         // 사용자 정보 반환 (비밀번호 제외)
         const { password_hash, ...userWithoutPassword } = user;
 
-        return NextResponse.json({
+        // 쿠키에 사용자 정보 저장
+        const response = NextResponse.json({
             user: userWithoutPassword,
             message: 'Login successful',
         });
+
+        // 쿠키 설정 (7일 유효)
+        response.cookies.set('user', JSON.stringify(userWithoutPassword), {
+            httpOnly: false, // 클라이언트에서도 접근 가능하도록
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7, // 7일
+            path: '/',
+        });
+
+        return response;
     } catch (error: any) {
         console.error('Login error:', error);
         return NextResponse.json(

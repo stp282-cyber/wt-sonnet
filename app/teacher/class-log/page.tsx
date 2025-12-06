@@ -85,31 +85,74 @@ export default function ClassLogPage() {
     const fetchStudents = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/student-curriculums');
-            if (!response.ok) throw new Error('Failed to fetch student curriculums');
 
-            const data = await response.json();
-            const studentCurriculumsData = data.studentCurriculums || [];
+            // 1. 모든 학생 목록 가져오기
+            const studentsResponse = await fetch('/api/students');
+            if (!studentsResponse.ok) throw new Error('Failed to fetch students');
+            const studentsData = await studentsResponse.json();
+            const allStudents = studentsData.students || [];
 
-            const curriculums: StudentCurriculum[] = studentCurriculumsData.map((sc: any) => ({
-                id: sc.id, // student_curriculum ID (important!)
-                student_id: sc.student_id,
-                student_name: sc.users?.full_name || '이름 없음',
-                class_name: sc.users?.classes?.name || '-',
-                curriculum_name: sc.curriculums?.name || '커리큘럼 없음',
-                start_date: sc.start_date || new Date().toISOString().split('T')[0],
-                current_progress: sc.current_progress || 0,
-                total_items: 50, // TODO: calculate by curriculum_items count
-                status: 'active',
-                this_week_completed: 0, // TODO: calculate with actual data
-                this_week_total: 5,
-            }));
+            // 2. 학생 커리큘럼 정보 가져오기
+            const curriculumsResponse = await fetch('/api/student-curriculums');
+            if (!curriculumsResponse.ok) throw new Error('Failed to fetch student curriculums');
+            const curriculumsData = await curriculumsResponse.json();
+            const studentCurriculumsData = curriculumsData.studentCurriculums || [];
+
+            // 3. 학생별로 커리큘럼 정보 매핑
+            const studentCurriculumMap = new Map();
+            studentCurriculumsData.forEach((sc: any) => {
+                if (!studentCurriculumMap.has(sc.student_id)) {
+                    studentCurriculumMap.set(sc.student_id, []);
+                }
+                studentCurriculumMap.get(sc.student_id).push(sc);
+            });
+
+            // 4. 모든 학생에 대해 커리큘럼 정보 결합
+            const curriculums: StudentCurriculum[] = [];
+
+            allStudents.forEach((student: any) => {
+                const studentCurricula = studentCurriculumMap.get(student.id) || [];
+
+                if (studentCurricula.length > 0) {
+                    // 커리큘럼이 있는 학생: 각 커리큘럼마다 행 생성
+                    studentCurricula.forEach((sc: any) => {
+                        curriculums.push({
+                            id: sc.id,
+                            student_id: student.id,
+                            student_name: student.full_name || student.name || '이름 없음',
+                            class_name: student.class_name || '-',
+                            curriculum_name: sc.curriculums?.name || '커리큘럼 없음',
+                            start_date: sc.start_date || new Date().toISOString().split('T')[0],
+                            current_progress: sc.current_progress || 0,
+                            total_items: 50,
+                            status: 'active',
+                            this_week_completed: 0,
+                            this_week_total: 5,
+                        });
+                    });
+                } else {
+                    // 커리큘럼이 없는 학생: 미등록 상태로 표시
+                    curriculums.push({
+                        id: `no-curriculum-${student.id}`,
+                        student_id: student.id,
+                        student_name: student.full_name || student.name || '이름 없음',
+                        class_name: student.class_name || '-',
+                        curriculum_name: '미등록',
+                        start_date: '-',
+                        current_progress: 0,
+                        total_items: 0,
+                        status: 'paused',
+                        this_week_completed: 0,
+                        this_week_total: 0,
+                    });
+                }
+            });
 
             setStudentCurriculums(curriculums);
         } catch (error: any) {
             notifications.show({
                 title: '오류',
-                message: error.message || '학생 커리큘럼을 불러오는데 실패했습니다.',
+                message: error.message || '학생 목록을 불러오는데 실패했습니다.',
                 color: 'red',
             });
         } finally {
