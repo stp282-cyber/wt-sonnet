@@ -16,7 +16,6 @@ import {
     Center,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
-import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconSettings, IconRefresh, IconCalendar, IconTrash } from '@tabler/icons-react';
 
 // 소단원 정보 인터페이스
@@ -35,6 +34,10 @@ interface CurriculumItem {
     sequence: number;
     item_type: 'wordbook' | 'listening';
     item_id: string;
+    daily_amount_type?: 'section' | 'count';
+    daily_amount?: number;
+    daily_word_count?: number;
+    daily_section_amount?: number;
     item_details: {
         id: string;
         title: string;
@@ -43,35 +46,32 @@ interface CurriculumItem {
     sections: Section[];
 }
 
-// 학생 커리큘럼 인터페이스
 interface StudentCurriculum {
     id: string;
     student_id: string;
     curriculum_id: string;
     start_date: string;
-    study_days: string[];
+    study_days: string[] | string;
     current_item_id: string | null;
     current_progress: number;
     curriculums: {
         id: string;
         name: string;
-        description: string | null;
+        description: string;
     };
     curriculum_items: CurriculumItem[];
 }
 
-// 학생 정보 인터페이스
 interface Student {
     id: string;
     full_name: string;
     username: string;
-    classes: {
+    classes?: {
         id: string;
         name: string;
     } | null;
 }
 
-// 학습 스케줄 항목 인터페이스
 interface ScheduleItem {
     dayIndex: number;
     itemTitle: string;
@@ -84,231 +84,342 @@ interface ScheduleItem {
     status: 'completed' | 'today' | 'upcoming';
 }
 
-// 주간 날짜 인터페이스
-interface WeekDay {
-    date: string;
-    dateObj: Date;
-    dayOfWeek: string;
-}
-
-const DAYS_OF_WEEK = ['월', '화', '수', '목', '금'];
 const DAY_MAP: { [key: string]: number } = {
-    'mon': 1,
-    'tue': 2,
-    'wed': 3,
-    'thu': 4,
-    'fri': 5,
+    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+};
+
+// 날짜 유틸리티: 로컬 시간 기준 (월~금만 표시)
+const getWeekDays = (startDate: Date, weekOffset: number) => {
+    const days = [];
+    // 이번주 월요일 찾기 (오늘이 일요일이면 전주 월요일)
+    const current = new Date(startDate);
+    const day = current.getDay();
+    const diff = current.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    current.setDate(diff + (weekOffset * 7));
+
+    // 월요일부터 금요일까지 (5일)
+    for (let i = 0; i < 5; i++) {
+        const d = new Date(current);
+        d.setDate(current.getDate() + i);
+
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const date = String(d.getDate()).padStart(2, '0');
+        const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+
+        days.push({
+            date: `${year}-${month}-${date}`,
+            dayOfWeek,
+            fullDate: d
+        });
+    }
+    return days;
+};
+
+// 커리큘럼의 모든 소단원을 평탄화하여 학습 순서 생성
+const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
+    section: Section;
+    item: CurriculumItem;
+    progressStart: number;
+    progressEnd: number;
+    title: string;
+    major: string;
+    minor: string;
+    isMultiSection: boolean;
+    wordCount: number;
+}[] => {
+    const scheduleItems: any[] = [];
+    let globalWordProgress = 1;
+
+    (curriculum.curriculum_items || []).forEach((item) => {
+        if (item.item_type === 'wordbook' && item.sections && item.sections.length > 0) {
+            const amountType = item.daily_amount_type || 'count'; // default to count
+
+            if (amountType === 'section') {
+                // 1. 섹션들을 Unit 단위(대단원-소단원)로 먼저 그룹화
+                const unitGroups: { key: string, sections: Section[], wordCount: number }[] = [];
+                let currentUnitKey = '';
+                let currentUnitSections: Section[] = [];
+
+                item.sections.forEach((section) => {
+                    const key = `${section.major_unit}-${section.minor_unit}`;
+                    if (key !== currentUnitKey) {
+                        if (currentUnitSections.length > 0) {
+                            unitGroups.push({
+                                key: currentUnitKey,
+                                sections: currentUnitSections,
+                                wordCount: currentUnitSections.reduce((sum, s) => sum + (s.word_count || 0), 0)
+                            });
+                        }
+                        currentUnitKey = key;
+                        currentUnitSections = [section];
+                    } else {
+                        currentUnitSections.push(section);
+                    }
+                });
+                // 마지막 그룹 추가
+                if (currentUnitSections.length > 0) {
+                    unitGroups.push({
+                        key: currentUnitKey,
+                        sections: currentUnitSections,
+                        wordCount: currentUnitSections.reduce((sum, s) => sum + (s.word_count || 0), 0)
+                    });
+                }
+
+                // 2. 일일 학습량(daily_amount)만큼 Unit Group을 묶어서 배분
+                const dailyUnitAmount = item.daily_amount || 1; // 기본 1개 유닛(예: 1-1)
+
+                let currentDailyChunk: typeof unitGroups = [];
+                for (let i = 0; i < unitGroups.length; i++) {
+                    currentDailyChunk.push(unitGroups[i]);
+
+                    if (currentDailyChunk.length >= dailyUnitAmount || i === unitGroups.length - 1) {
+                        // 할당된 Unit Group들을 하나의 스케줄 아이템으로 병합
+                        const startGroup = currentDailyChunk[0];
+                        const endGroup = currentDailyChunk[currentDailyChunk.length - 1];
+
+                        // 실제 포함된 모든 섹션들
+                        const allSectionsInChunk = currentDailyChunk.flatMap(g => g.sections);
+                        const chunkWordCount = currentDailyChunk.reduce((sum, g) => sum + g.wordCount, 0);
+
+                        const startSection = allSectionsInChunk[0];
+                        const endSection = allSectionsInChunk[allSectionsInChunk.length - 1];
+
+                        // 타이틀 포맷팅 (단원명이 같으면 하나만, 다르면 범위 표시)
+                        let unitTitle = startSection.unit_name;
+                        if (startGroup.key !== endGroup.key) {
+                            unitTitle = `${startSection.unit_name} ~ ${endSection.unit_name}`;
+                        } else {
+                            // 같은 챕터 내라면, unit_name이 "1. 제목" 형태일 수 있으므로 그대로 사용
+                            unitTitle = startSection.unit_name;
+                        }
+
+                        scheduleItems.push({
+                            section: endSection,
+                            item,
+                            progressStart: globalWordProgress,
+                            progressEnd: globalWordProgress + chunkWordCount - 1,
+                            title: unitTitle,
+                            major: startSection.major_unit,
+                            minor: currentDailyChunk.length > 1
+                                ? `${startSection.minor_unit}~${endSection.minor_unit}`
+                                : startSection.minor_unit,
+                            isMultiSection: allSectionsInChunk.length > 1,
+                            wordCount: chunkWordCount
+                        });
+
+                        globalWordProgress += chunkWordCount;
+                        currentDailyChunk = [];
+                    }
+                }
+            } else {
+                // 단어 수(count) 단위로 진도 나감
+                const dailyCount = item.daily_word_count || item.daily_amount || 20;
+
+                let currentChunk: Section[] = [];
+                let currentChunkWords = 0;
+
+                for (let i = 0; i < item.sections.length; i++) {
+                    const section = item.sections[i];
+                    const sWordCount = section.word_count || 0;
+
+                    if (currentChunkWords + sWordCount <= dailyCount * 1.3) {
+                        // 오차범위 30% 허용
+                        currentChunk.push(section);
+                        currentChunkWords += sWordCount;
+                    } else {
+                        // 현재까지 묶인게 있으면 배정
+                        if (currentChunk.length > 0) {
+                            const startSection = currentChunk[0];
+                            const endSection = currentChunk[currentChunk.length - 1];
+
+                            scheduleItems.push({
+                                section: endSection,
+                                item,
+                                progressStart: globalWordProgress,
+                                progressEnd: globalWordProgress + currentChunkWords - 1,
+                                title: startSection.unit_name === endSection.unit_name
+                                    ? startSection.unit_name
+                                    : `${startSection.unit_name} ~ ${endSection.unit_name}`,
+                                major: startSection.major_unit,
+                                minor: currentChunk.length > 1
+                                    ? `${startSection.minor_unit}~${endSection.minor_unit}`
+                                    : startSection.minor_unit,
+                                isMultiSection: currentChunk.length > 1,
+                                wordCount: currentChunkWords
+                            });
+
+                            globalWordProgress += currentChunkWords;
+                            currentChunk = [];
+                            currentChunkWords = 0;
+                        }
+
+                        currentChunk.push(section);
+                        currentChunkWords += sWordCount;
+                    }
+
+                    // 마지막 처리
+                    if (i === item.sections.length - 1 && currentChunk.length > 0) {
+                        const startSection = currentChunk[0];
+                        const endSection = currentChunk[currentChunk.length - 1];
+
+                        scheduleItems.push({
+                            section: endSection,
+                            item,
+                            progressStart: globalWordProgress,
+                            progressEnd: globalWordProgress + currentChunkWords - 1,
+                            title: startSection.unit_name === endSection.unit_name
+                                ? startSection.unit_name
+                                : `${startSection.unit_name} ~ ${endSection.unit_name}`,
+                            major: startSection.major_unit,
+                            minor: currentChunk.length > 1
+                                ? `${startSection.minor_unit}~${endSection.minor_unit}`
+                                : startSection.minor_unit,
+                            isMultiSection: currentChunk.length > 1,
+                            wordCount: currentChunkWords
+                        });
+                        globalWordProgress += currentChunkWords;
+                    }
+                }
+            }
+        }
+    });
+
+    return scheduleItems;
+};
+
+// 특정 날짜에 특정 커리큘럼의 학습 내용 계산
+const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: string): ScheduleItem | null => {
+    const targetDate = new Date(dateStr);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const startDate = new Date(curriculum.start_date);
+    startDate.setHours(0, 0, 0, 0);
+
+    if (targetDate < startDate) return null;
+
+    const dayOfWeek = targetDate.getDay();
+    let currentDayCode = '';
+    Object.entries(DAY_MAP).forEach(([code, num]) => {
+        if (num === dayOfWeek) currentDayCode = code;
+    });
+
+    // study_days 파싱
+    let studyDays: string[] = [];
+    if (Array.isArray(curriculum.study_days)) {
+        studyDays = curriculum.study_days;
+    } else if (typeof curriculum.study_days === 'string') {
+        try {
+            const sanitized = (curriculum.study_days as string).replace(/'/g, '"');
+            studyDays = JSON.parse(sanitized);
+        } catch (e) {
+            console.error("Failed to parse study_days:", curriculum.study_days);
+            return null;
+        }
+    }
+
+    const normalizedStudyDays = studyDays.map(d => d.toLowerCase());
+
+    if (!currentDayCode || !normalizedStudyDays.includes(currentDayCode.toLowerCase())) {
+        return null;
+    }
+
+    let studyDayCount = 0;
+    const checkDate = new Date(startDate);
+    checkDate.setHours(0, 0, 0, 0);
+
+    // 시작일부터 targetDate까지 학습일 수 계산
+    while (checkDate <= targetDate) {
+        const checkDayOfWeek = checkDate.getDay();
+        let checkDayCode = '';
+        Object.entries(DAY_MAP).forEach(([code, num]) => {
+            if (num === checkDayOfWeek) checkDayCode = code;
+        });
+
+        if (checkDayCode && normalizedStudyDays.includes(checkDayCode.toLowerCase())) {
+            studyDayCount++;
+        }
+        checkDate.setDate(checkDate.getDate() + 1);
+    }
+
+    const allSections = getAllSectionsForCurriculum(curriculum);
+
+    if (studyDayCount > 0 && studyDayCount <= allSections.length) {
+        const scheduleData = allSections[studyDayCount - 1];
+        const { section, item, progressStart, progressEnd, title, major, minor, wordCount } = scheduleData;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let status: 'completed' | 'today' | 'upcoming' = 'upcoming';
+        if (targetDate < today) status = 'completed';
+        else if (targetDate.getTime() === today.getTime()) status = 'today';
+
+        return {
+            dayIndex: studyDayCount,
+            itemTitle: item.item_details?.title || '제목 없음',
+            majorUnit: major || '대단원 미지정',
+            minorUnit: minor || String(studyDayCount),
+            unitName: title || `${studyDayCount}일차`,
+            itemType: item.item_type || 'wordbook',
+            wordCount: wordCount,
+            progressRange: `${progressStart}~${progressEnd}`,
+            status,
+        };
+    }
+
+    return null;
 };
 
 export default function StudentSchedulePage() {
     const params = useParams();
     const router = useRouter();
-    const [studentIdParam, setStudentIdParam] = useState<string>('');
-
     const [student, setStudent] = useState<Student | null>(null);
     const [curriculums, setCurriculums] = useState<StudentCurriculum[]>([]);
     const [loading, setLoading] = useState(true);
-
-    // 오늘이 토요일(6) 또는 일요일(0)이면 다음주 월요일로 설정
-    const getInitialDate = () => {
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-
-        // 토요일(6) 또는 일요일(0)인 경우
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-            const daysUntilMonday = dayOfWeek === 0 ? 1 : 2; // 일요일이면 1일, 토요일이면 2일 후
-            const nextMonday = new Date(today);
-            nextMonday.setDate(today.getDate() + daysUntilMonday);
-            return nextMonday;
-        }
-
-        return today;
-    };
-
-    const [searchStartDate, setSearchStartDate] = useState<Date>(getInitialDate());
+    // 초기 날짜 설정: 토/일이면 다음주 월요일로 설정
+    const [searchStartDate, setSearchStartDate] = useState<Date>(() => {
+        const d = new Date();
+        const day = d.getDay();
+        if (day === 0) d.setDate(d.getDate() + 1); // 일 -> 월
+        if (day === 6) d.setDate(d.getDate() + 2); // 토 -> 월
+        return d;
+    });
 
     useEffect(() => {
-        const resolveParams = async () => {
-            const resolvedParams = await params;
-            if (resolvedParams && resolvedParams.student_id) {
-                setStudentIdParam(resolvedParams.student_id as string);
+        const fetchStudentData = async () => {
+            if (!params.student_id) return;
+            try {
+                const response = await fetch(`/api/student-curriculums/student/${params.student_id}`);
+                if (!response.ok) throw new Error('Failed to fetch data');
+
+                const data = await response.json();
+                const { curriculums: curriculumsData, ...studentData } = data;
+
+                // studentData from API includes student info + classes directly as merged object in route?
+                // Actually the API returns: { ...student, classes: ..., studentCurriculums: [ ... ] } ? 
+                // Wait, checking route.ts: 
+                // It returns: 
+                // const studentWithClass = { ...student, classes: studentClass };
+                // const studentCurriculums = ...
+                // BUT the route returns: return NextResponse.json({ ...studentWithClass, curriculums: curriculumsWithItems });
+
+                setStudent(studentData as Student);
+                setCurriculums(data.curriculums || []);
+            } catch (error) {
+                console.error(error);
+                notifications.show({
+                    title: '오류',
+                    message: '데이터를 불러오는데 실패했습니다.',
+                    color: 'red'
+                });
+            } finally {
+                setLoading(false);
             }
         };
-        resolveParams();
-    }, [params]);
 
-    useEffect(() => {
-        if (studentIdParam) {
-            fetchStudentSchedule(studentIdParam);
-        }
-    }, [studentIdParam]);
-
-    const fetchStudentSchedule = async (id: string) => {
-        try {
-            setLoading(true);
-            const response = await fetch(`/api/student-curriculums/student/${id}`);
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch student schedule');
-            }
-
-            const data = await response.json();
-            console.log('=== DEBUG: API Response ===');
-            console.log('Student:', data.student);
-            console.log('Curriculums:', data.curriculums);
-            if (data.curriculums && data.curriculums.length > 0) {
-                console.log('First curriculum items:', data.curriculums[0].curriculum_items);
-                if (data.curriculums[0].curriculum_items && data.curriculums[0].curriculum_items.length > 0) {
-                    console.log('First item sections:', data.curriculums[0].curriculum_items[0].sections);
-                }
-            }
-            setStudent(data.student);
-            setCurriculums(data.curriculums || []);
-        } catch (error: any) {
-            notifications.show({
-                title: '오류',
-                message: error.message || '학생 일정을 불러오는데 실패했습니다.',
-                color: 'red',
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 특정 주의 월~금 날짜 생성 (로컬 시간 기준)
-    const getWeekDays = (startDate: Date, weekOffset: number): WeekDay[] => {
-        const days: WeekDay[] = [];
-        const currentDate = new Date(startDate);
-
-        const day = currentDate.getDay();
-        const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(currentDate.setDate(diff));
-        monday.setDate(monday.getDate() + (weekOffset * 7));
-
-        for (let i = 0; i < 5; i++) {
-            const date = new Date(monday);
-            date.setDate(date.getDate() + i);
-
-            // 로컬 시간 기준으로 YYYY-MM-DD 문자열 생성
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
-
-            days.push({
-                date: dateStr,
-                dateObj: date,
-                dayOfWeek: DAYS_OF_WEEK[i],
-            });
-        }
-
-        return days;
-    };
-
-    // 커리큘럼의 모든 소단원을 평탄화하여 학습 순서 생성
-    const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): { section: Section; item: CurriculumItem; progressStart: number }[] => {
-        const allSections: { section: Section; item: CurriculumItem; progressStart: number }[] = [];
-        let progressCounter = 1;
-
-        curriculum.curriculum_items.forEach((item) => {
-            if (item.sections && item.sections.length > 0) {
-                item.sections.forEach((section) => {
-                    const wordCount = section.word_count || 20;
-                    allSections.push({
-                        section,
-                        item,
-                        progressStart: progressCounter
-                    });
-                    progressCounter += wordCount;
-                });
-            }
-        });
-
-        return allSections;
-    };
-
-    // 특정 날짜에 특정 커리큘럼의 학습 내용 계산
-    const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: string): ScheduleItem | null => {
-        const targetDate = new Date(dateStr);
-        targetDate.setHours(0, 0, 0, 0);
-
-        const startDate = new Date(curriculum.start_date);
-        startDate.setHours(0, 0, 0, 0);
-
-        if (targetDate < startDate) return null;
-
-        const dayOfWeek = targetDate.getDay();
-        let currentDayCode = '';
-        Object.entries(DAY_MAP).forEach(([code, num]) => {
-            if (num === dayOfWeek) currentDayCode = code;
-        });
-
-        // study_days 파싱 (문자열로 올 경우 대비)
-        let studyDays: string[] = [];
-        if (Array.isArray(curriculum.study_days)) {
-            studyDays = curriculum.study_days;
-        } else if (typeof curriculum.study_days === 'string') {
-            try {
-                // 작은따옴표를 큰따옴표로 변환 후 파싱 시도 (Python 스타일 리스트 문자열인 경우)
-                const sanitized = (curriculum.study_days as string).replace(/'/g, '"');
-                studyDays = JSON.parse(sanitized);
-            } catch (e) {
-                console.error("Failed to parse study_days:", curriculum.study_days);
-                studyDays = [];
-            }
-        }
-
-        if (!currentDayCode || !studyDays.includes(currentDayCode)) {
-            return null;
-        }
-
-        let studyDayCount = 0;
-        const checkDate = new Date(startDate);
-        checkDate.setHours(0, 0, 0, 0);
-
-        while (checkDate <= targetDate) {
-            const checkDayOfWeek = checkDate.getDay();
-            let checkDayCode = '';
-            Object.entries(DAY_MAP).forEach(([code, num]) => {
-                if (num === checkDayOfWeek) checkDayCode = code;
-            });
-
-            if (checkDayCode && studyDays.includes(checkDayCode)) {
-                studyDayCount++;
-            }
-
-            checkDate.setDate(checkDate.getDate() + 1);
-        }
-
-        const allSections = getAllSectionsForCurriculum(curriculum);
-
-        if (studyDayCount > 0 && studyDayCount <= allSections.length) {
-            const { section, item, progressStart } = allSections[studyDayCount - 1];
-            const wordCount = section.word_count || 20;
-            const progressEnd = progressStart + wordCount - 1;
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            let status: 'completed' | 'today' | 'upcoming' = 'upcoming';
-            if (targetDate < today) status = 'completed';
-            else if (targetDate.getTime() === today.getTime()) status = 'today';
-
-            return {
-                dayIndex: studyDayCount,
-                itemTitle: item.item_details?.title || '제목 없음',
-                majorUnit: section.major_unit || '대단원 미지정',
-                minorUnit: section.minor_unit || String(studyDayCount),
-                unitName: section.unit_name || `${studyDayCount}일차`,
-                itemType: item.item_type,
-                wordCount: wordCount,
-                progressRange: `${progressStart}~${progressEnd}`,
-                status,
-            };
-        }
-
-        return null;
-    };
+        fetchStudentData();
+    }, [params.student_id]);
 
     if (loading) {
         return (
@@ -383,7 +494,6 @@ export default function StudentSchedulePage() {
 
                     return (
                         <Box key={weekOffset}>
-                            {/* 주차 라벨 */}
                             <Text fw={900} size="lg" mb="xs">{weekLabel}</Text>
 
                             {curriculums.map((curr) => (
@@ -482,42 +592,36 @@ export default function StudentSchedulePage() {
                                                         }}>
                                                             {schedule ? (
                                                                 <Stack gap={4}>
-                                                                    {/* 교재명 */}
                                                                     <Text fw={700} size="sm" lineClamp={2}>
                                                                         {schedule.itemTitle}
                                                                     </Text>
 
-                                                                    {/* 대단원 */}
                                                                     <Group gap={4}>
                                                                         <Text size="xs" c="dimmed">대단원:</Text>
                                                                         <Text size="xs" fw={600}>{schedule.majorUnit}</Text>
                                                                     </Group>
 
-                                                                    {/* 소단원 */}
                                                                     <Group gap={4}>
                                                                         <Text size="xs" c="dimmed">소단원:</Text>
                                                                         <Text size="xs" fw={600}>{schedule.minorUnit}</Text>
                                                                     </Group>
 
-                                                                    {/* 단원명 */}
                                                                     <Group gap={4}>
                                                                         <Text size="xs" c="dimmed">단원명:</Text>
                                                                         <Text size="xs" fw={600}>{schedule.dayIndex}일차</Text>
                                                                     </Group>
 
-                                                                    {/* 진도 범위 */}
                                                                     <Box style={{
-                                                                        background: '#FFF9DB', // Yellow background
+                                                                        background: '#FFF9DB',
                                                                         padding: '6px',
                                                                         marginTop: '4px',
-                                                                        border: '1px solid #FFD93D', // darker yellow border
+                                                                        border: '1px solid #FFD93D',
                                                                         borderRadius: '4px'
                                                                     }}>
                                                                         <Text size="xs" fw={700} ta="center">진도 범위</Text>
                                                                         <Text size="xs" ta="center">{schedule.progressRange}</Text>
                                                                     </Box>
 
-                                                                    {/* 날짜 및 단어 수 */}
                                                                     <Group justify="space-between" mt={4}>
                                                                         <Text size="xs" c="dimmed">{day.date}</Text>
                                                                         <Badge size="sm" color="yellow" variant="filled" radius="xs" style={{ border: '1px solid black', color: 'black' }}>

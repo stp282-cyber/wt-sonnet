@@ -61,35 +61,39 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: wordbookError.message }, { status: 500 });
         }
 
-        // 2. 소단원별로 단어 그룹화 (숫자를 문자열로 변환)
+        // 2. 소단원별로 단어 그룹화 (대단원-소단원 조합)
         const sectionMap = new Map<string, any[]>();
 
         words.forEach((word: any) => {
-            // minor_unit을 문자열로 변환 (숫자일 수 있음)
-            const minorUnit = word.minor_unit != null ? String(word.minor_unit) : '기타';
-            const majorUnit = word.major_unit != null ? String(word.major_unit) : null;
+            // 숫자일 수 있으므로 문자열로 변환
+            const majorUnit = word.major_unit != null ? String(word.major_unit) : '1';
+            const minorUnit = word.minor_unit != null ? String(word.minor_unit) : '1';
 
-            if (!sectionMap.has(minorUnit)) {
-                sectionMap.set(minorUnit, []);
+            // 대단원-소단원을 조합하여 고유 키 생성 (예: "1-1", "1-2")
+            const key = `${majorUnit}-${minorUnit}`;
+
+            if (!sectionMap.has(key)) {
+                sectionMap.set(key, []);
             }
-            sectionMap.get(minorUnit)!.push({
+            sectionMap.get(key)!.push({
                 no: word.no,
                 english: word.english,
                 korean: word.korean,
                 major_unit: majorUnit,
+                minor_unit: minorUnit, // 저장 시에도 사용하기 위해 저장
                 unit_name: word.unit_name,
             });
         });
 
         // 3. 각 소단원을 wordbook_sections에 저장
-        const sections = Array.from(sectionMap.entries()).map(([minorUnit, sectionWords]) => {
-            // 첫 번째 단어에서 major_unit과 unit_name 가져오기
+        const sections = Array.from(sectionMap.values()).map((sectionWords) => {
+            // 첫 번째 단어에서 정보 가져오기 (같은 그룹이므로 동일함)
             const firstWord = sectionWords[0];
             return {
                 wordbook_id: wordbook.id,
-                major_unit: firstWord?.major_unit || null,
-                minor_unit: minorUnit,
-                unit_name: firstWord?.unit_name || minorUnit,
+                major_unit: firstWord.major_unit,
+                minor_unit: firstWord.minor_unit,
+                unit_name: firstWord.unit_name || `${firstWord.major_unit}-${firstWord.minor_unit}`,
                 words: sectionWords.map(w => ({
                     no: w.no,
                     english: w.english,
