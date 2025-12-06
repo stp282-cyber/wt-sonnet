@@ -32,13 +32,13 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
 
     const menuItems = [
         { icon: IconDashboard, label: '대시보드', href: '/teacher/dashboard' },
-        { icon: IconList, label: '수업 일지', href: '/teacher/class-log' },
-        { icon: IconList, label: '당일 관리', href: '/teacher/today' },
         { icon: IconUsers, label: '학생 관리', href: '/teacher/students' },
         { icon: IconBook, label: '단어장 관리', href: '/teacher/wordbooks' },
-        { icon: IconList, label: '커리큘럼 관리', href: '/teacher/curriculums' },
         { icon: IconHeadphones, label: '듣기 문제 관리', href: '/teacher/listening' },
-        { icon: IconBell, label: '공지 관리', href: '/teacher/notices' },
+        { icon: IconList, label: '커리큘럼 관리', href: '/teacher/curriculums' },
+        { icon: IconBell, label: '공지관리', href: '/teacher/notices' },
+        { icon: IconList, label: '수업 일지', href: '/teacher/class-log' },
+        { icon: IconList, label: '당일 관리', href: '/teacher/today' },
         { icon: IconSettings, label: '설정', href: '/teacher/settings' },
     ];
 
