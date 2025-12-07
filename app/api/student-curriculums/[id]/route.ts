@@ -23,6 +23,8 @@ export async function GET(
                 current_progress,
                 created_at,
                 updated_at,
+                setting_overrides,
+                breaks,
                 users:student_id (
                     id,
                     full_name,
@@ -118,3 +120,36 @@ export async function GET(
         );
     }
 }
+
+// DELETE /api/student-curriculums/[id] - 특정 학생-커리큘럼 삭제
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const supabase = createClient();
+        const { id } = await params;
+
+        const { error } = await supabase
+            .from('student_curriculums')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Student curriculum delete error:', error);
+            return NextResponse.json(
+                { error: error.message },
+                { status: 500 }
+            );
+        }
+
+        return NextResponse.json({ message: 'Deleted successfully' });
+    } catch (error: any) {
+        console.error('Unexpected error:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
+    }
+}
+

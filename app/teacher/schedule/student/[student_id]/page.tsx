@@ -14,8 +14,15 @@ import {
     Box,
     Loader,
     Center,
+    Modal,
+    NumberInput,
+    Select,
+    Checkbox,
+    Switch,
+    ActionIcon,
+    SimpleGrid,
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
+import { DateInput, DatePickerInput } from '@mantine/dates';
 import { IconArrowLeft, IconSettings, IconRefresh, IconCalendar, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
@@ -45,6 +52,9 @@ interface CurriculumItem {
         word_count?: number;
     } | null;
     sections: Section[];
+    test_type?: string;
+    passing_score?: number;
+    time_limit_seconds?: number;
 }
 
 interface StudentCurriculum {
@@ -61,6 +71,18 @@ interface StudentCurriculum {
         description: string;
     };
     curriculum_items: CurriculumItem[];
+    setting_overrides?: {
+        passing_score?: number;
+        time_limit_seconds?: number;
+        daily_amount?: number;
+        daily_amount_type?: 'section' | 'count';
+        test_type?: string;
+    };
+    breaks?: {
+        start_date: string;
+        end_date: string;
+        reason?: string;
+    }[];
 }
 
 interface Student {
@@ -134,9 +156,20 @@ const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
 
     (curriculum.curriculum_items || []).forEach((item) => {
         if (item.item_type === 'wordbook' && item.sections && item.sections.length > 0) {
-            const amountType = item.daily_amount_type || 'count'; // default to count
+            // Determine effective settings (Override > Default)
+            const overrideSettings = curriculum.setting_overrides || {};
 
-            if (amountType === 'section') {
+            const effectiveType = (overrideSettings.daily_amount_type as 'section' | 'count') || item.daily_amount_type || 'count';
+            // If section type: use override daily_amount (as sections) or item daily_amount (as sections) or default 1
+            // If count type: use override daily_amount (as words) or item daily_word_count or item daily_amount (as words) or default 20
+            let effectiveAmount = overrideSettings.daily_amount || (effectiveType === 'section' ? item.daily_amount : (item.daily_word_count || item.daily_amount)) || (effectiveType === 'section' ? 1 : 20);
+
+            // Safety check: If type is section but amount is suspiciously large (> 5), assume it's an error and default to 1
+            if (effectiveType === 'section' && effectiveAmount > 5) {
+                effectiveAmount = 1;
+            }
+
+            if (effectiveType === 'section') {
                 // 1. 섹션들을 Unit 단위(대단원-소단원)로 먼저 그룹화
                 const unitGroups: { key: string, sections: Section[], wordCount: number }[] = [];
                 let currentUnitKey = '';
@@ -168,7 +201,8 @@ const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                 }
 
                 // 2. 일일 학습량(daily_amount)만큼 Unit Group을 묶어서 배분
-                const dailyUnitAmount = item.daily_amount || 1; // 기본 1개 유닛(예: 1-1)
+                // Override applied here
+                const dailyUnitAmount = effectiveAmount;
 
                 let currentDailyChunk: typeof unitGroups = [];
                 for (let i = 0; i < unitGroups.length; i++) {
@@ -215,7 +249,8 @@ const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                 }
             } else {
                 // 단어 수(count) 단위로 진도 나감
-                const dailyCount = item.daily_word_count || item.daily_amount || 20;
+                // Override applied here
+                const dailyCount = effectiveAmount;
 
                 let currentChunk: Section[] = [];
                 let currentChunkWords = 0;
@@ -325,20 +360,46 @@ const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: string): Sch
         return null;
     }
 
+    // Check for breaks
+    const breaks = (curriculum.breaks || []).map(b => ({
+        start: new Date(b.start_date),
+        end: new Date(b.end_date)
+    }));
+
+    // If target date is within a break, return null (no class)
+    for (const brk of breaks) {
+        const s = new Date(brk.start); s.setHours(0, 0, 0, 0);
+        const e = new Date(brk.end); e.setHours(0, 0, 0, 0);
+        if (targetDate >= s && targetDate <= e) return null;
+    }
+
     let studyDayCount = 0;
     const checkDate = new Date(startDate);
     checkDate.setHours(0, 0, 0, 0);
 
     // 시작일부터 targetDate까지 학습일 수 계산
     while (checkDate <= targetDate) {
-        const checkDayOfWeek = checkDate.getDay();
-        let checkDayCode = '';
-        Object.entries(DAY_MAP).forEach(([code, num]) => {
-            if (num === checkDayOfWeek) checkDayCode = code;
-        });
+        // Check if checkDate is in break
+        let isBreak = false;
+        for (const brk of breaks) {
+            const s = new Date(brk.start); s.setHours(0, 0, 0, 0);
+            const e = new Date(brk.end); e.setHours(0, 0, 0, 0);
+            if (checkDate >= s && checkDate <= e) {
+                isBreak = true;
+                break;
+            }
+        }
 
-        if (checkDayCode && normalizedStudyDays.includes(checkDayCode.toLowerCase())) {
-            studyDayCount++;
+        if (!isBreak) {
+            const checkDayOfWeek = checkDate.getDay();
+            let checkDayCode = '';
+            Object.entries(DAY_MAP).forEach(([code, num]) => {
+                if (num === checkDayOfWeek) checkDayCode = code;
+            });
+
+            if (checkDayCode && normalizedStudyDays.includes(checkDayCode.toLowerCase())) {
+                studyDayCount++;
+            }
         }
         checkDate.setDate(checkDate.getDate() + 1);
     }
@@ -387,30 +448,189 @@ export default function StudentSchedulePage() {
         return d;
     });
 
+    // Modals State
+    const [activeModal, setActiveModal] = useState<'settings' | 'progress' | 'schedule' | 'delete' | null>(null);
+    const [selectedCurriculum, setSelectedCurriculum] = useState<StudentCurriculum | null>(null);
+
+    // Settings Form State
+    const [settingsForm, setSettingsForm] = useState({
+        passing_score: 80,
+        time_limit_seconds: 20,
+        daily_amount: 20,
+        daily_amount_type: 'count',
+        test_type: 'multiple_choice'
+    });
+
+    // Progress Form State
+    const [progressForm, setProgressForm] = useState({
+        current_item_id: '',
+        current_progress: 1
+    });
+
+    // Schedule Form State
+    const [scheduleForm, setScheduleForm] = useState({
+        study_days: [] as string[],
+        breaks: [] as { start_date: string; end_date: string; reason?: string }[],
+        newBreak: [null, null] as [Date | null, Date | null]
+    });
+
+    const fetchStudentData = async () => {
+        if (!params.student_id) return;
+        try {
+            const response = await fetch(`/api/student-curriculums/student/${params.student_id}`);
+            if (!response.ok) throw new Error('Failed to fetch data');
+
+            const data = await response.json();
+            setStudent(data.student);
+            setCurriculums(data.curriculums || []);
+        } catch (error) {
+            console.error(error);
+            notifications.show({
+                title: '오류',
+                message: '데이터를 불러오는데 실패했습니다.',
+                color: 'red'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchStudentData = async () => {
-            if (!params.student_id) return;
-            try {
-                const response = await fetch(`/api/student-curriculums/student/${params.student_id}`);
-                if (!response.ok) throw new Error('Failed to fetch data');
-
-                const data = await response.json();
-                setStudent(data.student);
-                setCurriculums(data.curriculums || []);
-            } catch (error) {
-                console.error(error);
-                notifications.show({
-                    title: '오류',
-                    message: '데이터를 불러오는데 실패했습니다.',
-                    color: 'red'
-                });
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchStudentData();
     }, [params.student_id]);
+
+    // Handlers
+    const openSettingsModal = (curr: StudentCurriculum) => {
+        setSelectedCurriculum(curr);
+        const item = curr.curriculum_items[0];
+        const override = curr.setting_overrides;
+
+        const type = (override?.daily_amount_type as any)
+            ?? item?.daily_amount_type
+            ?? 'count';
+
+        let amount = override?.daily_amount;
+        if (!amount) {
+            if (type === 'section') {
+                amount = item?.daily_amount ?? 1;
+            } else {
+                amount = item?.daily_word_count ?? item?.daily_amount ?? 20;
+            }
+        } else {
+            // Safety check for legacy data
+            if (type === 'section' && amount > 5) {
+                amount = 1;
+            }
+        }
+
+        setSettingsForm({
+            passing_score: override?.passing_score ?? item?.passing_score ?? 80,
+            time_limit_seconds: override?.time_limit_seconds ?? item?.time_limit_seconds ?? 20,
+            daily_amount: amount,
+            daily_amount_type: type,
+            test_type: override?.test_type ?? item?.test_type ?? 'multiple_choice'
+        });
+        setActiveModal('settings');
+    };
+
+    const openProgressModal = (curr: StudentCurriculum) => {
+        setSelectedCurriculum(curr);
+        setProgressForm({
+            current_item_id: curr.current_item_id || curr.curriculum_items[0]?.item_id || '',
+            current_progress: curr.current_progress || 1
+        });
+        setActiveModal('progress');
+    };
+
+    const openScheduleModal = (curr: StudentCurriculum) => {
+        setSelectedCurriculum(curr);
+        let days: string[] = [];
+        if (typeof curr.study_days === 'string') {
+            try { days = JSON.parse(curr.study_days.replace(/'/g, '"')); } catch (e) { }
+        } else if (Array.isArray(curr.study_days)) {
+            days = curr.study_days;
+        }
+        setScheduleForm({
+            study_days: days,
+            breaks: curr.breaks || [],
+            newBreak: [null, null]
+        });
+        setActiveModal('schedule');
+    };
+
+    const openDeleteModal = (curr: StudentCurriculum) => {
+        setSelectedCurriculum(curr);
+        setActiveModal('delete');
+    };
+
+    const handleSaveSettings = async () => {
+        if (!selectedCurriculum) return;
+        try {
+            const res = await fetch(`/api/student-curriculums/${selectedCurriculum.id}/settings`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setting_overrides: settingsForm })
+            });
+            if (!res.ok) throw new Error('Failed to update settings');
+            notifications.show({ title: '성공', message: '학습 설정이 저장되었습니다.', color: 'green' });
+            setActiveModal(null);
+            fetchStudentData();
+        } catch (error) {
+            notifications.show({ title: '오류', message: '설정 저장 실패', color: 'red' });
+        }
+    };
+
+    const handleSaveProgress = async () => {
+        if (!selectedCurriculum) return;
+        try {
+            const res = await fetch(`/api/student-curriculums/${selectedCurriculum.id}/progress`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(progressForm)
+            });
+            if (!res.ok) throw new Error('Failed to update progress');
+            notifications.show({ title: '성공', message: '수업 진도가 변경되었습니다.', color: 'green' });
+            setActiveModal(null);
+            fetchStudentData();
+        } catch (error) {
+            notifications.show({ title: '오류', message: '진도 변경 실패', color: 'red' });
+        }
+    };
+
+    const handleSaveSchedule = async () => {
+        if (!selectedCurriculum) return;
+        try {
+            const res = await fetch(`/api/student-curriculums/${selectedCurriculum.id}/schedule`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    study_days: scheduleForm.study_days,
+                    breaks: scheduleForm.breaks
+                })
+            });
+            if (!res.ok) throw new Error('Failed to update schedule');
+            notifications.show({ title: '성공', message: '학습 일정이 변경되었습니다.', color: 'green' });
+            setActiveModal(null);
+            fetchStudentData();
+        } catch (error) {
+            notifications.show({ title: '오류', message: '일정 변경 실패', color: 'red' });
+        }
+    };
+
+    const handleDeleteCurriculum = async () => {
+        if (!selectedCurriculum) return;
+        try {
+            const res = await fetch(`/api/student-curriculums/${selectedCurriculum.id}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('Failed to delete');
+            notifications.show({ title: '성공', message: '커리큘럼이 삭제되었습니다.', color: 'green' });
+            setActiveModal(null);
+            fetchStudentData();
+        } catch (error) {
+            notifications.show({ title: '오류', message: '삭제 실패', color: 'red' });
+        }
+    };
 
     if (loading) {
         return (
@@ -539,6 +759,7 @@ export default function StudentSchedulePage() {
                                                     fullWidth
                                                     leftSection={<IconSettings size={14} />}
                                                     style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                    onClick={() => openSettingsModal(curr)}
                                                 >
                                                     학습 설정
                                                 </Button>
@@ -549,6 +770,7 @@ export default function StudentSchedulePage() {
                                                     fullWidth
                                                     leftSection={<IconRefresh size={14} />}
                                                     style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                    onClick={() => openProgressModal(curr)}
                                                 >
                                                     수업 진도 변경
                                                 </Button>
@@ -559,8 +781,9 @@ export default function StudentSchedulePage() {
                                                     fullWidth
                                                     leftSection={<IconCalendar size={14} />}
                                                     style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                    onClick={() => openScheduleModal(curr)}
                                                 >
-                                                    학습 요일 변경
+                                                    학습 일정 변경
                                                 </Button>
                                                 <Button
                                                     size="xs"
@@ -569,6 +792,7 @@ export default function StudentSchedulePage() {
                                                     fullWidth
                                                     leftSection={<IconTrash size={14} />}
                                                     style={{ border: '2px solid black', borderRadius: '0px' }}
+                                                    onClick={() => openDeleteModal(curr)}
                                                 >
                                                     커리큘럼 삭제
                                                 </Button>
@@ -658,6 +882,180 @@ export default function StudentSchedulePage() {
                     );
                 })}
             </Stack>
+
+            {/* 학습 설정 모달 */}
+            <Modal opened={activeModal === 'settings'} onClose={() => setActiveModal(null)} title="학습 설정 변경" centered>
+                <Stack>
+                    <Select
+                        label="시험 방식"
+                        data={[
+                            { value: 'multiple_choice', label: '객관식' },
+                            { value: 'subjective', label: '주관식' },
+                            { value: 'scramble', label: '단어 스크램블' } // 실제 지원 타입 확인 필요
+                        ]}
+                        value={settingsForm.test_type}
+                        onChange={(val) => setSettingsForm({ ...settingsForm, test_type: val || 'multiple_choice' })}
+                    />
+                    <NumberInput
+                        label="합격 기준 점수"
+                        value={settingsForm.passing_score}
+                        onChange={(val) => setSettingsForm({ ...settingsForm, passing_score: Number(val) })}
+                        min={0} max={100}
+                    />
+                    <NumberInput
+                        label="시험 제한 시간 (초)"
+                        value={settingsForm.time_limit_seconds}
+                        onChange={(val) => setSettingsForm({ ...settingsForm, time_limit_seconds: Number(val) })}
+                        min={10}
+                    />
+                    <Select
+                        label="일일 학습량 기준"
+                        data={[
+                            { value: 'count', label: '단어 수 기준' },
+                            { value: 'section', label: '소단원 기준' }
+                        ]}
+                        value={settingsForm.daily_amount_type}
+                        onChange={(val: any) => {
+                            const newType = val || 'count';
+                            // Reset amount to default when type changes
+                            const newAmount = newType === 'section' ? 1 : 20;
+                            setSettingsForm({
+                                ...settingsForm,
+                                daily_amount_type: newType,
+                                daily_amount: newAmount
+                            });
+                        }}
+                    />
+                    <NumberInput
+                        label="일일 학습량 (단어/문제 수)"
+                        description={settingsForm.daily_amount_type === 'count' ? '하루에 학습할 단어 개수' : '하루에 학습할 소단원 개수'}
+                        value={settingsForm.daily_amount}
+                        onChange={(val) => setSettingsForm({ ...settingsForm, daily_amount: Number(val) })}
+                        min={1}
+                    />
+                    <Button onClick={handleSaveSettings} color="yellow" variant="filled" fullWidth mt="md">
+                        저장하기
+                    </Button>
+                </Stack>
+            </Modal>
+
+            {/* 진도 변경 모달 */}
+            <Modal opened={activeModal === 'progress'} onClose={() => setActiveModal(null)} title="수업 진도 변경" centered>
+                <Stack>
+                    <Select
+                        label="현재 단어장/학습항목"
+                        data={selectedCurriculum?.curriculum_items.map(item => ({
+                            value: item.item_id,
+                            label: `${item.sequence}. ${item.item_details?.title || '제목 없음'}`
+                        })) || []}
+                        value={progressForm.current_item_id}
+                        onChange={(val) => setProgressForm({ ...progressForm, current_item_id: val || '' })}
+                    />
+                    <NumberInput
+                        label="현재 진행 단어/문제 번호"
+                        description="예: 21번 단어부터 시작하려면 21 입력"
+                        value={progressForm.current_progress}
+                        onChange={(val) => setProgressForm({ ...progressForm, current_progress: Number(val) })}
+                        min={1}
+                    />
+                    <Button onClick={handleSaveProgress} color="green" variant="filled" fullWidth mt="md">
+                        변경 저장
+                    </Button>
+                </Stack>
+            </Modal>
+
+            {/* 일정 변경 모달 */}
+            <Modal opened={activeModal === 'schedule'} onClose={() => setActiveModal(null)} title="학습 일정 변경" centered size="lg">
+                <Stack>
+                    <Box>
+                        <Text fw={700} mb="xs">학습 요일 선택</Text>
+                        <Group>
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                <Checkbox
+                                    key={day}
+                                    label={day}
+                                    checked={scheduleForm.study_days.includes(day)}
+                                    onChange={(event) => {
+                                        const checked = event.currentTarget.checked;
+                                        setScheduleForm(prev => ({
+                                            ...prev,
+                                            study_days: checked
+                                                ? [...prev.study_days, day]
+                                                : prev.study_days.filter(d => d !== day)
+                                        }));
+                                    }}
+                                />
+                            ))}
+                        </Group>
+                    </Box>
+
+                    <Box>
+                        <Text fw={700} mb="xs">공강/방학 기간 설정 (기간 내 학습 일정 뒤로 밀림)</Text>
+                        <Stack gap="xs">
+                            {scheduleForm.breaks.map((brk, idx) => (
+                                <Group key={idx} justify="space-between" style={{ border: '1px solid #eee', padding: '8px', borderRadius: '4px' }}>
+                                    <Text size="sm">{brk.start_date} ~ {brk.end_date} ({brk.reason || 'Schedules pushed'})</Text>
+                                    <ActionIcon color="red" variant="subtle" onClick={() => {
+                                        setScheduleForm(prev => ({
+                                            ...prev,
+                                            breaks: prev.breaks.filter((_, i) => i !== idx)
+                                        }));
+                                    }}>
+                                        <IconTrash size={16} />
+                                    </ActionIcon>
+                                </Group>
+                            ))}
+                        </Stack>
+
+                        <Group align="flex-end" mt="sm">
+                            <DatePickerInput
+                                type="range"
+                                label="새로운 공강 기간 추가"
+                                placeholder="날짜 선택"
+                                value={scheduleForm.newBreak}
+                                onChange={(val) => setScheduleForm(prev => ({ ...prev, newBreak: val }))}
+                                style={{ flex: 1 }}
+                            />
+                            <Button variant="outline" onClick={() => {
+                                const [start, end] = scheduleForm.newBreak;
+                                if (start && end) {
+                                    const formatDate = (d: Date) => {
+                                        const year = d.getFullYear();
+                                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                                        const day = String(d.getDate()).padStart(2, '0');
+                                        return `${year}-${month}-${day}`;
+                                    };
+                                    setScheduleForm(prev => ({
+                                        ...prev,
+                                        breaks: [...prev.breaks, {
+                                            start_date: formatDate(start),
+                                            end_date: formatDate(end),
+                                            reason: 'Holiday'
+                                        }],
+                                        newBreak: [null, null]
+                                    }));
+                                }
+                            }}>추가</Button>
+                        </Group>
+                    </Box>
+
+                    <Button onClick={handleSaveSchedule} color="blue" variant="filled" fullWidth mt="md">
+                        일정 변경 저장
+                    </Button>
+                </Stack>
+            </Modal>
+
+            {/* 삭제 확인 모달 */}
+            <Modal opened={activeModal === 'delete'} onClose={() => setActiveModal(null)} title="커리큘럼 삭제" centered>
+                <Text size="sm" mb="lg">
+                    정말로 이 학생의 커리큘럼을 삭제하시겠습니까? <br />
+                    이 작업은 되돌릴 수 없으며 모든 학습 기록이 삭제될 수 있습니다.
+                </Text>
+                <Group justify="flex-end">
+                    <Button variant="default" onClick={() => setActiveModal(null)}>취소</Button>
+                    <Button color="red" onClick={handleDeleteCurriculum}>삭제하기</Button>
+                </Group>
+            </Modal>
         </Container>
     );
 }

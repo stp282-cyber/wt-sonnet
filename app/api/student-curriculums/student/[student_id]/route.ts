@@ -54,6 +54,8 @@ export async function GET(
                 current_progress,
                 created_at,
                 updated_at,
+                setting_overrides,
+                breaks,
                 curriculums:curriculum_id (
                     id,
                     name,
