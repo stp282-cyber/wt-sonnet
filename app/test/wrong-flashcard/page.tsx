@@ -129,44 +129,31 @@ export default function WrongFlashcardPage() {
         const initTest = async () => {
             const isResume = searchParams.get('resume') === 'true';
 
-            if (isResume) {
-                try {
-                    const studentInfoStr = localStorage.getItem('studentInfo');
-                    if (studentInfoStr) {
-                        const studentInfo = JSON.parse(studentInfoStr);
-                        const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.session && data.session.session_data.type === 'wrong_flashcard') {
-                                const sData = data.session.session_data;
-                                setWords(sData.words);
-                                setLoading(false);
-                                notifications.show({ title: 'Resumed', message: 'Wrong Flashcards resumed.', color: 'blue' });
-                                return;
+            try {
+                const studentInfoStr = localStorage.getItem('user');
+                if (studentInfoStr) {
+                    const studentInfo = JSON.parse(studentInfoStr);
+                    const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Support both legacy and new structure
+                        if (data.session) {
+                            const sData = data.session.session_data;
+                            // If step is WRONG_FLASHCARD, load wrongWords
+                            if (sData.step === 'WRONG_FLASHCARD') {
+                                setWords(sData.wrongWords || []);
                             }
+                            // If resuming from Review Wrong Flashcard? (If we add that step later)
+                            // For now assuming only Basic -> Wrong Flashcard
                         }
                     }
-                } catch (e) {
-                    console.error("Resume failed", e);
                 }
+            } catch (e) {
+                console.error("Session load failed", e);
             }
-
-            // localStorage에서 오답 단어 로드
-            const savedWrongWords = localStorage.getItem('wrongWords');
-            if (savedWrongWords) {
-                setWords(JSON.parse(savedWrongWords));
-                setLoading(false);
-            } else {
-                if (!isResume) {
-                    notifications.show({
-                        title: '알림',
-                        message: '복습할 오답 단어가 없습니다.',
-                        color: 'blue'
-                    });
-                    // router.push('/student/learning'); 
-                }
-                setLoading(false);
-            }
+            // Fallback to localStorage logic if session fails or empty?
+            // Existing logic handles localStorage fallbacks below
+            setLoading(false);
         };
         initTest();
     }, [router, searchParams]);
@@ -182,23 +169,44 @@ export default function WrongFlashcardPage() {
         }
     };
 
-    const handleStartRetryTest = () => {
-        const nextAction = searchParams.get('nextAction');
-        // If reusing session, we might want to propagate resume=true? No, Retry starts a new interaction.
-        // But if we want Retry to also use session, we should support it.
-        // Actually, Retry page loads words from 'wrongWords' in localStorage mainly.
-        // If we resumed from server, we populated local state 'words'.
-        // We should PROBABLY update localStorage 'wrongWords' to align with UI.
+    const handleStartRetryTest = async () => {
+        // Transition to WRONG_RETRY
+        // We need to update session step to BASIC_WRONG_RETRY (or REVIEW_WRONG_RETRY)
+        // But since we are here, it's likely BASIC_WRONG_RETRY.
+        // Wait, if we use this page for "Review Wrong" as well?
+        // Currently, Review Test -> Wrong Retry (Directly).
+        // If we want to add Review Flashcard Review, we can.
 
-        if (words.length > 0) {
-            localStorage.setItem('wrongWords', JSON.stringify(words));
+        // Let's assume this is mostly for Basic Test right now.
+        const mode = searchParams.get('mode') || 'basic';
+        const nextStep = mode === 'basic' ? 'BASIC_WRONG_RETRY' : 'REVIEW_WRONG_RETRY'; // If we use it for review later
+
+        const studentInfoStr = localStorage.getItem('user');
+        if (studentInfoStr) {
+            const studentInfo = JSON.parse(studentInfoStr);
+            // Update Session Step
+            // We need to fetch current session to keep data valid?
+            // Since we are moving forward, we can just update 'step'.
+
+            // First, fetch existing to be safe
+            const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+            const d = await r.json();
+            const sData = d.session?.session_data || {};
+
+            await fetch('/api/test/session', {
+                method: 'POST',
+                body: JSON.stringify({
+                    studentId: studentInfo.id,
+                    sessionData: {
+                        ...sData,
+                        step: nextStep
+                    }
+                })
+            });
         }
 
-        if (nextAction) {
-            router.push(`/test/wrong-retry?nextAction=${nextAction}`);
-        } else {
-            router.push('/test/wrong-retry');
-        }
+        const scheduledDate = searchParams.get('scheduledDate');
+        router.push(`/test/wrong-retry?mode=${mode}&scheduledDate=${scheduledDate}`);
     };
 
     if (loading) {

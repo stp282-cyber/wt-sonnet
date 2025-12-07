@@ -97,7 +97,10 @@ export default function TypingTestPage() {
                     const data = await res.json();
 
                     const allWords: Word[] = data.wordbook.words || [];
-                    const targetWords = allWords.slice(start - 1, end);
+                    let targetWords = allWords.slice(start - 1, end);
+
+                    // Shuffle the words
+                    targetWords = targetWords.sort(() => Math.random() - 0.5);
 
                     if (targetWords.length === 0) {
                         notifications.show({ title: '알림', message: '해당 범위에 단어가 없습니다.', color: 'orange' });
@@ -131,7 +134,8 @@ export default function TypingTestPage() {
                 results: currentResults,
                 studentInfo: studentInfo,
                 curriculumId: searchParams.get('curriculumId'),
-                curriculumItemId: searchParams.get('curriculumItemId')
+                curriculumItemId: searchParams.get('curriculumItemId'),
+                scheduledDate: searchParams.get('scheduledDate') // Persist Date
             };
 
             await fetch('/api/test/session', {
@@ -223,61 +227,93 @@ export default function TypingTestPage() {
     };
 
     const finishTest = async (finalResults: boolean[]) => {
-        const studentInfoStr = localStorage.getItem('studentInfo');
+        const studentInfoStr = localStorage.getItem('user'); // Use 'user' key consistency
+        if (!studentInfoStr) return;
+        const studentInfo = JSON.parse(studentInfoStr);
+
         const finalCorrectCount = finalResults.filter(r => r).length;
         const finalWrongCount = finalResults.length - finalCorrectCount;
-        const score = Math.round((finalCorrectCount / words.length) * 100);
-        const passed = score >= 80;
+        const savedScore = Math.round((finalCorrectCount / words.length) * 100);
         const wrongWords = words.filter((_, index) => !finalResults[index]);
 
+        // Params
+        const itemId = searchParams.get('itemId');
+        const start = searchParams.get('start');
+        const end = searchParams.get('end');
+        const curriculumId = searchParams.get('curriculumId');
+        const curriculumItemId = searchParams.get('curriculumItemId');
+        const scheduledDate = searchParams.get('scheduledDate');
+
+        // Local Storage for Result Page
         const testResult = {
             totalQuestions: words.length,
             correctCount: finalCorrectCount,
             wrongCount: finalWrongCount,
-            score,
-            passed,
-            wrongWords,
-            timestamp: new Date().toISOString(),
+            score: savedScore,
+            passed: savedScore === 100,
+            wrongWords: wrongWords,
+            timestamp: new Date().toISOString()
         };
-
         localStorage.setItem('testResult', JSON.stringify(testResult));
 
-        // Save Study Log
-        const curriculumId = searchParams.get('curriculumId');
-        const curriculumItemId = searchParams.get('curriculumItemId');
+        // Logic:
+        // 1. If Wrongs > 0 -> Go to Result Page (Summary) -> Then to WRONG_FLASHCARD
+        // 2. If Wrongs == 0 -> Go to REVIEW_TEST (Review Previous Days)
 
-        if (studentInfoStr && curriculumId && curriculumItemId) {
-            const studentInfo = JSON.parse(studentInfoStr);
-            try {
-                await fetch('/api/study-logs', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        student_id: studentInfo.id,
-                        curriculum_id: curriculumId,
-                        curriculum_item_id: curriculumItemId,
-                        scheduled_date: new Date().toISOString().split('T')[0], // Today's date
-                        status: 'completed',
-                        test_phase: 'typing_test',
-                        score: score,
-                        wrong_answers: wrongWords,
-                        test_data: testResult
-                    })
-                });
-            } catch (e) {
-                console.error("Failed to save study log", e);
-            }
+        let nextStep = '';
+        let route = '';
+
+        if (finalWrongCount > 0) {
+            nextStep = 'WRONG_FLASHCARD';
+            // Redirect to Intermediate Result Page first!
+            route = `/test/result?itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&curriculumItemId=${curriculumItemId}&mode=basic&nextStep=WRONG_FLASHCARD&scheduledDate=${scheduledDate}`;
+        } else {
+            nextStep = 'REVIEW_TEST';
+            route = `/test/multiple-choice?itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&curriculumItemId=${curriculumItemId}&scheduledDate=${scheduledDate}`;
         }
 
-        // Clear session if complete
-        if (studentInfoStr) {
-            const studentInfo = JSON.parse(studentInfoStr);
-            await fetch(`/api/test/session?studentId=${studentInfo.id}`, {
-                method: 'DELETE'
+        const sessionData = {
+            type: 'typing_test_finished',
+            step: nextStep,
+            basicResults: {
+                score: savedScore,
+                wrongWords: wrongWords,
+                total: words.length
+            },
+            wrongWords: wrongWords,
+            // Persist Params
+            itemId, start, end, curriculumId, curriculumItemId, scheduledDate
+        };
+
+        await fetch('/api/test/session', {
+            method: 'POST',
+            body: JSON.stringify({
+                studentId: studentInfo.id,
+                sessionData
+            })
+        });
+
+        // Also Save "Pending" Log if needed? 
+        try {
+            await fetch('/api/study-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studentInfo.id,
+                    curriculum_id: curriculumId,
+                    curriculum_item_id: curriculumItemId,
+                    scheduled_date: scheduledDate || new Date().toISOString().split('T')[0], // Use scheduled date
+                    status: 'in_progress',
+                    test_phase: nextStep,
+                    score: savedScore, // Intermediate score
+                    wrong_answers: wrongWords
+                })
             });
+        } catch (e) {
+            console.error("Log save failed", e);
         }
 
-        router.push('/test/result');
+        router.push(route);
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {

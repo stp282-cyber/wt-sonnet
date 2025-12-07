@@ -42,16 +42,8 @@ export default function StudentLearningPage() {
     const [activeSession, setActiveSession] = useState<any>(null);
     const [studyLogs, setStudyLogs] = useState<any[]>([]);
 
-    // 초기 날짜 설정: 토/일이면 다음주 월요일로 설정
-    const [searchStartDate, setSearchStartDate] = useState<Date>(() => {
-        // 기본값을 2025-12-06으로 고정 (요청사항 반영)
-        // const d = new Date();
-        const d = new Date('2025-12-06');
-        const day = d.getDay();
-        if (day === 0) d.setDate(d.getDate() + 1); // 일 -> 월
-        if (day === 6) d.setDate(d.getDate() + 2); // 토 -> 월
-        return d;
-    });
+    // Default date: Today
+    const [searchStartDate, setSearchStartDate] = useState<Date>(new Date());
 
     useEffect(() => {
         const fetchStudentData = async () => {
@@ -60,8 +52,8 @@ export default function StudentLearningPage() {
             const userStr = localStorage.getItem('user');
             if (!userStr) {
                 notifications.show({
-                    title: '인증 오류',
-                    message: '로그인이 필요합니다.',
+                    title: 'Authentication Error',
+                    message: 'Please login first.',
                     color: 'red',
                 });
                 router.push('/');
@@ -71,8 +63,8 @@ export default function StudentLearningPage() {
             const user = JSON.parse(userStr);
             if (user.role !== 'student') {
                 notifications.show({
-                    title: '권한 오류',
-                    message: '학생만 접근 가능합니다.',
+                    title: 'Permission Error',
+                    message: 'Student access only.',
                     color: 'red',
                 });
                 return;
@@ -104,8 +96,8 @@ export default function StudentLearningPage() {
             } catch (error) {
                 console.error(error);
                 notifications.show({
-                    title: '오류',
-                    message: '데이터를 불러오는데 실패했습니다.',
+                    title: 'Error',
+                    message: 'Failed to load data.',
                     color: 'red'
                 });
             } finally {
@@ -118,19 +110,43 @@ export default function StudentLearningPage() {
 
     const handleResume = () => {
         if (!activeSession) return;
-        const type = activeSession.session_data.type;
         const sData = activeSession.session_data;
+        // Step-based routing
+        const step = sData.step;
 
-        if (type === 'typing_test') {
-            router.push(`/test/typing?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&resume=true`);
-        } else if (type === 'wrong_retry') {
-            router.push(`/test/wrong-retry?resume=true&nextAction=${sData.nextAction || ''}`);
-        } else if (type === 'review_test') {
-            router.push(`/test/multiple-choice?resume=true&nextAction=${sData.nextAction || ''}`);
-        } else if (type === 'wrong_flashcard') {
-            router.push(`/test/wrong-flashcard?resume=true&nextAction=${sData.nextAction || ''}`);
-        } else {
-            notifications.show({ title: 'Error', message: 'Unknown session type', color: 'red' });
+        switch (step) {
+            case 'BASIC_TEST':
+            case 'typing_test': // Legacy
+                // Resume Basic Test
+                router.push(`/test/typing?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&resume=true`);
+                break;
+            case 'BASIC_WRONG_RETRY':
+                // Resume Basic Wrong
+                router.push(`/test/wrong-retry?mode=basic&resume=true`);
+                break;
+            case 'WRONG_FLASHCARD':
+                // Resume Basic Wrong Flashcard (Review)
+                router.push(`/test/wrong-flashcard?mode=basic&resume=true`);
+                break;
+            case 'REVIEW_TEST':
+                // Resume Review Test
+                router.push(`/test/multiple-choice?resume=true`);
+                break;
+            case 'REVIEW_WRONG_RETRY':
+                // Resume Review Wrong
+                router.push(`/test/wrong-retry?mode=review_wrong&resume=true`);
+                break;
+            case 'COMPLETED':
+                notifications.show({ title: 'Completed', message: 'This test is already completed.', color: 'green' });
+                // Maybe delete session?
+                break;
+            default:
+                // Fallback 
+                if (sData.type === 'typing_test') {
+                    router.push(`/test/typing?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&resume=true`);
+                } else {
+                    notifications.show({ title: 'Error', message: 'Unknown session state', color: 'red' });
+                }
         }
     };
 
@@ -304,6 +320,7 @@ export default function StudentLearningPage() {
                                         borderRadius: '0px',
                                         background: 'white',
                                         boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                                        overflowX: 'auto', // Enable horizontal scroll
                                     }}
                                 >
                                     <Box
@@ -311,6 +328,7 @@ export default function StudentLearningPage() {
                                             border: '3px solid black',
                                             borderRadius: '0px',
                                             overflow: 'hidden',
+                                            minWidth: '900px', // Ensure minimum width to prevent squishing
                                         }}
                                     >
                                         <div style={{ display: 'flex' }}>
@@ -384,16 +402,22 @@ export default function StudentLearningPage() {
                                                         const schedule = getScheduleForDate(curr, day.date);
 
                                                         // Check completion against logs
-                                                        const isLogCompleted = studyLogs.some(log =>
-                                                            log.curriculum_id === curr.curriculums.id &&
-                                                            log.curriculum_item_id === schedule?.item?.id &&
-                                                            log.scheduled_date === day.date &&
-                                                            log.status === 'completed'
-                                                        );
+                                                        const isLogCompleted = studyLogs.some(log => {
+                                                            const logDate = log.scheduled_date.split('T')[0]; // Handle ISO
+                                                            return log.curriculum_id === curr.curriculums.id &&
+                                                                log.curriculum_item_id === schedule?.item?.id &&
+                                                                logDate === day.date &&
+                                                                log.status === 'completed';
+                                                        });
 
                                                         const isToday = schedule?.status === 'today';
                                                         const isCompleted = isLogCompleted; // Override with actual log
-                                                        const isMissed = !isCompleted && new Date(day.date) < new Date(new Date().setHours(0, 0, 0, 0)) && schedule;
+                                                        // const isMissed = !isCompleted && new Date(day.date) < new Date(new Date().setHours(0, 0, 0, 0)) && schedule;
+                                                        // Safer date comparison for missed status
+                                                        const todayDate = new Date();
+                                                        todayDate.setHours(0, 0, 0, 0);
+                                                        const checkDate = new Date(day.date);
+                                                        const isMissed = !isCompleted && checkDate < todayDate && schedule;
 
                                                         // 애니메이션 딜레이: (커리큘럼 인덱스 * 5 + 날짜 인덱스) * 0.1s
                                                         const animationDelay = `${(cIdx * 5 + idx) * 0.05}s`;
@@ -404,8 +428,20 @@ export default function StudentLearningPage() {
                                                                 className="animate-fade-in-up"
                                                                 style={{
                                                                     flex: 1,
-                                                                    borderRight: idx < 4 ? '3px solid black' : 'none', // 굵은 구분선
-                                                                    background: isCompleted ? '#D3F9D8' : (isMissed ? '#FFE3E3' : '#FFFFFF'), // 완료: 초록, 미완료(과거): 빨강
+                                                                    borderRight: idx < 4 ? '3px solid black' : 'none',
+                                                                    borderBottom: 'none',
+                                                                    // Dynamic Background
+                                                                    background: isCompleted
+                                                                        ? '#D3F9D8' // Green
+                                                                        : isMissed
+                                                                            ? '#FFE3E3' // Red
+                                                                            : '#FFFFFF',
+
+                                                                    // Dynamic Border (Override for status)
+                                                                    boxShadow: isToday && !isCompleted
+                                                                        ? 'inset 0 0 0 4px #FFD93D' // Today Highlight
+                                                                        : 'none',
+
                                                                     position: 'relative',
                                                                     margin: 0,
                                                                     padding: '1rem',
@@ -414,33 +450,42 @@ export default function StudentLearningPage() {
                                                                     justifyContent: 'center',
                                                                     minHeight: '220px',
                                                                     animationDelay: animationDelay,
-                                                                    opacity: 0, // 초기 투명도 (애니메이션으로 1됨)
-                                                                    transition: 'background-color 0.2s ease'
+                                                                    opacity: 0,
+                                                                    transition: 'all 0.2s ease'
                                                                 }}
                                                                 onMouseEnter={(e) => {
                                                                     if (!isCompleted && schedule) {
-                                                                        e.currentTarget.style.backgroundColor = '#FFFBE6'; // 호버 시 연한 노랑
+                                                                        e.currentTarget.style.backgroundColor = isMissed ? '#FFC9C9' : '#FFFBE6';
                                                                     }
                                                                 }}
                                                                 onMouseLeave={(e) => {
                                                                     if (!isCompleted && schedule) {
-                                                                        e.currentTarget.style.backgroundColor = isToday ? '#FFFFFF' : '#FFFFFF';
+                                                                        e.currentTarget.style.backgroundColor = isCompleted ? '#D3F9D8' : (isMissed ? '#FFE3E3' : '#FFFFFF');
                                                                     }
                                                                 }}
                                                             >
-                                                                {/* 오늘 표시 테두리 (Overlay) */}
-                                                                {isToday && (
-                                                                    <div style={{
-                                                                        position: 'absolute',
-                                                                        top: 0, left: 0, right: 0, bottom: 0,
-                                                                        border: '4px solid #FFD93D', // 오늘 날짜 강조 테두리
-                                                                        zIndex: 10,
-                                                                        pointerEvents: 'none'
-                                                                    }} />
+                                                                {/* Status Labels (Absolute Position) */}
+                                                                {isToday && !isCompleted && (
+                                                                    <Badge
+                                                                        color="yellow"
+                                                                        variant="filled"
+                                                                        size="md"
+                                                                        radius="xs"
+                                                                        style={{
+                                                                            position: 'absolute',
+                                                                            top: 10,
+                                                                            right: 10,
+                                                                            border: '2px solid black',
+                                                                            color: 'black',
+                                                                            zIndex: 5
+                                                                        }}
+                                                                    >
+                                                                        TODAY
+                                                                    </Badge>
                                                                 )}
 
                                                                 {schedule ? (
-                                                                    <Stack gap="md" style={{ position: 'relative', zIndex: 11 }}>
+                                                                    <Stack gap="md" justify="space-between" style={{ position: 'relative', zIndex: 11, height: '100%' }}>
                                                                         <Box>
                                                                             <Badge
                                                                                 color="black"
@@ -472,31 +517,34 @@ export default function StudentLearningPage() {
                                                                             <Text size="sm" fw={800} ta="center">진도: {schedule.progressRange}</Text>
                                                                         </Paper>
 
-                                                                        {/* Status Badge */}
+                                                                        {/* Completion Status */}
                                                                         {isCompleted && (
-                                                                            <Badge color="green" variant="filled" size="lg" radius="xs" style={{ border: '2px solid black' }}>COMPLETED</Badge>
+                                                                            <Badge color="green" variant="filled" size="lg" radius="xs" style={{ border: '2px solid black' }} fullWidth>
+                                                                                학습 완료 (PASSED)
+                                                                            </Badge>
                                                                         )}
                                                                         {isMissed && (
-                                                                            <Badge color="red" variant="filled" size="lg" radius="xs" style={{ border: '2px solid black' }}>MISSED</Badge>
+                                                                            <Badge color="red" variant="filled" size="lg" radius="xs" style={{ border: '2px solid black' }} fullWidth>
+                                                                                미완료 (MISSED)
+                                                                            </Badge>
                                                                         )}
 
-                                                                        {/* 시험 보기 버튼 - Neo-brutalism & Animation */}
+                                                                        {/* Action Buttons */}
                                                                         {(!isCompleted) && (
                                                                             <button
                                                                                 onClick={() => {
                                                                                     const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
-                                                                                    // 1-based index to query string
                                                                                     if (itemId) {
-                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}`);
+                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
                                                                                     }
                                                                                 }}
                                                                                 style={{
                                                                                     width: '100%',
-                                                                                    padding: '0.6rem',
-                                                                                    backgroundColor: isMissed ? 'black' : '#FFD93D',
+                                                                                    padding: '0.8rem',
+                                                                                    backgroundColor: isMissed ? '#FF6B6B' : '#FFD93D', // Red if missed, Yellow default
                                                                                     color: isMissed ? 'white' : 'black',
                                                                                     fontWeight: 900,
-                                                                                    fontSize: '0.9rem',
+                                                                                    fontSize: '1rem',
                                                                                     border: '3px solid black',
                                                                                     boxShadow: '4px 4px 0px 0px black',
                                                                                     cursor: 'pointer',
@@ -512,16 +560,8 @@ export default function StudentLearningPage() {
                                                                                     e.currentTarget.style.transform = 'translate(0, 0)';
                                                                                     e.currentTarget.style.boxShadow = '4px 4px 0px 0px black';
                                                                                 }}
-                                                                                onMouseDown={(e) => {
-                                                                                    e.currentTarget.style.transform = 'translate(2px, 2px)';
-                                                                                    e.currentTarget.style.boxShadow = '0px 0px 0px 0px black';
-                                                                                }}
-                                                                                onMouseUp={(e) => {
-                                                                                    e.currentTarget.style.transform = 'translate(-2px, -2px)';
-                                                                                    e.currentTarget.style.boxShadow = '6px 6px 0px 0px black';
-                                                                                }}
                                                                             >
-                                                                                시험 보기
+                                                                                {isMissed ? '미완료 학습하기' : '시험 보기 (START)'}
                                                                             </button>
                                                                         )}
                                                                         {isCompleted && (
@@ -529,20 +569,17 @@ export default function StudentLearningPage() {
                                                                                 onClick={() => {
                                                                                     const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
                                                                                     if (itemId) {
-                                                                                        // Review Mode (maybe just view words for now? or same test)
-                                                                                        // For now, let's allow re-taking but distinct button
-                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}`);
+                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
                                                                                     }
                                                                                 }}
                                                                                 style={{
                                                                                     width: '100%',
                                                                                     padding: '0.6rem',
-                                                                                    backgroundColor: '#fff',
-                                                                                    color: 'black',
-                                                                                    fontWeight: 900,
+                                                                                    backgroundColor: 'transparent',
+                                                                                    color: '#495057',
+                                                                                    fontWeight: 800,
                                                                                     fontSize: '0.9rem',
-                                                                                    border: '2px solid black',
-                                                                                    boxShadow: '2px 2px 0px 0px black',
+                                                                                    border: '2px dashed #868e96',
                                                                                     cursor: 'pointer',
                                                                                     marginTop: '0.5rem',
                                                                                 }}

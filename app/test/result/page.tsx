@@ -52,13 +52,16 @@ export default function TestResultPage() {
 
     const handleReviewWrongWords = () => {
         localStorage.setItem('wrongWords', JSON.stringify(result.wrongWords));
-        // 오답 리트라이 시 nextAction 전달
+        // Pass mode and nextAction
+        const mode = searchParams.get('mode') || 'basic';
         const nextAction = searchParams.get('nextAction');
+
+        let path = `/test/wrong-flashcard?mode=${mode}`;
         if (nextAction) {
-            router.push(`/test/wrong-flashcard?nextAction=${nextAction}`);
-        } else {
-            router.push('/test/wrong-flashcard');
+            path += `&nextAction=${nextAction}`;
         }
+        path += `&scheduledDate=${searchParams.get('scheduledDate')}`;
+        router.push(path);
     };
 
     const handleNextStep = async () => {
@@ -99,7 +102,7 @@ export default function TestResultPage() {
                             autoClose: 3000
                         });
                         // Review Test 완료 후에는 home으로 가도록 nextAction=home 설정
-                        router.push('/test/multiple-choice?nextAction=home');
+                        router.push(`/test/multiple-choice?nextAction=home&scheduledDate=${searchParams.get('scheduledDate')}`);
                         return;
                     }
                 }
@@ -145,7 +148,7 @@ export default function TestResultPage() {
                                         textAlign: 'center'
                                     }}
                                 >
-                                    Test Result
+                                    시험 결과
                                 </Title>
                                 <Text size="sm" c="dimmed" fw={700}>
                                     {new Date(result.timestamp).toLocaleDateString()}
@@ -192,13 +195,13 @@ export default function TestResultPage() {
                                                 <Text size="2.5rem" fw={900} lts={-2} style={{ lineHeight: 1 }}>
                                                     {result.score}
                                                 </Text>
-                                                <Text size="md" fw={700} c="dimmed">SCORE</Text>
+                                                <Text size="md" fw={700} c="dimmed">점수</Text>
                                             </Stack>
                                         }
                                     />
                                     <Box ta="center">
                                         <Title order={3} style={{ fontSize: '1.5rem', fontWeight: 900 }}>
-                                            {result.passed ? 'Excellent!' : 'Try Again!'}
+                                            {result.passed ? '참 잘했어요!' : '조금만 더 힘내요!'}
                                         </Title>
                                     </Box>
                                 </Stack>
@@ -221,7 +224,7 @@ export default function TestResultPage() {
                                 >
                                     <Group justify="space-between" w="100%">
                                         <Box>
-                                            <Text size="xs" fw={700} tt="uppercase" c="dimmed">Correct</Text>
+                                            <Text size="xs" fw={700} tt="uppercase" c="dimmed">정답</Text>
                                             <Text size="2.5rem" fw={900} style={{ lineHeight: 1 }}>{result.correctCount}</Text>
                                         </Box>
                                         <IconCheck size={40} stroke={3} opacity={0.2} />
@@ -243,7 +246,7 @@ export default function TestResultPage() {
                                 >
                                     <Group justify="space-between" w="100%">
                                         <Box>
-                                            <Text size="xs" fw={700} tt="uppercase" c="dimmed">Wrong</Text>
+                                            <Text size="xs" fw={700} tt="uppercase" c="dimmed">오답</Text>
                                             <Text size="2.5rem" fw={900} style={{ lineHeight: 1 }}>{result.wrongCount}</Text>
                                         </Box>
                                         <IconX size={40} stroke={3} opacity={0.2} />
@@ -271,7 +274,7 @@ export default function TestResultPage() {
                                     <Group justify="space-between">
                                         <Group gap="sm">
                                             <IconX size={24} color="red" />
-                                            <Text fw={800} size="xl">Review Wrong Answers</Text>
+                                            <Text fw={800} size="xl">오답 확인하기</Text>
                                             <Badge color="red" size="lg" radius="xs" variant="filled">{result.wrongCount}</Badge>
                                         </Group>
                                         {showWrongWords ? <IconChevronUp size={24} /> : <IconChevronDown size={24} />}
@@ -295,7 +298,7 @@ export default function TestResultPage() {
                                                     <Box>
                                                         <Text fw={900} size="xl">{word.korean}</Text>
                                                         <Group gap="xs">
-                                                            <Text size="sm" c="dimmed">Correct Answer:</Text>
+                                                            <Text size="sm" c="dimmed">정답:</Text>
                                                             <Text fw={700} c="red">{word.english}</Text>
                                                         </Group>
                                                     </Box>
@@ -340,7 +343,7 @@ export default function TestResultPage() {
                                     }}
                                 >
                                     <IconRefresh size={28} stroke={3} />
-                                    START WRONG ANSWER PRACTICE
+                                    오답 연습 시작하기
                                 </button>
                             ) : (
                                 <button
@@ -370,7 +373,7 @@ export default function TestResultPage() {
                                     }}
                                 >
                                     <IconArrowRight size={28} />
-                                    DONE
+                                    완료
                                 </button>
                             )}
                         </Group>

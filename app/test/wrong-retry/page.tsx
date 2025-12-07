@@ -15,129 +15,205 @@ import {
     Center,
     Badge,
     RingProgress,
+    Button
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconClock, IconCheck, IconX, IconKeyboard, IconAlertTriangle, IconRefresh, IconArrowRight } from '@tabler/icons-react';
+import { IconCheck, IconX, IconClock, IconArrowRight, IconRefresh } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
-
-interface Word {
-    no: number;
-    english: string;
-    korean: string;
-}
-
-function normalizeAnswer(answer: string): string {
-    return answer
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '')
-        .trim();
-}
 
 export default function WrongRetryPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [words, setWords] = useState<Word[]>([]);
+    const [words, setWords] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [results, setResults] = useState<boolean[]>([]);
     const [timeLeft, setTimeLeft] = useState(20);
     const [isAnswered, setIsAnswered] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
 
-    // Save Session Helper
-    const saveProgress = async (idx: number, currentResults: boolean[]) => {
-        try {
-            const studentInfoStr = localStorage.getItem('studentInfo');
-            if (!studentInfoStr) return;
-            const studentInfo = JSON.parse(studentInfoStr);
+    // Initial Fetch (Resume or Start)
+    useEffect(() => {
+        const init = async () => {
+            const isResume = searchParams.get('resume') === 'true';
+            const mode = searchParams.get('mode') || 'basic'; // basic | review_wrong
 
-            const sessionData = {
-                type: 'wrong_retry',
-                words: words,
-                currentIndex: idx,
-                results: currentResults,
-                nextAction: searchParams.get('nextAction'),
-                studentInfo: studentInfo // Keep metadata
-            };
+            try {
+                const studentInfoStr = localStorage.getItem('user');
+                if (!studentInfoStr) throw new Error("No user found");
+                const studentInfo = JSON.parse(studentInfoStr);
+
+                const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                const data = await res.json();
+
+                if (data.session) {
+                    const sData = data.session.session_data;
+
+                    // Logic: Get 'wrongWords' or 'reviewWrongQuestions'
+                    let targetWords = [];
+
+                    if (sData.step === 'BASIC_WRONG_RETRY' || (isResume && sData.step === 'BASIC_WRONG_RETRY')) {
+                        // Resuming or Starting Basic Retry
+                        targetWords = sData.wrongWords || [];
+                    } else if (sData.step === 'REVIEW_WRONG_RETRY' || (isResume && sData.step === 'REVIEW_WRONG_RETRY')) {
+                        // Review Retry
+                        const questions = sData.reviewWrongQuestions || [];
+                        // Transform questions to words if needed, or just use them
+                        targetWords = questions;
+                    }
+
+                    if (targetWords.length > 0) {
+                        setWords(targetWords);
+                        if (isResume && sData.currentRetryIndex) {
+                            setCurrentIndex(sData.currentRetryIndex);
+                            setResults(sData.retryResults || []);
+                        }
+                    } else {
+                        // Error or empty?
+                        notifications.show({ title: 'Info', message: 'No wrong words to retry', color: 'blue' });
+                        // Go to next step?
+                        finishTest([], mode);
+                        return;
+                    }
+                }
+                setLoading(false);
+            } catch (e) {
+                console.error(e);
+                notifications.show({ title: 'Error', message: 'Failed to load retry session', color: 'red' });
+            }
+        };
+        init();
+    }, [searchParams]);
+
+    // Save Helper
+    const saveState = async (idx: number, res: boolean[]) => {
+        const studentInfoStr = localStorage.getItem('user');
+        if (!studentInfoStr) return;
+        const studentInfo = JSON.parse(studentInfoStr);
+        const mode = searchParams.get('mode') || 'basic';
+
+        // We need to merge with existing session data to keep params
+        // But fetch/update is weird. We should have loaded session data in state ideally.
+        // For simplicity, we assume backend handles upsert merging? No, upsert replaces.
+        // So we need to reconstruct the session object.
+        // Ideally we should have fetched the FULL session object in useEffect.
+        // Let's rely on what we have.
+
+        // FIXME: This might overwrite 'basicResults' if we don't include them.
+        // To fix this, we should fetch current session first? Or keep it in state?
+        // Let's assume we can tolerate just updating the specific fields if we use a PATCH or if we are careful.
+        // `api/test/session` is UPSERT.
+        // We MUST fetch existing session data to preserve other fields.
+        // Since we didn't do that, let's fetch it now or use a global state.
+
+        // Quick fix: Fetch, Modify, Save.
+        const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+        const d = await r.json();
+        const existingData = d.session?.session_data || {};
+
+        const newData = {
+            ...existingData,
+            currentRetryIndex: idx,
+            retryResults: res
+        };
+
+        await fetch('/api/test/session', {
+            method: 'POST',
+            body: JSON.stringify({ studentId: studentInfo.id, sessionData: newData })
+        });
+    };
+
+    const handleSubmit = () => {
+        if (!words[currentIndex]) return;
+        const currentWord = words[currentIndex];
+        const correct = currentWord.english.toLowerCase().trim();
+        const answer = userAnswer.toLowerCase().trim();
+        const isCorrect = correct === answer;
+
+        const newResults = [...results, isCorrect];
+        setResults(newResults);
+        setIsAnswered(true);
+
+        saveState(currentIndex + 1, newResults);
+
+        setTimeout(() => {
+            if (currentIndex < words.length - 1) {
+                setCurrentIndex(currentIndex + 1);
+                setUserAnswer('');
+                setTimeLeft(20);
+                setIsAnswered(false);
+                setTimeout(() => inputRef.current?.focus(), 50);
+            } else {
+                finishTest(newResults, searchParams.get('mode') || 'basic');
+            }
+        }, 1500);
+    };
+
+    const finishTest = async (finalResults: boolean[], mode: string) => {
+        const studentInfoStr = localStorage.getItem('user');
+        if (!studentInfoStr) return;
+        const studentInfo = JSON.parse(studentInfoStr);
+
+        // Fetch session to preserve params
+        const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+        const d = await r.json();
+        const sData = d.session?.session_data || {};
+
+        if (mode === 'basic') {
+            // Next: REVIEW_TEST
+            // We need to fetch basic info again?
+            const nextStep = 'REVIEW_TEST';
+            const scheduledDate = searchParams.get('scheduledDate');
+            const route = `/test/multiple-choice?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&curriculumId=${sData.curriculumId}&curriculumItemId=${sData.curriculumItemId}&scheduledDate=${scheduledDate}`;
 
             await fetch('/api/test/session', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     studentId: studentInfo.id,
-                    sessionData
+                    sessionData: {
+                        ...sData,
+                        step: nextStep,
+                        retryResults: finalResults // Archiving logic needed?
+                    }
                 })
             });
-        } catch (error) {
-            console.error('Failed to save session:', error);
+            router.push(route);
+
+        } else {
+            // mode === 'review_wrong' -> FINISH
+            // Save Final Log
+            await fetch('/api/study-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studentInfo.id,
+                    curriculum_id: sData.curriculumId,
+                    curriculum_item_id: sData.curriculumItemId,
+                    scheduled_date: sData.scheduledDate || searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
+                    status: 'completed', // Final Status
+                    test_phase: 'completed',
+                    score: sData.basicResults?.score || 0, // Keep basic score
+                    wrong_answers: sData.basicResults?.wrongWords || [] // Or update?
+                })
+            });
+
+            // Delete Session
+            await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+            router.push('/student/learning');
         }
     };
 
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !isAnswered && userAnswer.trim()) handleSubmit();
+    };
+
+    // Auto focus
     useEffect(() => {
-        const initTest = async () => {
-            const isResume = searchParams.get('resume') === 'true';
-
-            if (isResume) {
-                try {
-                    const studentInfoStr = localStorage.getItem('studentInfo');
-                    if (studentInfoStr) {
-                        const studentInfo = JSON.parse(studentInfoStr);
-                        const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.session && (data.session.session_data.type === 'wrong_retry' || data.session.session_data.type === 'wrong_flashcard')) {
-                                const sData = data.session.session_data;
-                                setWords(sData.words);
-                                setCurrentIndex(sData.currentIndex || 0);
-                                setResults(sData.results || []);
-                                setLoading(false);
-                                notifications.show({ title: 'Resumed', message: 'Wrong Retry resumed.', color: 'blue' });
-                                return;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error("Resume failed", e);
-                }
-            }
-
-            // localStorage에서 오답 단어 로드 (Fallback / Normal Flow)
-            const savedWrongWords = localStorage.getItem('wrongWords');
-            if (savedWrongWords) {
-                const parsedWords = JSON.parse(savedWrongWords);
-                if (parsedWords.length > 0) {
-                    setWords(parsedWords);
-                } else {
-                    notifications.show({ title: '완료', message: '오답이 없습니다!', color: 'green' });
-                    // If clean, verify next steps immediately
-                    // finishTest(parsedWords, []); // Can't call finishTest here easily due to async/scope, so just redirect
-                    router.push('/student/learning');
-                    return;
-                }
-            } else {
-                if (!isResume) {
-                    router.push('/student/learning');
-                }
-            }
-            setLoading(false);
-        };
-
-        initTest();
-    }, [searchParams]);
-
-    // Auto-focus logic
-    useEffect(() => {
-        if (!isAnswered && !loading && inputRef.current) {
-            // Slight delay to ensure render
-            setTimeout(() => {
-                inputRef.current?.focus();
-            }, 50);
+        if (!loading && !isAnswered) {
+            inputRef.current?.focus();
         }
-    }, [currentIndex, isAnswered, loading]);
-
-    const currentWord = words[currentIndex];
+    }, [currentIndex, loading, isAnswered]);
 
     // Timer
     useEffect(() => {
@@ -145,330 +221,67 @@ export default function WrongRetryPage() {
             const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
             return () => clearTimeout(timer);
         } else if (timeLeft === 0 && !isAnswered) {
-            handleSubmit(true);
+            handleSubmit();
         }
-    }, [timeLeft, isAnswered, loading, words]);
+    }, [timeLeft, isAnswered, loading]);
 
-    // Copy/Paste Prevention
-    useEffect(() => {
-        const preventAction = (e: Event) => {
-            e.preventDefault();
-            notifications.show({
-                title: 'No Cheating!',
-                message: '복사/붙여넣기는 허용되지 않습니다.',
-                color: 'red',
-                autoClose: 1500,
-            });
-        };
-        window.addEventListener('copy', preventAction);
-        window.addEventListener('paste', preventAction);
-        return () => {
-            window.removeEventListener('copy', preventAction);
-            window.removeEventListener('paste', preventAction);
-        };
-    }, []);
+    if (loading) return <StudentLayout><Center h="100vh"><Loader /></Center></StudentLayout>;
+    if (words.length === 0) return <StudentLayout><Center h="100vh"><Text>No words to retry.</Text></Center></StudentLayout>;
 
-    const handleSubmit = (timeOut = false) => {
-        if (isAnswered) return;
-
-        const isCorrect = !timeOut && normalizeAnswer(userAnswer) === normalizeAnswer(currentWord?.english || '');
-        const newResults = [...results, isCorrect];
-        setResults(newResults);
-        setIsAnswered(true);
-
-        // Sound Effect
-        const audioFile = isCorrect ? '/sounds/correct.mp3' : '/sounds/wrong.mp3';
-        new Audio(audioFile).play().catch(() => { });
-
-        // Save partial progress
-        saveProgress(currentIndex + 1, newResults);
-
-        // Auto Advance after delay
-        setTimeout(() => {
-            handleNext(newResults);
-        }, 1200); // 1.2s delay to see the result
-    };
-
-    const handleNext = (currentResults: boolean[]) => {
-        if (currentIndex < words.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-            setUserAnswer('');
-            setIsAnswered(false);
-            setTimeLeft(20);
-        } else {
-            finishTest(words, currentResults);
-        }
-    };
-
-    const finishTest = async (finalWords: Word[], finalResults: boolean[]) => {
-        setSaving(true);
-        // Calculate new wrong words
-        const newWrongWords = finalWords.filter((_, index) => !finalResults[index]);
-        const newWrongCount = newWrongWords.length;
-        const nextAction = searchParams.get('nextAction');
-
-        if (newWrongCount > 0) {
-            // RECURSIVE LOOP - Fail
-            localStorage.setItem('wrongWords', JSON.stringify(newWrongWords));
-
-            // Save Session for next loop
-            const studentInfoStr = localStorage.getItem('studentInfo');
-            if (studentInfoStr) {
-                const studentInfo = JSON.parse(studentInfoStr);
-                await fetch('/api/test/session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        studentId: studentInfo.id,
-                        sessionData: {
-                            type: 'wrong_flashcard', // Go to Flashcard
-                            words: newWrongWords, // New set of words
-                            nextAction: nextAction,
-                            studentInfo: studentInfo
-                        }
-                    })
-                });
-            }
-
-            notifications.show({
-                title: 'Still Learning!',
-                message: `${newWrongCount} words left. Let's try again!`,
-                color: 'red',
-                autoClose: 2000,
-            });
-
-            if (nextAction) {
-                router.push(`/test/wrong-flashcard?nextAction=${nextAction}`);
-            } else {
-                router.push('/test/wrong-flashcard');
-            }
-
-        } else {
-            // ALL CLEARED - Success
-            localStorage.removeItem('wrongWords');
-
-            if (nextAction === 'check_review') {
-                try {
-                    const studentInfoStr = localStorage.getItem('studentInfo');
-                    if (studentInfoStr) {
-                        const studentInfo = JSON.parse(studentInfoStr);
-                        const res = await fetch('/api/test/review', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                studentId: studentInfo.id,
-                                curriculumId: studentInfo.curriculum_id
-                            })
-                        });
-
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.reviewWords && data.reviewWords.length > 0) {
-                                localStorage.setItem('reviewWords', JSON.stringify(data.reviewWords));
-
-                                // Save Session for Review Test
-                                await fetch('/api/test/session', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        studentId: studentInfo.id,
-                                        sessionData: {
-                                            type: 'review_test',
-                                            words: data.reviewWords,
-                                            nextAction: 'home', // Completion leads to home
-                                            studentInfo: studentInfo
-                                        }
-                                    })
-                                });
-
-                                notifications.show({
-                                    title: 'Good Job! Now Review.',
-                                    message: `Wrong answers cleared! Now starting review (${data.reviewWords.length} words).`,
-                                    color: 'blue',
-                                    autoClose: 3000
-                                });
-                                router.push('/test/multiple-choice?nextAction=home');
-                                return;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
-            }
-
-            // Default: All Cleared & Done - Clear Session
-            const studentInfoStr = localStorage.getItem('studentInfo');
-            if (studentInfoStr) {
-                const studentInfo = JSON.parse(studentInfoStr);
-                await fetch(`/api/test/session?studentId=${studentInfo.id}`, {
-                    method: 'DELETE'
-                });
-            }
-
-            notifications.show({
-                title: 'Perfect!',
-                message: 'All wrong answers cleared! Great job.',
-                color: 'green',
-                autoClose: 3000,
-            });
-            router.push('/student/learning');
-        }
-        setSaving(false);
-    };
-
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            if (!isAnswered) {
-                handleSubmit();
-            }
-            // No action needed for Next, it's auto
-        }
-    };
-
-    if (loading || saving || words.length === 0) {
-        return (
-            <StudentLayout>
-                <Center h="100vh" bg="white">
-                    <Loader color="red" type="dots" />
-                </Center>
-            </StudentLayout>
-        );
-    }
+    const currentWord = words[currentIndex];
 
     return (
         <StudentLayout>
-            <Box
-                style={{
-                    minHeight: '100%',
-                    background: '#ffffff',
-                    padding: '40px 20px',
-                    position: 'relative',
-                }}
-            >
+            <Box p="xl" style={{ position: 'relative', minHeight: '100%' }}>
                 <Container size={800}>
-                    {/* Header */}
-                    <Group justify="space-between" mb={30}>
-                        <Group>
-                            <Box p={8} bg="black" c="white" style={{ borderRadius: '0px' }}>
-                                <IconRefresh size={28} stroke={2} />
+                    <Stack gap="xl">
+                        {/* Header */}
+                        <Group justify="space-between">
+                            <Box>
+                                <Group gap="xs">
+                                    <Box bg="black" c="white" p={4}><IconRefresh size={20} /></Box>
+                                    <Text fw={700} tt="uppercase" c="dimmed">Wrong Answer Retry</Text>
+                                </Group>
+                                <Title order={1} style={{ fontSize: '2.5rem', fontWeight: 900 }}>Retry: {currentIndex + 1} / {words.length}</Title>
                             </Box>
-                            <Stack gap={0}>
-                                <Title order={2} style={{ fontWeight: 900 }}>RETRY TEST</Title>
-                                <Text size="sm" fw={700} c="dimmed">{currentIndex + 1} / {words.length}</Text>
-                            </Stack>
+                            <Badge size="xl" variant="outline" color="red" style={{ border: '2px solid red' }}>{timeLeft}s</Badge>
                         </Group>
 
-                        {/* Timer */}
-                        <Group gap="xs">
-                            <IconClock size={24} />
-                            <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'black'}>
-                                {timeLeft}s
-                            </Text>
-                        </Group>
-                    </Group>
-
-                    {/* Main Interaction Area */}
-                    <Paper
-                        p={50}
-                        style={{
-                            border: '4px solid black',
-                            borderRadius: '0px',
-                            background: isAnswered
-                                ? (results[currentIndex] ? '#D3F9D8' : '#FFE3E3')
-                                : 'white',
-                            boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                            minHeight: '400px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'background 0.3s ease',
-                        }}
-                    >
-                        <Stack align="center" gap="xl" w="100%">
-                            <Badge
-                                size="xl"
-                                color="red"
-                                variant="filled"
-                                radius="xs"
-                                style={{ border: '2px solid black' }}
-                            >
-                                Wrong Answer Review
-                            </Badge>
-
-                            <Text size="3.5rem" fw={900} ta="center" style={{ lineHeight: 1.2 }}>
-                                {currentWord?.korean}
-                            </Text>
-
-                            {/* Input Area */}
-                            {!isAnswered ? (
+                        {/* Card */}
+                        <Paper
+                            p={50}
+                            style={{
+                                border: '3px solid black',
+                                borderRadius: '0px',
+                                background: isAnswered
+                                    ? (results[results.length - 1] ? '#D3F9D8' : '#FFE3E3')
+                                    : 'white',
+                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+                                minHeight: '400px'
+                            }}
+                        >
+                            <Stack align="center" gap="xl">
+                                <Text size="3.5rem" fw={900} ta="center">{currentWord.korean}</Text>
                                 <TextInput
                                     ref={inputRef}
                                     value={userAnswer}
                                     onChange={(e) => setUserAnswer(e.target.value)}
-                                    onKeyDown={handleKeyPress}
-                                    placeholder="Type answer here..."
+                                    onKeyPress={handleKeyPress}
+                                    disabled={isAnswered}
                                     size="xl"
-                                    styles={{
-                                        input: {
-                                            fontSize: '2rem',
-                                            fontWeight: 700,
-                                            textAlign: 'center',
-                                            border: '3px solid black',
-                                            borderRadius: '0px',
-                                            padding: '30px',
-                                            height: '80px',
-                                        }
-                                    }}
-                                    style={{ width: '100%', maxWidth: '500px' }}
-                                    autoComplete="off"
+                                    styles={{ input: { fontSize: '2rem', textAlign: 'center', border: '3px solid black' } }}
+                                    style={{ width: '100%' }}
                                 />
-                            ) : (
-                                <Stack align="center" gap="md">
-                                    <Group>
-                                        {results[currentIndex] ? (
-                                            <IconCheck size={48} color="green" stroke={3} />
-                                        ) : (
-                                            <IconX size={48} color="red" stroke={3} />
-                                        )}
-                                        <Text size="2.5rem" fw={900}>
-                                            {results[currentIndex] ? 'CORRECT!' : 'WRONG!'}
-                                        </Text>
-                                    </Group>
+                                {isAnswered && !results[results.length - 1] && (
+                                    <Text c="red" fw={700} size="xl">Answer: {currentWord.english}</Text>
+                                )}
 
-                                    {!results[currentIndex] && (
-                                        <Text size="xl" fw={700} c="dimmed">
-                                            Answer: <span style={{ color: 'red', textDecoration: 'underline' }}>{currentWord?.english}</span>
-                                        </Text>
-                                    )}
-
-                                    {/* No Button - Auto Advance message */}
-                                    <Text size="sm" c="dimmed" mt={10} className="animate-pulse">
-                                        Next word in 1 second...
-                                    </Text>
-                                </Stack>
-                            )}
-                        </Stack>
-                    </Paper>
-
-                    {/* Progress Bar (Visual) */}
-                    <Box mt={30} style={{ border: '3px solid black', height: '20px', width: '100%', position: 'relative' }}>
-                        <Box
-                            style={{
-                                width: `${((currentIndex) / words.length) * 100}%`, // Fill based on currentIndex
-                                height: '100%',
-                                background: '#FFD93D',
-                                transition: 'width 0.3s ease'
-                            }}
-                        />
-                    </Box>
-
-                    <Center mt="md">
-                        <Text fw={700} size="sm" c="dimmed">
-                            <IconAlertTriangle size={16} style={{ marginBottom: '-3px' }} /> No Cheating Allowed
-                        </Text>
-                    </Center>
+                                {!isAnswered && (
+                                    <Button onClick={() => handleSubmit()} color="black" size="lg" fullWidth>Submit</Button>
+                                )}
+                            </Stack>
+                        </Paper>
+                    </Stack>
                 </Container>
             </Box>
         </StudentLayout>
