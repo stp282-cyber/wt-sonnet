@@ -69,7 +69,8 @@ export default function StudentSchedulePage() {
     // Progress Form State
     const [progressForm, setProgressForm] = useState({
         current_item_id: '',
-        current_progress: 1
+        current_progress: 1,
+        effective_date: new Date()
     });
 
     // Schedule Form State
@@ -142,7 +143,8 @@ export default function StudentSchedulePage() {
         setSelectedCurriculum(curr);
         setProgressForm({
             current_item_id: curr.current_item_id || curr.curriculum_items[0]?.id || '',
-            current_progress: curr.current_progress || 1
+            current_progress: curr.current_progress || 1,
+            effective_date: new Date() // Open with "Today" as default
         });
         setActiveModal('progress');
     };
@@ -188,11 +190,11 @@ export default function StudentSchedulePage() {
     const handleSaveProgress = async () => {
         if (!selectedCurriculum) return;
 
-        // 변경된 진도에 맞춰 시작일 재계산
-        // "오늘"을 기준으로 목표 진도가 되도록 StartDate를 역산합니다.
+        // 변경된 진도(및 시작 기준일)에 맞춰 StartDate 재계산
         const newStartDate = calculateStartDateForProgress(
             selectedCurriculum,
-            progressForm.current_progress
+            progressForm.current_progress,
+            progressForm.effective_date // 사용자가 선택한 "학습 재개 시작일"
         );
 
         try {
@@ -200,7 +202,8 @@ export default function StudentSchedulePage() {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...progressForm,
+                    current_item_id: progressForm.current_item_id,
+                    current_progress: progressForm.current_progress,
                     start_date: newStartDate
                 })
             });
@@ -558,6 +561,18 @@ export default function StudentSchedulePage() {
             {/* 진도 변경 모달 */}
             <Modal opened={activeModal === 'progress'} onClose={() => setActiveModal(null)} title="수업 진도 변경" centered>
                 <Stack>
+                    <Text size="sm" c="dimmed" mb="xs">
+                        특정 날짜부터 학습을 재개하거나, 현재 진도를 수정할 수 있습니다. <br />
+                        지정한 날짜에 해당 진도가 시작되도록 전체 일정이 재조정됩니다.
+                    </Text>
+                    <DateInput
+                        label="학습 재개 시작일"
+                        description="이 날짜부터 설정한 진도로 학습이 시작됩니다."
+                        value={progressForm.effective_date}
+                        onChange={(val) => setProgressForm({ ...progressForm, effective_date: val || new Date() })}
+                        valueFormat="YYYY-MM-DD"
+                        minDate={new Date(2000, 0, 1)}
+                    />
                     <Select
                         label="현재 단어장/학습항목"
                         data={selectedCurriculum?.curriculum_items.map(item => ({
@@ -568,14 +583,14 @@ export default function StudentSchedulePage() {
                         onChange={(val) => setProgressForm({ ...progressForm, current_item_id: val || '' })}
                     />
                     <NumberInput
-                        label="현재 진행 단어/문제 번호"
+                        label="시작 단어/문제 번호"
                         description="예: 21번 단어부터 시작하려면 21 입력"
                         value={progressForm.current_progress}
                         onChange={(val) => setProgressForm({ ...progressForm, current_progress: Number(val) })}
                         min={1}
                     />
                     <Button onClick={handleSaveProgress} color="green" variant="filled" fullWidth mt="md">
-                        변경 저장
+                        변경 저장 및 스케줄 재설정
                     </Button>
                 </Stack>
             </Modal>
