@@ -69,24 +69,45 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ words: [], message: 'Not enough previous words for review' });
         }
 
-        // Fetch words from Wordbook
-        // We need the wordbook words.
-        const targetWordbookId = wordbookId; // Should be passed or fetched.
+        const targetWordbookId = wordbookId;
 
-        // Fetch ALL words to generate distractors efficiently
-        const { data: wbData, error: wbError } = await supabase
+        // 1. Verify Wordbook Exists
+        const { data: wbCheck, error: wbCheckError } = await supabase
             .from('wordbooks')
-            .select('words')
+            .select('id')
             .eq('id', targetWordbookId!)
             .single();
 
-        if (wbError || !wbData || !wbData.words) {
+        if (wbCheckError || !wbCheck) {
             return NextResponse.json({ error: 'Wordbook not found' }, { status: 404 });
         }
 
-        const allWords = wbData.words as any[];
+        // 2. Fetch Sections and Words
+        const { data: sectionsData, error: sectionsError } = await supabase
+            .from('wordbook_sections')
+            .select('words')
+            .eq('wordbook_id', targetWordbookId!);
 
-        // Slice Review Words being careful of 0-based index vs 1-based "No"
+        if (sectionsError) {
+            console.error("Sections fetch error", sectionsError);
+            return NextResponse.json({ error: 'Failed to fetch words' }, { status: 500 });
+        }
+
+        // Flatten words from all sections
+        let allWords: any[] = [];
+        if (sectionsData) {
+            sectionsData.forEach((section: any) => {
+                if (Array.isArray(section.words)) {
+                    allWords = [...allWords, ...section.words];
+                }
+            });
+        }
+
+        if (allWords.length === 0) {
+            return NextResponse.json({ words: [], message: 'No words found in wordbook' });
+        }
+
+        // Slice Review Words
         // reviewStart is 1-based Index.
         // Array index = reviewStart - 1.
 
@@ -94,7 +115,14 @@ export async function GET(req: NextRequest) {
         const endIndex = Math.min(allWords.length, reviewEnd);
 
         if (startIndex >= endIndex) {
-            return NextResponse.json({ words: [], message: 'Invalid range' });
+            // Edge case: if reviewEnd is small?
+            // Should we return empty or just try to give something?
+            // If invalid range, maybe just return empty.
+            if (reviewEnd > 0 && startIndex < allWords.length) {
+                // overlap exists?
+            } else {
+                return NextResponse.json({ words: [], message: 'Invalid range or no words in range' });
+            }
         }
 
         const reviewWords = allWords.slice(startIndex, endIndex);

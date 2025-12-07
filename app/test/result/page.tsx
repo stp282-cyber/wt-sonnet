@@ -54,12 +54,18 @@ function TestResultContent() {
         const mode = searchParams.get('mode') || 'basic';
         const nextAction = searchParams.get('nextAction');
 
-        let path = `/test/wrong-flashcard?mode=${mode}`;
-        if (nextAction) {
-            path += `&nextAction=${nextAction}`;
-        }
-        path += `&scheduledDate=${searchParams.get('scheduledDate')}`;
-        router.push(path);
+        // Preserve all context parameters
+        const params = new URLSearchParams();
+        params.set('mode', mode);
+        if (nextAction) params.set('nextAction', nextAction);
+
+        const preserveParams = ['itemId', 'start', 'end', 'curriculumId', 'curriculumItemId', 'scheduledDate'];
+        preserveParams.forEach(key => {
+            const val = searchParams.get(key);
+            if (val) params.set(key, val);
+        });
+
+        router.push(`/test/wrong-flashcard?${params.toString()}`);
     };
 
     const handleNextStep = async () => {

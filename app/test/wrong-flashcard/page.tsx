@@ -111,7 +111,7 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
                     {/* 듣기 아이콘 */}
                     <Group gap={6} style={{ marginTop: '0.8rem', opacity: 0.5 }}>
                         <IconVolume size={20} />
-                        <Text size="xs" fw={700} tt="uppercase" ls={1}>Click to Listen</Text>
+                        <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: '1px' }}>Click to Listen</Text>
                     </Group>
                 </Stack>
             </Paper>
@@ -205,8 +205,16 @@ function WrongFlashcardContent() {
             });
         }
 
-        const scheduledDate = searchParams.get('scheduledDate');
-        router.push(`/test/wrong-retry?mode=${mode}&scheduledDate=${scheduledDate}`);
+        const params = new URLSearchParams();
+        params.set('mode', mode);
+
+        const preserveParams = ['itemId', 'start', 'end', 'curriculumId', 'curriculumItemId', 'scheduledDate'];
+        preserveParams.forEach(key => {
+            const val = searchParams.get(key);
+            if (val) params.set(key, val);
+        });
+
+        router.push(`/test/wrong-retry?${params.toString()}`);
     };
 
     if (loading) {

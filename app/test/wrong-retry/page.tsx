@@ -26,18 +26,21 @@ function WrongRetryContent() {
     const searchParams = useSearchParams();
     const [words, setWords] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [userAnswer, setUserAnswer] = useState('');
+    const [userAnswer, setUserAnswer] = useState(''); // For Typing
+    const [selectedChoice, setSelectedChoice] = useState<string | null>(null); // For MC
     const [results, setResults] = useState<boolean[]>([]);
     const [timeLeft, setTimeLeft] = useState(20);
     const [isAnswered, setIsAnswered] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [mode, setMode] = useState('basic'); // 'basic' | 'review_wrong'
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Initial Fetch (Resume or Start)
+    // Initial Fetch
     useEffect(() => {
         const init = async () => {
             const isResume = searchParams.get('resume') === 'true';
-            const mode = searchParams.get('mode') || 'basic'; // basic | review_wrong
+            const paramMode = searchParams.get('mode') || 'basic';
+            setMode(paramMode);
 
             try {
                 const studentInfoStr = localStorage.getItem('user');
@@ -49,8 +52,6 @@ function WrongRetryContent() {
 
                 if (data.session) {
                     const sData = data.session.session_data;
-
-                    // Logic: Get 'wrongWords' or 'reviewWrongQuestions'
                     let targetWords = [];
 
                     if (sData.step === 'BASIC_WRONG_RETRY' || (isResume && sData.step === 'BASIC_WRONG_RETRY')) {
@@ -58,9 +59,9 @@ function WrongRetryContent() {
                         targetWords = sData.wrongWords || [];
                     } else if (sData.step === 'REVIEW_WRONG_RETRY' || (isResume && sData.step === 'REVIEW_WRONG_RETRY')) {
                         // Review Retry
-                        const questions = sData.reviewWrongQuestions || [];
-                        // Transform questions to words if needed, or just use them
-                        targetWords = questions;
+                        // Note: Review Questions stored in reviewWrongQuestions usually have { choices: string[], answer: string, ...word }
+                        targetWords = sData.reviewWrongQuestions || [];
+                        setMode('review_wrong'); // Force mode if derived from step
                     }
 
                     if (targetWords.length > 0) {
@@ -70,10 +71,8 @@ function WrongRetryContent() {
                             setResults(sData.retryResults || []);
                         }
                     } else {
-                        // Error or empty?
                         notifications.show({ title: 'Info', message: 'No wrong words to retry', color: 'blue' });
-                        // Go to next step?
-                        finishTest([], mode);
+                        finishTest([], paramMode);
                         return;
                     }
                 }
@@ -86,28 +85,12 @@ function WrongRetryContent() {
         init();
     }, [searchParams]);
 
-    // Save Helper
     const saveState = async (idx: number, res: boolean[]) => {
         const studentInfoStr = localStorage.getItem('user');
         if (!studentInfoStr) return;
         const studentInfo = JSON.parse(studentInfoStr);
-        const mode = searchParams.get('mode') || 'basic';
 
-        // We need to merge with existing session data to keep params
-        // But fetch/update is weird. We should have loaded session data in state ideally.
-        // For simplicity, we assume backend handles upsert merging? No, upsert replaces.
-        // So we need to reconstruct the session object.
-        // Ideally we should have fetched the FULL session object in useEffect.
-        // Let's rely on what we have.
-
-        // FIXME: This might overwrite 'basicResults' if we don't include them.
-        // To fix this, we should fetch current session first? Or keep it in state?
-        // Let's assume we can tolerate just updating the specific fields if we use a PATCH or if we are careful.
-        // `api/test/session` is UPSERT.
-        // We MUST fetch existing session data to preserve other fields.
-        // Since we didn't do that, let's fetch it now or use a global state.
-
-        // Quick fix: Fetch, Modify, Save.
+        // Fetch existing logic to merge properly (simplified for now)
         const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
         const d = await r.json();
         const existingData = d.session?.session_data || {};
@@ -124,12 +107,30 @@ function WrongRetryContent() {
         });
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = (choice?: string) => {
         if (!words[currentIndex]) return;
         const currentWord = words[currentIndex];
-        const correct = currentWord.english.toLowerCase().trim();
-        const answer = userAnswer.toLowerCase().trim();
-        const isCorrect = correct === answer;
+        let isCorrect = false;
+
+        if (mode === 'review_wrong') {
+            // MC Logic
+            // Question: English, Answer: Korean (in choices)
+            // But currentWord structure in Review is { ...word, choices: [], answer: Korean }?
+            // Check 'review-words' API: returns { ...word, choices, answer: word.korean }
+            // So Answer is indeed Korean.
+            const userChoice = choice || selectedChoice;
+            if (!userChoice) return;
+
+            const correctRaw = currentWord.answer || currentWord.korean; // Safe fallback
+            isCorrect = userChoice === correctRaw;
+            setSelectedChoice(userChoice);
+        } else {
+            // Typing Logic (Basic)
+            // Question: Korean, Answer: English
+            const correct = currentWord.english.toLowerCase().trim();
+            const answer = userAnswer.toLowerCase().trim();
+            isCorrect = correct === answer;
+        }
 
         const newResults = [...results, isCorrect];
         setResults(newResults);
@@ -141,48 +142,49 @@ function WrongRetryContent() {
             if (currentIndex < words.length - 1) {
                 setCurrentIndex(currentIndex + 1);
                 setUserAnswer('');
+                setSelectedChoice(null); // Reset MC selection
                 setTimeLeft(20);
                 setIsAnswered(false);
-                setTimeout(() => inputRef.current?.focus(), 50);
+                if (mode !== 'review_wrong') {
+                    setTimeout(() => inputRef.current?.focus(), 50);
+                }
             } else {
-                finishTest(newResults, searchParams.get('mode') || 'basic');
+                finishTest(newResults, mode);
             }
         }, 1500);
     };
 
-    const finishTest = async (finalResults: boolean[], mode: string) => {
+    const finishTest = async (finalResults: boolean[], currentMode: string) => {
         const studentInfoStr = localStorage.getItem('user');
         if (!studentInfoStr) return;
         const studentInfo = JSON.parse(studentInfoStr);
 
-        // Fetch session to preserve params
         const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
         const d = await r.json();
         const sData = d.session?.session_data || {};
 
-        if (mode === 'basic') {
-            // Next: REVIEW_TEST
-            // We need to fetch basic info again?
+        if (currentMode === 'basic') {
             const nextStep = 'REVIEW_TEST';
-            const scheduledDate = searchParams.get('scheduledDate');
-            const route = `/test/multiple-choice?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&curriculumId=${sData.curriculumId}&curriculumItemId=${sData.curriculumItemId}&scheduledDate=${scheduledDate}`;
+            const gp = (key: string) => searchParams.get(key) || sData[key];
+            const pItemId = gp('itemId');
+            const pStart = gp('start');
+            const pEnd = gp('end');
+            const pCurrId = gp('curriculumId');
+            const pCurrItemId = gp('curriculumItemId');
+            const pDate = gp('scheduledDate');
+
+            const route = `/test/multiple-choice?itemId=${pItemId}&start=${pStart}&end=${pEnd}&curriculumId=${pCurrId}&curriculumItemId=${pCurrItemId}&scheduledDate=${pDate}`;
 
             await fetch('/api/test/session', {
                 method: 'POST',
                 body: JSON.stringify({
                     studentId: studentInfo.id,
-                    sessionData: {
-                        ...sData,
-                        step: nextStep,
-                        retryResults: finalResults // Archiving logic needed?
-                    }
+                    sessionData: { ...sData, step: nextStep, retryResults: finalResults }
                 })
             });
             router.push(route);
-
         } else {
-            // mode === 'review_wrong' -> FINISH
-            // Save Final Log
+            // Review Wrong Retry -> Log as completed
             await fetch('/api/study-logs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -191,29 +193,28 @@ function WrongRetryContent() {
                     curriculum_id: sData.curriculumId,
                     curriculum_item_id: sData.curriculumItemId,
                     scheduled_date: sData.scheduledDate || searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
-                    status: 'completed', // Final Status
+                    status: 'completed',
                     test_phase: 'completed',
-                    score: sData.basicResults?.score || 0, // Keep basic score
-                    wrong_answers: sData.basicResults?.wrongWords || [] // Or update?
+                    score: sData.basicResults?.score || 0,
+                    wrong_answers: sData.basicResults?.wrongWords || []
                 })
             });
 
-            // Delete Session
             await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
             router.push('/student/learning');
         }
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !isAnswered && userAnswer.trim()) handleSubmit();
+        if (e.key === 'Enter' && !isAnswered && mode !== 'review_wrong' && userAnswer.trim()) handleSubmit();
     };
 
     // Auto focus
     useEffect(() => {
-        if (!loading && !isAnswered) {
+        if (!loading && !isAnswered && mode !== 'review_wrong') {
             inputRef.current?.focus();
         }
-    }, [currentIndex, loading, isAnswered]);
+    }, [currentIndex, loading, isAnswered, mode]);
 
     // Timer
     useEffect(() => {
@@ -221,6 +222,8 @@ function WrongRetryContent() {
             const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
             return () => clearTimeout(timer);
         } else if (timeLeft === 0 && !isAnswered) {
+            // For MC, if timeout, just submit empty/wrong
+            // For Typing, submit current text
             handleSubmit();
         }
     }, [timeLeft, isAnswered, loading]);
@@ -229,6 +232,11 @@ function WrongRetryContent() {
     if (words.length === 0) return <StudentLayout><Center h="100vh"><Text>No words to retry.</Text></Center></StudentLayout>;
 
     const currentWord = words[currentIndex];
+    const isReview = mode === 'review_wrong';
+    // Review Mode: English Question, Korean Option
+    // Basic Mode: Korean Question, English Input
+    const questionText = isReview ? currentWord.english : currentWord.korean;
+    const answerText = isReview ? (currentWord.answer || currentWord.korean) : currentWord.english;
 
     return (
         <StudentLayout>
@@ -261,22 +269,69 @@ function WrongRetryContent() {
                             }}
                         >
                             <Stack align="center" gap="xl">
-                                <Text size="3.5rem" fw={900} ta="center">{currentWord.korean}</Text>
-                                <TextInput
-                                    ref={inputRef}
-                                    value={userAnswer}
-                                    onChange={(e) => setUserAnswer(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    disabled={isAnswered}
-                                    size="xl"
-                                    styles={{ input: { fontSize: '2rem', textAlign: 'center', border: '3px solid black' } }}
-                                    style={{ width: '100%' }}
-                                />
-                                {isAnswered && !results[results.length - 1] && (
-                                    <Text c="red" fw={700} size="xl">Answer: {currentWord.english}</Text>
+                                <Text size="3.5rem" fw={900} ta="center">{questionText}</Text>
+
+                                {isReview ? (
+                                    // Multiple Choice UI
+                                    <Stack style={{ width: '100%' }}>
+                                        {currentWord.choices?.map((choice: string, idx: number) => {
+                                            const isSelected = selectedChoice === choice;
+                                            const isCorrect = choice === answerText;
+                                            let bg = 'white';
+                                            let borderColor = 'black';
+
+                                            if (isAnswered) {
+                                                if (isCorrect) {
+                                                    bg = '#D3F9D8'; borderColor = '#2b8a3e';
+                                                } else if (isSelected && !isCorrect) {
+                                                    bg = '#FFE3E3'; borderColor = '#c92a2a';
+                                                }
+                                            }
+
+                                            return (
+                                                <Button
+                                                    key={idx}
+                                                    onClick={() => handleSubmit(choice)}
+                                                    disabled={isAnswered}
+                                                    size="xl"
+                                                    styles={{
+                                                        root: {
+                                                            height: 'auto', padding: '20px',
+                                                            background: bg, border: `3px solid ${borderColor}`,
+                                                            borderRadius: 0, color: 'black',
+                                                            boxShadow: isSelected ? 'none' : '4px 4px 0px black',
+                                                            transform: isSelected ? 'translate(2px, 2px)' : 'none',
+                                                        },
+                                                        inner: { justifyContent: 'flex-start' },
+                                                        label: { fontSize: '1.5rem', fontWeight: 700 }
+                                                    }}
+                                                >
+                                                    {choice}
+                                                    {isAnswered && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} />}
+                                                    {isAnswered && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} />}
+                                                </Button>
+                                            )
+                                        })}
+                                    </Stack>
+                                ) : (
+                                    // Typing UI
+                                    <TextInput
+                                        ref={inputRef}
+                                        value={userAnswer}
+                                        onChange={(e) => setUserAnswer(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        disabled={isAnswered}
+                                        size="xl"
+                                        styles={{ input: { fontSize: '2rem', textAlign: 'center', border: '3px solid black' } }}
+                                        style={{ width: '100%' }}
+                                    />
                                 )}
 
-                                {!isAnswered && (
+                                {isAnswered && !results[results.length - 1] && (
+                                    <Text c="red" fw={700} size="xl">Answer: {answerText}</Text>
+                                )}
+
+                                {!isAnswered && !isReview && (
                                     <Button onClick={() => handleSubmit()} color="black" size="lg" fullWidth>Submit</Button>
                                 )}
                             </Stack>
