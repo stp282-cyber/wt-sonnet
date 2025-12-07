@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/client';
 
 export async function PATCH(
     request: NextRequest,
@@ -18,8 +18,10 @@ export async function PATCH(
         };
         if (start_date) updateData.start_date = start_date;
 
-        // 관리자 권한으로 업데이트 (RLS 우회)
-        const { data, error } = await supabaseAdmin
+        const supabase = createClient();
+
+        // 관리자 권한으로 업데이트 (RLS 우회) -> 일반 클라이언트로 변경 (Auth Context 사용)
+        const { data, error } = await supabase
             .from('student_curriculums')
             .update(updateData)
             .eq('id', id)
