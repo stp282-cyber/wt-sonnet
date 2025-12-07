@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Stack, Badge, RingProgress, Center } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconRefresh, IconArrowRight, IconChevronDown, IconChevronUp, IconTrophy } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
 
@@ -24,8 +25,10 @@ interface TestResult {
 
 export default function TestResultPage() {
     const router = useRouter();
+    const searchParams = useSearchParams(); // searchParams 추가
     const [result, setResult] = useState<TestResult | null>(null);
     const [showWrongWords, setShowWrongWords] = useState(false);
+    const [checkingReview, setCheckingReview] = useState(false);
 
     useEffect(() => {
         // localStorage에서 결과 데이터 로드
@@ -49,11 +52,68 @@ export default function TestResultPage() {
 
     const handleReviewWrongWords = () => {
         localStorage.setItem('wrongWords', JSON.stringify(result.wrongWords));
-        router.push('/test/wrong-flashcard');
+        // 오답 리트라이 시 nextAction 전달
+        const nextAction = searchParams.get('nextAction');
+        if (nextAction) {
+            router.push(`/test/wrong-flashcard?nextAction=${nextAction}`);
+        } else {
+            router.push('/test/wrong-flashcard');
+        }
     };
 
-    const handleNextStep = () => {
-        router.push('/student/learning');
+    const handleNextStep = async () => {
+        const nextAction = searchParams.get('nextAction');
+
+        if (nextAction === 'check_review') {
+            setCheckingReview(true);
+            try {
+                // 학생 ID와 커리큘럼 ID는 localStorage나 세션에서 가져와야 함.
+                // 편의상 localStorage의 studentInfo를 가정하거나, URL 파라미터를 통해 전달받았다고 가정.
+                // 여기서는 안전하게 localStorage에서 'studentInfo'를 찾음
+                const studentInfoStr = localStorage.getItem('studentInfo');
+                if (!studentInfoStr) {
+                    console.error('Student info not found');
+                    router.push('/student/learning');
+                    return;
+                }
+                const studentInfo = JSON.parse(studentInfoStr);
+
+                const res = await fetch('/api/test/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: studentInfo.id,
+                        curriculumId: studentInfo.curriculum_id
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.reviewWords && data.reviewWords.length > 0) {
+                        // 복습 단어가 있으면 복습 시험으로 이동
+                        localStorage.setItem('reviewWords', JSON.stringify(data.reviewWords));
+                        notifications.show({
+                            title: '복습 시험',
+                            message: `지난 복습 단어 ${data.reviewWords.length}개가 있습니다. 복습 시험을 시작합니다!`,
+                            color: 'blue',
+                            autoClose: 3000
+                        });
+                        // Review Test 완료 후에는 home으로 가도록 nextAction=home 설정
+                        router.push('/test/multiple-choice?nextAction=home');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check review words', error);
+            }
+            setCheckingReview(false);
+            // 복습 단어가 없거나 에러 시 홈으로
+            router.push('/student/learning');
+
+        } else {
+            // 기본 동작 (홈으로)
+            router.push('/student/learning');
+        }
     };
 
     return (

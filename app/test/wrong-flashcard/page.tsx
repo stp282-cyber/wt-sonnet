@@ -1,9 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Container, Title, Paper, Text, Box, Group, Badge, Progress } from '@mantine/core';
-import { IconVolume, IconArrowRight } from '@tabler/icons-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+    Container,
+    Title,
+    Paper,
+    Text,
+    Box,
+    Group,
+    SimpleGrid,
+    Loader,
+    Center,
+    Stack,
+    Badge,
+} from '@mantine/core';
+import { IconVolume, IconArrowRight, IconCards, IconBulb, IconRefresh } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import StudentLayout from '../../student/layout';
 
 interface Word {
     no: number;
@@ -11,270 +25,316 @@ interface Word {
     korean: string;
 }
 
+// 개별 플래시카드 컴포넌트 (동일한 디자인 재사용)
+function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; onSpeak: (text: string) => void }) {
+    const [isClicked, setIsClicked] = useState(false);
+
+    const handleClick = () => {
+        if (!isClicked) {
+            setIsClicked(true);
+            onSpeak(word.english);
+            setTimeout(() => setIsClicked(false), 400); // 400ms after animation
+        } else {
+            onSpeak(word.english);
+        }
+    };
+
+    return (
+        <Box
+            style={{
+                animation: `fadeInUp 0.5s ease-out forwards ${index * 0.1}s`,
+                opacity: 0,
+                transform: 'translateY(20px)',
+            }}
+        >
+            <Paper
+                p="xl"
+                className={isClicked ? "card-clicking" : "card-interactive"}
+                style={{
+                    border: '3px solid black',
+                    borderRadius: '0px',
+                    background: 'white',
+                    minHeight: '220px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    borderLeft: '8px solid #FF6B6B' // 오답 표시를 위한 빨간색 포인트
+                }}
+                onClick={handleClick}
+            >
+                <Badge
+                    size="lg"
+                    variant="filled"
+                    color="red"
+                    radius="xs"
+                    style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        borderRadius: '0px',
+                        fontWeight: 700,
+                        border: '1px solid black',
+                    }}
+                >
+                    Wrong #{word.no}
+                </Badge>
+
+                <Stack align="center" gap="md" style={{ width: '100%' }}>
+                    {/* 영어 단어 */}
+                    <Text
+                        size="2.2rem"
+                        fw={900}
+                        ta="center"
+                        style={{
+                            color: 'black',
+                            lineHeight: 1.2,
+                            letterSpacing: '-1px'
+                        }}
+                    >
+                        {word.english}
+                    </Text>
+
+                    <Box style={{ width: '50px', height: '5px', background: '#FF6B6B', border: '1px solid black' }} />
+
+                    {/* 한글 뜻 */}
+                    <Text
+                        size="1.6rem"
+                        fw={600}
+                        ta="center"
+                        style={{ color: '#343a40' }}
+                    >
+                        {word.korean}
+                    </Text>
+
+                    {/* 듣기 아이콘 */}
+                    <Group gap={6} style={{ marginTop: '0.8rem', opacity: 0.5 }}>
+                        <IconVolume size={20} />
+                        <Text size="xs" fw={700} tt="uppercase" ls={1}>Click to Listen</Text>
+                    </Group>
+                </Stack>
+            </Paper>
+        </Box>
+    );
+}
+
 export default function WrongFlashcardPage() {
     const router = useRouter();
+    const searchParams = useSearchParams(); // searchParams 추가
     const [words, setWords] = useState<Word[]>([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [isFlipped, setIsFlipped] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         // localStorage에서 오답 단어 로드
         const savedWrongWords = localStorage.getItem('wrongWords');
         if (savedWrongWords) {
             setWords(JSON.parse(savedWrongWords));
+            setLoading(false);
         } else {
-            // 테스트용 샘플 데이터
-            const sampleWrongWords = [
-                { no: 1, english: 'apple', korean: '사과' },
-                { no: 3, english: 'orange', korean: '오렌지' },
-                { no: 5, english: 'watermelon', korean: '수박' },
-            ];
-            setWords(sampleWrongWords);
-            localStorage.setItem('wrongWords', JSON.stringify(sampleWrongWords));
+            // 데이터가 없으면 알림 후 뒤로가기? or 샘플 데이터?
+            // 여기서는 안전하게 학습 메인으로 보내거나 알림 표시
+            notifications.show({
+                title: '알림',
+                message: '복습할 오답 단어가 없습니다.',
+                color: 'blue'
+            });
+            setLoading(false);
+            // router.push('/student/learning'); // 선택적 리다이렉트
         }
     }, [router]);
 
-    useEffect(() => {
-        // 카드가 바뀔 때마다 자동으로 영어 발음
-        if (words.length > 0 && !isFlipped) {
-            speakWord(words[currentIndex].english);
-        }
-    }, [currentIndex, words]);
-
-    const speakWord = (word: string) => {
+    // TTS 음성 재생
+    const speakWord = (text: string) => {
         if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(word);
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             utterance.rate = 0.8;
             window.speechSynthesis.speak(utterance);
         }
     };
 
-    const handleNext = () => {
-        if (currentIndex < words.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-            setIsFlipped(false);
+    const handleStartRetryTest = () => {
+        const nextAction = searchParams.get('nextAction');
+        if (nextAction) {
+            router.push(`/test/wrong-retry?nextAction=${nextAction}`);
         } else {
-            // 모든 오답 복습 완료 → 오답 재시험으로 이동
             router.push('/test/wrong-retry');
         }
     };
 
-    if (words.length === 0) {
+    if (loading) {
         return (
-            <Container size="sm" py={40}>
-                <Text>오답 단어를 불러오는 중...</Text>
-            </Container>
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Stack align="center" gap="md">
+                        <Loader size="xl" color="red" type="dots" />
+                    </Stack>
+                </Center>
+            </StudentLayout>
         );
     }
 
-    const currentWord = words[currentIndex];
-    const progress = ((currentIndex + 1) / words.length) * 100;
+    if (words.length === 0) {
+        return (
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Stack align="center">
+                        <Text size="lg" fw={700}>복습할 오답 단어가 없습니다!</Text>
+                        <button onClick={() => router.push('/student/learning')} style={{
+                            padding: '0.8rem 2rem',
+                            background: 'black',
+                            color: 'white',
+                            fontWeight: 700,
+                            border: 'none',
+                            cursor: 'pointer',
+                        }}>
+                            학습 홈으로 이동
+                        </button>
+                    </Stack>
+                </Center>
+            </StudentLayout>
+        );
+    }
 
     return (
-        <Box
-            style={{
-                minHeight: '100vh',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px',
-            }}
-        >
-            <Container size={600}>
-                <div className="animate-fade-in">
-                    {/* 헤더 */}
-                    <Box mb={30} style={{ textAlign: 'center' }}>
-                        <Title
-                            order={1}
-                            style={{
-                                color: 'white',
-                                fontWeight: 900,
-                                fontSize: '2.5rem',
-                                textShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
-                                marginBottom: '1rem',
-                            }}
-                        >
-                            🔄 오답 복습
-                        </Title>
-                        <Text
-                            size="xl"
-                            style={{
-                                color: 'white',
-                                fontWeight: 600,
-                                textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)',
-                            }}
-                        >
-                            틀린 단어를 다시 학습하세요!
-                        </Text>
-                    </Box>
+        <StudentLayout>
+            <Box
+                style={{
+                    minHeight: '100%',
+                    background: '#ffffff',
+                    padding: '40px 20px',
+                    position: 'relative',
+                }}
+            >
+                {/* CSS Animation Keyframes & Classes */}
+                <style jsx global>{`
+                    @keyframes fadeInUp {
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+                    @keyframes popRotate {
+                        0% { transform: scale(1) rotate(0deg); }
+                        40% { transform: scale(1.05) rotate(2deg); box-shadow: 12px 12px 0px rgba(0,0,0,0.8); }
+                        80% { transform: scale(0.98) rotate(-1deg); }
+                        100% { transform: scale(1) rotate(0deg); }
+                    }
 
-                    {/* 진행률 */}
-                    <Paper
-                        p="md"
-                        mb={20}
-                        style={{
-                            border: '4px solid black',
-                            borderRadius: '12px',
-                            background: 'white',
-                        }}
-                    >
-                        <Group justify="space-between" mb={10}>
-                            <Text fw={700} size="lg">
-                                오답 복습 진행률
-                            </Text>
-                            <Text fw={900} size="lg" c="violet">
-                                {currentIndex + 1} / {words.length}
-                            </Text>
-                        </Group>
-                        <Progress
-                            value={progress}
-                            size="xl"
-                            radius="xl"
-                            styles={{
-                                root: {
-                                    border: '3px solid black',
-                                },
-                                section: {
-                                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                                },
-                            }}
-                        />
-                    </Paper>
+                    .card-interactive {
+                        transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                        box-shadow: 6px 6px 0px black;
+                        transform: translate(0, 0);
+                    }
+                    .card-interactive:hover {
+                        transform: translate(-4px, -4px);
+                        box-shadow: 10px 10px 0px black;
+                    }
+                    .card-interactive:active {
+                        transform: translate(2px, 2px);
+                         box-shadow: 4px 4px 0px black;
+                    }
 
-                    {/* 플래시카드 */}
-                    <Paper
-                        p={60}
-                        style={{
-                            border: '6px solid black',
-                            borderRadius: '20px',
-                            background: isFlipped ? '#FFD93D' : 'white',
-                            boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-                            minHeight: '400px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                        }}
-                        onClick={() => setIsFlipped(!isFlipped)}
-                        className="animate-bounce-in"
-                    >
-                        <Badge
-                            size="xl"
-                            variant="filled"
-                            color="red"
-                            style={{
-                                border: '3px solid black',
-                                fontSize: '1.2rem',
-                                padding: '1rem 2rem',
-                                marginBottom: '2rem',
-                            }}
-                        >
-                            오답 #{currentWord.no}
-                        </Badge>
+                    .card-clicking {
+                        animation: popRotate 0.4s ease forwards;
+                        box-shadow: 10px 10px 0px black;
+                        z-index: 10; 
+                        border-color: #FF6B6B;
+                    }
+                `}</style>
 
-                        {!isFlipped ? (
-                            // 앞면: 영어
-                            <Box style={{ textAlign: 'center' }}>
-                                <Text
-                                    size="5rem"
-                                    fw={900}
+                <Container size={1200}>
+                    <Stack gap="xl">
+                        {/* Header Section */}
+                        <Group justify="space-between" align="center" mb="lg">
+                            <Box>
+                                <Paper
+                                    p="xs"
                                     style={{
-                                        color: '#7950f2',
-                                        marginBottom: '2rem',
+                                        background: '#FF6B6B',
+                                        border: '3px solid black',
+                                        display: 'inline-block',
+                                        boxShadow: '4px 4px 0px black',
+                                        marginBottom: '10px'
                                     }}
                                 >
-                                    {currentWord.english}
-                                </Text>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        speakWord(currentWord.english);
-                                    }}
+                                    <Group gap={8}>
+                                        <IconRefresh color="white" size={20} stroke={3} />
+                                        <Text c="white" fw={900} tt="uppercase" size="sm">Review Required</Text>
+                                    </Group>
+                                </Paper>
+                                <Title
+                                    order={1}
                                     style={{
-                                        background: '#7950f2',
-                                        color: 'white',
-                                        border: '4px solid black',
-                                        borderRadius: '50%',
-                                        width: '80px',
-                                        height: '80px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                        margin: '0 auto',
+                                        fontSize: '3rem',
+                                        fontWeight: 900,
+                                        letterSpacing: '-2px',
+                                        lineHeight: 1,
                                     }}
                                 >
-                                    <IconVolume size={40} />
-                                </button>
+                                    Wrong Answer<br />
+                                    <span style={{ color: '#FF6B6B' }}>Practice</span>
+                                </Title>
                             </Box>
-                        ) : (
-                            // 뒷면: 한글
-                            <Text
-                                size="5rem"
-                                fw={900}
+
+                            <Box ta="right">
+                                <Text fw={700} size="xl">{words.length} Words</Text>
+                                <Text c="dimmed" size="sm" fw={600}>Keep going until you master them!</Text>
+                            </Box>
+                        </Group>
+
+                        {/* Grid Layout for Cards */}
+                        <SimpleGrid
+                            cols={{ base: 1, sm: 2, md: 3, lg: 4 }}
+                            spacing="lg"
+                            verticalSpacing="lg"
+                        >
+                            {words.map((word, index) => (
+                                <FlashcardItem
+                                    key={word.no}
+                                    word={word}
+                                    index={index}
+                                    onSpeak={speakWord}
+                                />
+                            ))}
+                        </SimpleGrid>
+
+                        {/* Footer / Action Button */}
+                        <Center mt={40} mb={60}>
+                            <button
+                                onClick={handleStartRetryTest}
                                 style={{
-                                    color: 'black',
+                                    background: 'black',
+                                    color: '#FF6B6B',
+                                    border: '4px solid black',
+                                    padding: '1.5rem 4rem',
+                                    fontSize: '1.5rem',
+                                    fontWeight: 900,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    boxShadow: '8px 8px 0px #FF6B6B',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translate(-4px, -4px)';
+                                    e.currentTarget.style.boxShadow = '12px 12px 0px #FF6B6B';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translate(0, 0)';
+                                    e.currentTarget.style.boxShadow = '8px 8px 0px #FF6B6B';
                                 }}
                             >
-                                {currentWord.korean}
-                            </Text>
-                        )}
-
-                        <Text
-                            size="lg"
-                            c="dimmed"
-                            mt="xl"
-                            style={{
-                                textAlign: 'center',
-                            }}
-                        >
-                            {isFlipped ? '카드를 클릭하면 영어가 나와요' : '카드를 클릭하면 한글 뜻이 나와요'}
-                        </Text>
-                    </Paper>
-
-                    {/* 다음 버튼 */}
-                    <Group justify="center" mt={30}>
-                        <button
-                            onClick={handleNext}
-                            style={{
-                                background: '#FFD93D',
-                                color: 'black',
-                                border: '5px solid black',
-                                borderRadius: '15px',
-                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                                fontSize: '1.5rem',
-                                fontWeight: 900,
-                                padding: '1.5rem 3rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1rem',
-                                transition: 'all 0.15s ease',
-                            }}
-                            onMouseDown={(e) => {
-                                e.currentTarget.style.transform = 'translate(8px, 8px)';
-                                e.currentTarget.style.boxShadow = '0px 0px 0px 0px rgba(0, 0, 0, 1)';
-                            }}
-                            onMouseUp={(e) => {
-                                e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
-                            }}
-                        >
-                            {currentIndex < words.length - 1 ? '다음 단어' : '오답 재시험 시작'}
-                            <IconArrowRight size={28} />
-                        </button>
-                    </Group>
-                </div>
-            </Container>
-        </Box>
+                                <IconRefresh size={32} stroke={3} />
+                                START RETRY TEST
+                            </button>
+                        </Center>
+                    </Stack>
+                </Container>
+            </Box>
+        </StudentLayout>
     );
 }
