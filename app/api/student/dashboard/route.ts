@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/client';
-import { startOfWeek, endOfWeek, format } from 'date-fns';
+import { getScheduleForDate } from '@/lib/curriculumUtils';
+import { StudentCurriculum } from '@/types/curriculum';
 
 export async function GET(request: NextRequest) {
     try {
@@ -14,104 +15,155 @@ export async function GET(request: NextRequest) {
 
         const today = new Date().toISOString().split('T')[0];
 
-        // 1. Fetch Today's Learning (Scheduled for today or pending from past)
-        // Note: Ideally we want pending items from past too, but let's stick to today + pending for now
-        // Complex Join: study_logs -> curriculum_items -> (wordbook/listening)
-        // Since Supabase join syntax can be tricky with dynamic polymorphic relations, 
-        // we might need to fetch logs first then fetch details.
-
-        const { data: logs, error: logsError } = await supabase
+        // 1. Fetch Today's Completed Logs (to show "Done" items and prevent duplicate "To Do")
+        const { data: completedLogs, error: logError } = await supabase
             .from('study_logs')
             .select(`
                 id,
                 scheduled_date,
+                completed_at,
                 status,
                 score,
+                curriculum_id,
+                curriculum:curriculum_id ( name ),
                 curriculum_item:curriculum_item_id (
                     id,
                     item_type,
                     item_id,
                     sequence
-                ),
-                curriculum:curriculum_id ( name )
+                )
             `)
             .eq('student_id', userId)
-            // .eq('scheduled_date', today) // For now, let's just show ALL pending or completed Today.
-            // Actually, "Today's Learning" usually means what I need to do NOW.
-            .or(`scheduled_date.eq.${today},status.eq.pending`)
-            .order('scheduled_date', { ascending: true });
+            .eq('status', 'completed')
+            .gte('completed_at', `${today}T00:00:00`) // Completed Today
+            .lte('completed_at', `${today}T23:59:59`);
 
-        if (logsError) throw logsError;
+        if (logError) throw logError;
 
-        // Filter: If it's pending and in future, don't show yet? 
-        // Or just show everything pending (catch-up) + today's.
-        // Let's filter in code for better control.
-        const todayObj = new Date(today);
-        const filteredLogs = (logs || []).filter((log: any) => {
-            const logDate = new Date(log.scheduled_date);
-            // Show if (Status is Pending AND Date <= Today) OR (Date == Today)
-            // This effectively shows "Overdue" and "Today".
-            const isOverdue = log.status === 'pending' && logDate <= todayObj;
-            const isToday = log.scheduled_date === today;
-            return isOverdue || isToday;
+        // 2. Fetch Student Curriculums (Active)
+        const { data: curriculumsData, error: currError } = await supabase
+            .from('student_curriculums')
+            .select(`
+                *,
+                curriculums ( name ),
+                curriculum_items (
+                    *,
+                    item_details:curriculum_item_details(*),
+                    sections (*)
+                )
+            `)
+            .eq('student_id', userId)
+            .eq('status', 'active');
+
+        if (currError) throw currError;
+
+        // Sort sub-arrays for consistent scheduling
+        const curriculums = (curriculumsData || []).map((curr: any) => {
+            if (curr.curriculum_items) {
+                curr.curriculum_items.sort((a: any, b: any) => a.sequence - b.sequence);
+                curr.curriculum_items.forEach((item: any) => {
+                    if (item.sections) {
+                        // Sort sections by major/minor unit or id if needed. 
+                        // Usually sections are inserted in order. 
+                        // Let's assume ID order or sequence if available. 
+                        // Our logic mainly iterates array order.
+                        item.sections.sort((s1: any, s2: any) => (s1.sequence || s1.id) - (s2.sequence || s2.id));
+                    }
+                });
+            }
+            return curr;
         });
 
-        // Resolve Item Titles (Wordbook/Listening)
-        // We need to fetch titles for these items.
-        // Group by type to batch fetch
-        const wordbookIds = filteredLogs
-            .filter((l: any) => l.curriculum_item?.item_type === 'wordbook')
-            .map((l: any) => l.curriculum_item.item_id);
+        // 3. Generate "Pending" (To Do) Items using Dynamic Schedule
+        const pendingItems: any[] = [];
+        const completedCurriculumIds = new Set(completedLogs?.map((l: any) => l.curriculum_id));
 
-        const listeningIds = filteredLogs
-            .filter((l: any) => l.curriculum_item?.item_type === 'listening')
-            .map((l: any) => l.curriculum_item.item_id);
+        curriculums.forEach((curr: StudentCurriculum) => {
+            // If already completed today, skip generating a "To Do" item (One chunk per day policy)
+            if (completedCurriculumIds.has(curr.id)) return;
 
-        let wordbooks: any[] = [];
-        let listenings: any[] = [];
+            // Calculate schedule for TODAY
+            // Note: getScheduleForDate uses 'today' as the check date.
+            // If current_progress matches today's slot, it returns it.
+            const todaySchedule = getScheduleForDate(curr, today);
 
-        if (wordbookIds.length > 0) {
-            const { data } = await supabase.from('wordbooks').select('id, title, word_count').in('id', wordbookIds);
-            wordbooks = data || [];
-        }
-        if (listeningIds.length > 0) {
-            const { data } = await supabase.from('listening_tests').select('id, title').in('id', listeningIds);
-            listenings = data || [];
-        }
+            if (todaySchedule && todaySchedule.status !== 'completed') { // status 'completed' from utils means "date is in past". But here we pass today.
+                // Construct LearningItem
+                pendingItems.push({
+                    id: curr.id, // Use curriculum ID as key for pending tasks
+                    curriculum_name: curr.curriculums?.name || 'Unknown Curriculum',
+                    type: todaySchedule.itemType,
+                    title: todaySchedule.itemTitle,
+                    subInfo: `${todaySchedule.unitName} (${todaySchedule.wordCount} words)`,
+                    status: 'pending', // It shows in dashboard as "To Do"
+                    date: today,
+                    // Extra data for navigation if needed
+                    curriculum_id: curr.id
+                });
+            }
+        });
 
-        // Merge Data
-        const learningData = filteredLogs.map((log: any) => {
-            let title = 'Unknown Item';
-            let subInfo = '';
+        // 4. Process Completed Logs into LearningItems
+        // We need titles. Study Logs join curriculum_item, but we need the REAL title (Wordbook Title or Listening Title)
+        // Similar to previous code, fetch titles.
 
-            if (log.curriculum_item?.item_type === 'wordbook') {
-                const wh = wordbooks.find(w => w.id === log.curriculum_item.item_id);
-                title = wh?.title || 'Unknown Wordbook';
-                subInfo = `${wh?.word_count || 0} words`;
-            } else if (log.curriculum_item?.item_type === 'listening') {
-                const lh = listenings.find(l => l.id === log.curriculum_item.item_id);
-                title = lh?.title || 'Unknown Listening';
-                subInfo = 'Listening Test';
+        let completedItems: any[] = [];
+        if (completedLogs && completedLogs.length > 0) {
+            // Collect IDs
+            const wordbookIds = completedLogs
+                .filter((l: any) => l.curriculum_item?.item_type === 'wordbook')
+                .map((l: any) => l.curriculum_item.item_id);
+
+            const listeningIds = completedLogs
+                .filter((l: any) => l.curriculum_item?.item_type === 'listening')
+                .map((l: any) => l.curriculum_item.item_id);
+
+            let wordbooks: any[] = [];
+            let listenings: any[] = [];
+
+            if (wordbookIds.length > 0) {
+                const { data } = await supabase.from('wordbooks').select('id, title, word_count').in('id', wordbookIds);
+                wordbooks = data || [];
+            }
+            if (listeningIds.length > 0) {
+                const { data } = await supabase.from('listening_tests').select('id, title').in('id', listeningIds);
+                listenings = data || [];
             }
 
-            return {
-                id: log.id,
-                curriculum_name: log.curriculum?.name,
-                type: log.curriculum_item?.item_type,
-                title: title,
-                subInfo: subInfo,
-                status: log.status,
-                date: log.scheduled_date
-            };
-        });
+            completedItems = completedLogs.map((log: any) => {
+                let title = 'Unknown Item';
+                let subInfo = 'Completed';
 
-        // 2. Fetch Weekly Stats
-        // Get start/end of week
+                if (log.curriculum_item?.item_type === 'wordbook') {
+                    const wh = wordbooks.find(w => w.id === log.curriculum_item.item_id);
+                    title = wh?.title || 'Unknown Wordbook';
+                    subInfo = `${wh?.word_count || 0} words - Score: ${log.score || 0}`;
+                } else if (log.curriculum_item?.item_type === 'listening') {
+                    const lh = listenings.find(l => l.id === log.curriculum_item.item_id);
+                    title = lh?.title || 'Unknown Listening';
+                    subInfo = `Listening - Score: ${log.score || 0}`;
+                }
+
+                return {
+                    id: log.id,
+                    curriculum_name: log.curriculum?.name,
+                    type: log.curriculum_item?.item_type,
+                    title: title,
+                    subInfo: subInfo,
+                    status: 'completed',
+                    date: log.completed_at?.split('T')[0] || today
+                };
+            });
+        }
+
+        // 5. Combine Learning Data
+        // Show Pending First, then Completed
+        const learningData = [...pendingItems, ...completedItems];
+
+
+        // 6. Fetch Weekly Stats
+        // (Keep existing logic)
         const now = new Date();
-        // Adjust for timezone if needed, but assuming UTC/System basic match for week calculation
-        // Using simple JS dates for 7 day lookback might be safer or strict week.
-        // Let's do "Current Week" (Mon-Sun).
-        // Since we don't have date-fns here, let's do simple 7 day range.
         const oneWeekAgo = new Date(now);
         oneWeekAgo.setDate(now.getDate() - 7);
         const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
@@ -120,14 +172,14 @@ export async function GET(request: NextRequest) {
             .from('study_logs')
             .select('status, score, completed_at')
             .eq('student_id', userId)
-            .gte('completed_at', oneWeekAgoStr); // Completed in last 7 days
+            .gte('completed_at', oneWeekAgoStr);
 
         if (statsError) throw statsError;
 
         const completedCount = statsLogs?.filter((l: any) => l.status === 'completed').length || 0;
-        const completedLogs = statsLogs?.filter((l: any) => l.status === 'completed' && l.score !== null) || [];
-        const totalScore = completedLogs.reduce((sum: number, l: any) => sum + (l.score || 0), 0);
-        const averageScore = completedLogs.length > 0 ? Math.round(totalScore / completedLogs.length) : 0;
+        const validScoreLogs = statsLogs?.filter((l: any) => l.status === 'completed' && l.score !== null) || [];
+        const totalScore = validScoreLogs.reduce((sum: number, l: any) => sum + (l.score || 0), 0);
+        const averageScore = validScoreLogs.length > 0 ? Math.round(totalScore / validScoreLogs.length) : 0;
 
         return NextResponse.json({
             learning: learningData,
