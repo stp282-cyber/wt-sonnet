@@ -1,5 +1,15 @@
 import { StudentCurriculum, CurriculumItem, Section, ScheduleItem, DAY_MAP } from '@/types/curriculum';
 
+// YYYY-MM-DD 형식을 로컬 자정 시간으로 파싱 (Timezone 이슈 방지)
+const parseBreakDate = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    }
+    return new Date(dateStr);
+};
+
 // 날짜 유틸리티
 export const getWeekDays = (startDate: Date, weekOffset: number) => {
     const days = [];
@@ -130,84 +140,24 @@ export const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                         currentDailyChunk = [];
                     }
                 }
-
             } else {
-                // --- 단어 수 단위 로직 (개선됨: 섹션 쪼개기 지원) ---
+                // --- 단어 수 단위 로직 (개선됨: 섹션 쪼개기 지원 + Phase Shift) ---
                 const dailyCount = effectiveAmount;
 
                 let currentDayChunk: Section[] = [];
                 let currentDayWordAccumulator = 0;
 
-                // 단어 단위 진행을 위해, 각 섹션을 순회하며 일일 할당량을 채움
-                for (let i = 0; i < item.sections.length; i++) {
-                    const section = item.sections[i];
-                    const sectionWords = section.word_count || 0;
-
-                    // 만약 섹션이 허무맹랑하게 크다면? (예: 일일설정 3개, 섹션 20개) -> 쪼개야 함
-                    // 섹션 내부에서도 progress를 추적해야 함?
-                    // 하지만 Section 객체는 하나임. ScheduleItem이 progressStart/End를 가짐.
-                    // 따라서 "남은 섹션 단어"를 추적하며 ScheduleItem을 발행해야 함.
-
-                    let remainingSectionWords = sectionWords;
-
-                    while (remainingSectionWords > 0) {
-                        // 오늘 담을 수 있는 남은 공간
-                        const spaceInDay = dailyCount - currentDayWordAccumulator;
-
-                        // 예외: 오늘 이미 꽉 찼거나 오버했다면 (이전 루프에서 처리됬어야하지만 안전장치)
-                        if (spaceInDay <= 0) {
-                            // 날짜 마감하고 리셋 (사실 아래 로직에서 마감됨)
-                            // Should not happen if logic is correct below
-                        }
-
-                        // 이번 섹션에서 가져올 단어 수 (남은 섹션 전체 vs 공간 + 오차범위)
-                        // 오차범위: 만약 섹션이 5개 남았는데 오늘 공간이 3개라면? 
-                        // -> 그냥 2개 남기느니 5개 다 넣는게 나을 수 있음 (1.3배 룰)
-                        // -> 하지만 사용자가 "3개"라고 명시했다면 3개만 하는게 맞을수도.
-                        // -> 기존 로직: 1.3배 허용. 
-                        // -> 개선: 섹션 쪼개기를 적극적으로 허용한다면 칼같이 자르는게 맞음.
-                        // -> 하지만 문맥(단원) 끊기는게 싫다면?
-                        // -> 타협: 섹션 전체를 넣었을 때 dailyCount * 1.3 이하라면 넣는다.
-                        // -> 아니라면(너무 크다면) dailyCount 만큼만 잘라서 넣는다.
-
-                        let take = 0;
-                        const canFitWhole = (currentDayWordAccumulator + remainingSectionWords) <= (dailyCount * 1.3);
-
-                        if (canFitWhole) {
-                            take = remainingSectionWords;
-                            // 섹션 전체가 들어가므로 큐에 추가
-                            if (!currentDayChunk.includes(section)) currentDayChunk.push(section);
-                        } else {
-                            // 다 안들어감. 꽉 채우기 (칼같이 자름)
-                            // 단, 오늘 이미 좀 채워졌다면(공간 부족), 그냥 다음날로?
-                            // 아니, 쪼개기를 지원하므로 오늘 공간만큼 채움.
-                            take = Math.min(remainingSectionWords, spaceInDay);
-
-                            // 만약 spaceInDay가 0 이라면? (즉 하루 할당량 끝남)
-                            if (take <= 0) {
-                                // 하루 마감
-                                flushDay();
-                                continue; // 다시 while 루프
-                            }
-                            if (!currentDayChunk.includes(section)) currentDayChunk.push(section);
-                        }
-
-                        currentDayWordAccumulator += take;
-                        remainingSectionWords -= take;
-
-                        // 하루가 꽉 찼으면 (혹은 오버했으면) 마감
-                        if (currentDayWordAccumulator >= dailyCount) {
-                            flushDay();
-                        }
-                    }
+                // [Phase Shift]
+                // 사용자가 지정한 'current_progress'가 청크의 시작점이 되도록 정렬합니다.
+                // 첫 번째 청크의 크기를 조절하여 나머지 청크들의 시작 번호를 밀어줍니다.
+                let initialRemainder = 0;
+                if (curriculum.current_item_id === item.item_id && curriculum.current_progress > 1) {
+                    initialRemainder = (curriculum.current_progress - 1) % dailyCount;
                 }
+                let isFirstBatch = true; // 첫 번째 배치 여부
 
-                // 루프 끝나고 남은 짜투리 마감
-                if (currentDayWordAccumulator > 0) {
-                    flushDay();
-                }
-
-                function flushDay() {
+                // 내부 함수: 하루 마감 처리
+                const flushDay = () => {
                     if (currentDayChunk.length === 0) return;
 
                     const startSection = currentDayChunk[0];
@@ -232,7 +182,7 @@ export const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                         title: unitTitle,
                         major: startSection.major_unit,
                         minor: currentDayChunk.length > 1 || count < (endSection.word_count || 0)
-                            ? `${startSection.minor_unit} (부분)` // 부분 표시? 깔끔하게 그냥 소단원명
+                            ? `${startSection.minor_unit} (부분)`
                             : startSection.minor_unit,
                         isMultiSection: currentDayChunk.length > 1,
                         wordCount: count
@@ -241,6 +191,69 @@ export const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                     currentItemWordProgress += count;
                     currentDayChunk = [];
                     currentDayWordAccumulator = 0;
+
+                    // 첫 배치가 끝났으므로 플래그 해제
+                    if (isFirstBatch) isFirstBatch = false;
+                };
+
+                // 단어 단위 진행을 위해, 각 섹션을 순회하며 일일 할당량을 채움
+                for (let i = 0; i < item.sections.length; i++) {
+                    const section = item.sections[i];
+                    const sectionWords = section.word_count || 0;
+
+                    let remainingSectionWords = sectionWords;
+
+                    while (remainingSectionWords > 0) {
+                        // 이번 배치의 목표량 설정
+                        let currentLimit = dailyCount;
+                        if (isFirstBatch && initialRemainder > 0) {
+                            currentLimit = initialRemainder;
+                        }
+
+                        // 오늘 담을 수 있는 남은 공간
+                        const spaceInDay = currentLimit - currentDayWordAccumulator;
+
+                        // 이번 섹션에서 가져올 단어 수 (남은 섹션 전체 vs 공간 + 오차범위)
+                        // 타협: 섹션 전체를 넣었을 때 currentLimit * 1.3 이하라면 넣는다.
+                        // 아니라면(너무 크다면) spaceInDay 만큼만 잘라서 넣는다.
+
+                        let take = 0;
+                        // 첫 배치는 오차범위 없이 정확히 맞추는게 좋음 (그래야 진도가 딱 맞으므로)
+                        const allowElasticity = !isFirstBatch;
+
+                        const canFitWhole = allowElasticity
+                            ? (currentDayWordAccumulator + remainingSectionWords) <= (currentLimit * 1.3)
+                            : (currentDayWordAccumulator + remainingSectionWords) <= currentLimit;
+
+                        if (canFitWhole) {
+                            take = remainingSectionWords;
+                            // 섹션 전체가 들어가므로 큐에 추가
+                            if (!currentDayChunk.includes(section)) currentDayChunk.push(section);
+                        } else {
+                            // 다 안들어감. 꽉 채우기 (칼같이 자름)
+                            take = Math.min(remainingSectionWords, spaceInDay);
+
+                            // 만약 spaceInDay가 0 이라면? (즉 하루 할당량 끝남) -> 마감
+                            if (take <= 0) {
+                                flushDay();
+                                continue;
+                            }
+                            if (!currentDayChunk.includes(section)) currentDayChunk.push(section);
+                        }
+
+                        currentDayWordAccumulator += take;
+                        remainingSectionWords -= take;
+
+                        // 하루가 꽉 찼으면 (혹은 오버했으면) 마감
+                        if (currentDayWordAccumulator >= currentLimit) {
+                            flushDay();
+                        }
+                    }
+                }
+
+                // 루프 끝나고 남은 짜투리 마감
+                if (currentDayWordAccumulator > 0) {
+                    flushDay();
                 }
             }
         }
@@ -280,19 +293,18 @@ export const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: strin
     }
 
     const normalizedStudyDays = studyDays.map(d => d.toLowerCase());
-
     if (!currentDayCode || !normalizedStudyDays.includes(currentDayCode.toLowerCase())) {
         return null;
     }
 
     // Breaks 체크
     const breaks = (curriculum.breaks || []).map(b => ({
-        start: new Date(b.start_date),
-        end: new Date(b.end_date)
+        start: parseBreakDate(b.start_date),
+        end: parseBreakDate(b.end_date)
     }));
     for (const brk of breaks) {
         const s = new Date(brk.start); s.setHours(0, 0, 0, 0);
-        const e = new Date(brk.end); e.setHours(0, 0, 0, 0);
+        const e = new Date(brk.end); e.setHours(23, 59, 59, 999);
         if (targetDate >= s && targetDate <= e) return null;
     }
 
@@ -305,7 +317,7 @@ export const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: strin
         let isBreak = false;
         for (const brk of breaks) {
             const s = new Date(brk.start); s.setHours(0, 0, 0, 0);
-            const e = new Date(brk.end); e.setHours(0, 0, 0, 0);
+            const e = new Date(brk.end); e.setHours(23, 59, 59, 999);
             if (checkDate >= s && checkDate <= e) {
                 isBreak = true;
                 break;
@@ -365,10 +377,7 @@ export const calculateStartDateForProgress = (
     targetProgress: number,
     baseDate: Date = new Date()
 ): string => {
-    // 1. 전체 스케줄 청크 생성
     const allSections = getAllSectionsForCurriculum(curriculum);
-
-    // 2. 목표 진도가 포함된 청크 찾기
     let targetIndex = -1;
     for (let i = 0; i < allSections.length; i++) {
         const section = allSections[i];
@@ -378,16 +387,10 @@ export const calculateStartDateForProgress = (
         }
     }
 
-    // 못 찾으면 (범위 밖) 그냥 오늘을 시작일로 (혹은 유지)
     if (targetIndex === -1) {
         return curriculum.start_date;
     }
 
-    // [New Logic] baseDate(보통 오늘)가 '학습일'이 아니라면, 
-    // 진도를 배정할 수 없으므로(숨겨짐), '가장 가까운 미래의 학습일'로 baseDate를 밀어야 함.
-    // 그래야 "55번부터 시작"이라고 했을 때 눈에 보이는 첫 날에 55번이 배정됨.
-
-    // study_days 파싱 REUSE
     let studyDays: string[] = [];
     if (Array.isArray(curriculum.study_days)) {
         studyDays = curriculum.study_days;
@@ -399,7 +402,6 @@ export const calculateStartDateForProgress = (
     const normalizedStudyDays = studyDays.map(d => d.toLowerCase());
 
     const adjustedBaseDate = new Date(baseDate);
-    // 최대 7일 정도 뒤져서 다음 학습일을 찾음
     for (let i = 0; i < 7; i++) {
         const dayOfWeek = adjustedBaseDate.getDay();
         let dayCode = '';
@@ -407,40 +409,28 @@ export const calculateStartDateForProgress = (
             if (num === dayOfWeek) dayCode = code;
         });
 
-        // Breaks 체크 로직도 필요하지만, 오늘은 일단 '요일'만이라도 체크
         if (dayCode && normalizedStudyDays.includes(dayCode.toLowerCase())) {
-            // Found a valid study day!
             break;
         }
-        // 다음 날로 이동
         adjustedBaseDate.setDate(adjustedBaseDate.getDate() + 1);
     }
-    // adjustedBaseDate가 이제 "목표 진도를 수행할 날짜"가 됨.
 
-    // targetIndex는 0-based. 즉, targetIndex가 0이면 1일차.
-    // adjustedBaseDate가 (targetIndex + 1)번째 수업일이 되어야 함.
     const requiredStudyDays = targetIndex + 1;
 
-    // 3. adjustedBaseDate로부터 역산하여 start_date 찾기
     const breaks = (curriculum.breaks || []).map(b => ({
-        start: new Date(b.start_date),
-        end: new Date(b.end_date)
+        start: parseBreakDate(b.start_date),
+        end: parseBreakDate(b.end_date)
     }));
 
     let foundDays = 0;
-    const checkDate = new Date(adjustedBaseDate); // 여기서부터 역산
+    const checkDate = new Date(adjustedBaseDate);
     checkDate.setHours(0, 0, 0, 0);
 
-    // [중요] checkDate가 바로 "목표 진도를 수행할 날짜"임.
-    // 즉, checkDate는 "수업일"이어야 함 (위 로직에서 보장).
-    // 따라서 오늘(checkDate)은 1번째 "수업일"로 카운트됨.
-
     while (foundDays < requiredStudyDays) {
-        // 날짜 체크
         let isBreak = false;
         for (const brk of breaks) {
             const s = new Date(brk.start); s.setHours(0, 0, 0, 0);
-            const e = new Date(brk.end); e.setHours(0, 0, 0, 0);
+            const e = new Date(brk.end); e.setHours(23, 59, 59, 999);
             if (checkDate >= s && checkDate <= e) {
                 isBreak = true;
                 break;
@@ -460,17 +450,14 @@ export const calculateStartDateForProgress = (
         }
 
         if (foundDays === requiredStudyDays) {
-            // 이 날짜가 시작일이어야 함
             const year = checkDate.getFullYear();
             const month = String(checkDate.getMonth() + 1).padStart(2, '0');
             const day = String(checkDate.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
 
-        // 하루 전으로
         checkDate.setDate(checkDate.getDate() - 1);
 
-        // 무한 루프 방지
         if (Math.abs(checkDate.getTime() - baseDate.getTime()) > 5 * 365 * 24 * 60 * 60 * 1000) {
             return curriculum.start_date;
         }
