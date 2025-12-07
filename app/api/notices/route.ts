@@ -6,12 +6,17 @@ export async function GET(request: NextRequest) {
     try {
         const supabase = createClient();
         const { searchParams } = new URL(request.url);
+        const academyId = searchParams.get('academy_id');
         const classId = searchParams.get('class_id');
 
         let query = supabase
             .from('notices')
             .select('*')
             .order('created_at', { ascending: false });
+
+        if (academyId) {
+            query = query.eq('academy_id', academyId);
+        }
 
         // 반별 필터링
         if (classId) {

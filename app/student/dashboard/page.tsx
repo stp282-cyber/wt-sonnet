@@ -1,291 +1,293 @@
 'use client';
 
-import { Container, Title, Grid, Paper, Text, Box, Group, Stack, Badge, Progress, Button } from '@mantine/core';
-import { IconBell, IconBook, IconCoin, IconTrophy, IconClock, IconArrowRight } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
+import { Container, Title, Grid, Paper, Text, Box, Group, Stack, Badge, Progress, Button, RingProgress, Center, Loader } from '@mantine/core';
+import { IconBell, IconBook, IconTrophy, IconArrowRight, IconCalendarEvent, IconCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+
+interface LearningItem {
+    id: string;
+    curriculum_name: string;
+    type: 'wordbook' | 'listening';
+    title: string;
+    subInfo: string;
+    status: 'pending' | 'in_progress' | 'completed';
+    date: string;
+}
+
+interface DashboardStats {
+    completedThisWeek: number;
+    averageScore: number;
+}
 
 export default function StudentDashboardPage() {
     const router = useRouter();
+    const [notices, setNotices] = useState<any[]>([]);
+    const [learning, setLearning] = useState<LearningItem[]>([]);
+    const [stats, setStats] = useState<DashboardStats>({ completedThisWeek: 0, averageScore: 0 });
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
-    // 샘플 데이터
-    const notices = [
-        { id: 1, title: '이번 주 시험 일정 안내', date: '2024-01-15', priority: 'high' },
-        { id: 2, title: '달러 사용처 안내', date: '2024-01-14', priority: 'normal' },
-        { id: 3, title: '새로운 단어장 추가', date: '2024-01-13', priority: 'normal' },
-    ];
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) return;
 
-    const todayLearning = [
-        {
-            id: 1,
-            curriculum: '중학 영단어 1000',
-            type: '단어장',
-            section: '1-1',
-            status: 'pending',
-            wordCount: 20,
-        },
-        {
-            id: 2,
-            curriculum: 'CHAPTER 5: TRAVEL',
-            type: '듣기',
-            section: '5-1',
-            status: 'in_progress',
-            wordCount: 15,
-        },
-    ];
+            const userData = JSON.parse(userStr);
+            setUser(userData);
 
-    const dollarHistory = [
-        { id: 1, reason: '타이핑 시험 완료', amount: 10, date: '2024-01-15' },
-        { id: 2, reason: '플래시카드 학습', amount: 5, date: '2024-01-15' },
-        { id: 3, reason: '오답 0개 달성', amount: 20, date: '2024-01-14' },
-    ];
+            try {
+                // 1. Fetch Notices
+                const noticeRes = await fetch(`/api/notices?academy_id=${userData.academy_id}`);
+                if (noticeRes.ok) {
+                    const data = await noticeRes.json();
+                    setNotices((data.notices || []).slice(0, 3));
+                }
 
-    const stats = {
-        completedThisWeek: 8,
-        totalHours: 12,
-        averageScore: 85,
-    };
+                // 2. Fetch Dashboard Data (Learning + Stats)
+                const dashRes = await fetch(`/api/student/dashboard?user_id=${userData.id}`);
+                if (dashRes.ok) {
+                    const data = await dashRes.json();
+                    setLearning(data.learning || []);
+                    setStats(data.stats || { completedThisWeek: 0, averageScore: 0 });
+                }
+            } catch (e) {
+                console.error('Error fetching dashboard data:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
 
     const getStatusInfo = (status: string) => {
         switch (status) {
-            case 'pending': return { text: '대기', color: 'gray' };
-            case 'in_progress': return { text: '진행중', color: 'yellow' };
-            case 'completed': return { text: '완료', color: 'green' };
-            default: return { text: '대기', color: 'gray' };
+            case 'pending': return { text: '학습 전', color: 'gray', bg: '#F1F3F5' };
+            case 'in_progress': return { text: '진행중', color: 'blue', bg: '#E7F5FF' };
+            case 'completed': return { text: '완료', color: 'green', bg: '#EBFBEE' };
+            default: return { text: '대기', color: 'gray', bg: '#F8F9FA' };
         }
     };
 
+    if (loading) {
+        return (
+            <Container size="xl" py={40} h="100vh">
+                <Center h="100%">
+                    <Loader size="xl" color="dark" type="dots" />
+                </Center>
+            </Container>
+        );
+    }
+
     return (
         <Container size="xl" py={40}>
-            {/* 페이지 헤더 */}
-            <Box mb={30} className="animate-fade-in">
-                <Box
-                    style={{
-                        display: 'inline-block',
-                        background: '#FFD93D',
-                        border: '2px solid black',
-                        padding: '0.5rem 1rem',
-                        boxShadow: '4px 4px 0px black',
-                        marginBottom: '1rem',
-                    }}
-                >
-                    <Title order={1} style={{ fontWeight: 900, fontFamily: "'Montserrat', sans-serif" }}>
-                        STUDENT DASHBOARD
-                    </Title>
+            {/* Header Section */}
+            <Group justify="space-between" align="flex-end" mb={40} className="animate-fade-in">
+                <Box>
+                    <Box
+                        style={{
+                            display: 'inline-block',
+                            background: '#20C20E', // Vibrant Green for Energy
+                            border: '3px solid black',
+                            padding: '0.5rem 1.5rem',
+                            boxShadow: '6px 6px 0px black',
+                            marginBottom: '1.5rem',
+                            transform: 'rotate(-2deg)'
+                        }}
+                    >
+                        <Title order={1} style={{ fontWeight: 900, fontFamily: "'Montserrat', sans-serif", fontSize: '2.5rem', color: 'white', textShadow: '2px 2px 0px black' }}>
+                            DASHBOARD
+                        </Title>
+                    </Box>
+                    <Text size="xl" fw={800} style={{ letterSpacing: '-0.5px' }}>
+                        반가워요, <span style={{ background: '#FFD43B', padding: '0 5px' }}>{user?.full_name}</span> 학생! 🚀
+                    </Text>
                 </Box>
-                <Text size="lg" fw={700}>
-                    오늘도 열심히 공부해봐요!
+                <Text size="sm" fw={600} c="dimmed">
+                    {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
                 </Text>
-            </Box>
+            </Group>
 
-            <Grid>
-                {/* 1. 공지사항 (단순화된 스타일) */}
-                <Grid.Col span={{ base: 12, md: 6 }}>
+            <Grid gutter="xl">
+                {/* PRIMARY COLUMN: Today's Learning (Left, Wider) */}
+                <Grid.Col span={{ base: 12, md: 8 }}>
                     <Paper
                         p="xl"
-                        className="neo-card"
+                        className="neo-card-hover" // We can style this via style prop if class missing
                         style={{
-                            border: '2px solid black',
+                            border: '3px solid black',
                             background: 'white',
-                            boxShadow: '6px 6px 0px black',
-                            height: '100%',
-                            borderRadius: 0,
+                            boxShadow: '8px 8px 0px black',
+                            borderRadius: '12px',
+                            minHeight: '400px',
+                            position: 'relative',
+                            overflow: 'hidden'
                         }}
                     >
-                        <Group mb="lg">
-                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconBell size={24} color="white" stroke={2} />
-                            </Box>
-                            <Title order={3} fw={900}>공지사항</Title>
-                        </Group>
-
-                        <Stack gap="sm">
-                            {notices.map((notice) => (
-                                <Paper
-                                    key={notice.id}
-                                    p="md"
-                                    onClick={() => router.push('/student/notices')}
-                                    style={{
-                                        border: '2px solid black',
-                                        background: 'white',
-                                        cursor: 'pointer',
-                                        transition: 'transform 0.1s',
-                                        borderRadius: 0,
-                                    }}
-                                >
-                                    <Group justify="space-between" align="flex-start">
-                                        <div>
-                                            {notice.priority === 'high' && (
-                                                <Badge color="red" variant="filled" mb={5} radius={0} style={{ border: '1px solid black' }}>중요</Badge>
-                                            )}
-                                            <Text fw={700} size="md">{notice.title}</Text>
-                                            <Text size="xs" c="dimmed" fw={600}>{notice.date}</Text>
-                                        </div>
-                                    </Group>
-                                </Paper>
-                            ))}
-                        </Stack>
-                    </Paper>
-                </Grid.Col>
-
-                {/* 2. 오늘의 학습 */}
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Paper
-                        p="xl"
-                        className="neo-card"
-                        style={{
-                            border: '2px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px black',
-                            height: '100%',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Group mb="lg">
-                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconBook size={24} color="white" stroke={2} />
-                            </Box>
-                            <Title order={3} fw={900}>오늘의 학습</Title>
+                        <Group mb="xl" justify="space-between" align="center">
+                            <Group>
+                                <Box style={{ background: 'black', padding: '10px', borderRadius: '8px' }}>
+                                    <IconBook size={28} color="#FFD43B" stroke={2.5} />
+                                </Box>
+                                <Title order={2} fw={900}>오늘의 학습</Title>
+                            </Group>
+                            <Badge size="lg" color="dark" variant="filled" radius="sm" style={{ border: '2px solid black' }}>
+                                {learning.length}개의 할일
+                            </Badge>
                         </Group>
 
                         <Stack gap="md">
-                            {todayLearning.map((item) => {
-                                const status = getStatusInfo(item.status);
-                                return (
-                                    <Paper
-                                        key={item.id}
-                                        p="md"
-                                        style={{
-                                            border: '2px solid black',
-                                            background: '#F8F9FA',
-                                            borderRadius: 0,
-                                        }}
-                                    >
-                                        <Group justify="space-between" mb="xs">
-                                            <Badge
-                                                color="gray"
-                                                variant="light"
-                                                size="lg"
-                                                radius={0}
-                                                style={{ border: '2px solid black', color: 'black', fontWeight: 800 }}
-                                            >
-                                                {item.type}
-                                            </Badge>
-                                            <Badge
-                                                color={status.color}
-                                                variant="filled"
-                                                radius={0}
-                                                style={{ border: '2px solid black', fontWeight: 700 }}
-                                            >
-                                                {status.text}
-                                            </Badge>
-                                        </Group>
-                                        <Text fw={800} size="lg" truncate>{item.curriculum}</Text>
-                                        <Text size="sm" c="dimmed" fw={600} mb="md">
-                                            {item.section} · {item.wordCount}개 단어
-                                        </Text>
-                                        <Button
-                                            fullWidth
-                                            className="neo-button"
+                            {learning.length === 0 ? (
+                                <Box py={60} style={{ textAlign: 'center', opacity: 0.5 }}>
+                                    <IconCheck size={60} stroke={1.5} style={{ margin: '0 auto', marginBottom: '1rem' }} />
+                                    <Text size="lg" fw={700}>모든 학습을 완료했어요!</Text>
+                                    <Text size="sm">푹 쉬거나 복습을 해보세요.</Text>
+                                </Box>
+                            ) : (
+                                learning.map((item) => {
+                                    const status = getStatusInfo(item.status);
+                                    return (
+                                        <Paper
+                                            key={item.id}
+                                            p="lg"
+                                            radius="md"
+                                            style={{
+                                                border: '3px solid black',
+                                                background: status.bg,
+                                                transition: 'transform 0.2s',
+                                                cursor: 'pointer'
+                                            }}
                                             onClick={() => router.push('/student/learning')}
-                                            rightSection={<IconArrowRight size={18} />}
-                                            radius={0}
-                                            style={{ backgroundColor: 'black', color: 'white', border: '2px solid black' }}
                                         >
-                                            학습 시작하기
-                                        </Button>
-                                    </Paper>
-                                );
-                            })}
+                                            <Group justify="space-between" wrap="nowrap">
+                                                <Group wrap="nowrap">
+                                                    <Box
+                                                        style={{
+                                                            minWidth: '60px',
+                                                            height: '60px',
+                                                            background: 'white',
+                                                            border: '2px solid black',
+                                                            borderRadius: '8px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            flexDirection: 'column'
+                                                        }}
+                                                    >
+                                                        <Text fw={900} size="xs" c="dimmed">TYPE</Text>
+                                                        <Text fw={900} size="sm">{item.type === 'wordbook' ? '단어' : '듣기'}</Text>
+                                                    </Box>
+
+                                                    <Box>
+                                                        <Group gap="xs" mb={4}>
+                                                            <Badge color="dark" variant="transparent" p={0} size="sm">{item.curriculum_name}</Badge>
+                                                        </Group>
+                                                        <Text fw={800} size="lg" lineClamp={1}>{item.title}</Text>
+                                                        <Text size="sm" fw={600} c="dimmed">{item.subInfo}</Text>
+                                                    </Box>
+                                                </Group>
+
+                                                <Button
+                                                    color="black"
+                                                    radius="md"
+                                                    rightSection={<IconArrowRight size={16} />}
+                                                    style={{ border: '2px solid transparent' }}
+                                                >
+                                                    시작
+                                                </Button>
+                                            </Group>
+                                        </Paper>
+                                    );
+                                })
+                            )}
                         </Stack>
                     </Paper>
                 </Grid.Col>
 
-                {/* 3. 달러 현황 */}
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Paper
-                        p="xl"
-                        className="neo-card"
-                        style={{
-                            border: '2px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px black',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Group mb="lg">
-                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconCoin size={24} color="white" stroke={2} />
-                            </Box>
-                            <Title order={3} fw={900}>내 지갑</Title>
-                        </Group>
+                {/* SECONDARY COLUMN: Stats & Notices */}
+                <Grid.Col span={{ base: 12, md: 4 }}>
+                    <Stack gap="xl">
+                        {/* Weekly Stats Card */}
+                        <Paper
+                            p="xl"
+                            style={{
+                                border: '3px solid black',
+                                background: '#FFD43B', // Yellow
+                                boxShadow: '6px 6px 0px black',
+                                borderRadius: '12px',
+                            }}
+                        >
+                            <Group mb="lg">
+                                <IconTrophy size={32} stroke={2.5} />
+                                <Title order={3} fw={900}>주간 통계</Title>
+                            </Group>
 
-                        <Box mb="lg" style={{ textAlign: 'center', background: '#FFF9DB', border: '2px solid black', padding: '1rem' }}>
-                            <Text size="3rem" fw={900} style={{ color: 'black', lineHeight: 1 }}>
-                                $150
+                            <Group grow mb="md">
+                                <Box style={{ textAlign: 'center' }}>
+                                    <Text size="xs" fw={700} c="dark" mb={4}>완료한 학습</Text>
+                                    <Text size="2rem" fw={900} style={{ lineHeight: 1 }}>{stats.completedThisWeek}</Text>
+                                    <Text size="xs" fw={600} c="dimmed">건</Text>
+                                </Box>
+                                <Box style={{ textAlign: 'center', borderLeft: '2px solid rgba(0,0,0,0.1)' }}>
+                                    <Text size="xs" fw={700} c="dark" mb={4}>평균 점수</Text>
+                                    <Text size="2rem" fw={900} style={{ lineHeight: 1 }}>{stats.averageScore}</Text>
+                                    <Text size="xs" fw={600} c="dimmed">점</Text>
+                                </Box>
+                            </Group>
+
+                            <Text size="xs" ta="center" fw={600} style={{ opacity: 0.7 }}>
+                                지난 7일간의 학습 기록입니다.
                             </Text>
-                            <Text size="sm" fw={700} c="dimmed">이번 주 획득: +$35</Text>
-                        </Box>
+                        </Paper>
 
-                        <Stack gap="xs">
-                            {dollarHistory.map((item) => (
-                                <Group key={item.id} justify="space-between" style={{ borderBottom: '2px solid #eee', paddingBottom: '8px' }}>
-                                    <Text size="sm" fw={600}>{item.reason}</Text>
-                                    <Text fw={800} c="green">+{item.amount}</Text>
+                        {/* Notices Card */}
+                        <Paper
+                            p="xl"
+                            style={{
+                                border: '3px solid black',
+                                background: 'white',
+                                boxShadow: '6px 6px 0px black',
+                                borderRadius: '12px',
+                            }}
+                        >
+                            <Group mb="lg" justify="space-between">
+                                <Group gap="xs">
+                                    <IconBell size={24} />
+                                    <Title order={3} fw={900}>공지사항</Title>
                                 </Group>
-                            ))}
-                        </Stack>
-                    </Paper>
-                </Grid.Col>
-
-                {/* 4. 학습 통계 */}
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Paper
-                        p="xl"
-                        className="neo-card"
-                        style={{
-                            border: '2px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px black',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Group mb="lg">
-                            <Box style={{ background: 'black', padding: '8px', border: '2px solid black' }}>
-                                <IconTrophy size={24} color="white" stroke={2} />
-                            </Box>
-                            <Title order={3} fw={900}>주간 통계</Title>
-                        </Group>
-
-                        <Stack gap="lg">
-                            <Box>
-                                <Group justify="space-between" mb={5}>
-                                    <Text fw={700}>완료한 학습</Text>
-                                    <Text fw={900} size="lg">{stats.completedThisWeek}개</Text>
-                                </Group>
-                                <Progress
-                                    value={80}
-                                    size="xl"
-                                    radius={0}
+                                <Button
+                                    variant="subtle"
                                     color="dark"
-                                    style={{ border: '2px solid black' }}
-                                />
-                            </Box>
+                                    compact
+                                    size="xs"
+                                    onClick={() => router.push('/student/notices')}
+                                >
+                                    더보기
+                                </Button>
+                            </Group>
 
-                            <Box>
-                                <Group justify="space-between" mb={5}>
-                                    <Text fw={700}>평균 점수</Text>
-                                    <Text fw={900} size="lg" c="green">{stats.averageScore}점</Text>
-                                </Group>
-                                <Progress
-                                    value={stats.averageScore}
-                                    size="xl"
-                                    radius={0}
-                                    color="dark"
-                                    style={{ border: '2px solid black' }}
-                                />
-                            </Box>
-                        </Stack>
-                    </Paper>
+                            <Stack gap="md">
+                                {notices.length === 0 ? (
+                                    <Text size="sm" c="dimmed" ta="center">새로운 공지가 없습니다.</Text>
+                                ) : (
+                                    notices.map((notice, index) => (
+                                        <Box
+                                            key={index}
+                                            onClick={() => router.push('/student/notices')}
+                                            style={{ cursor: 'pointer', paddingBottom: '10px', borderBottom: index !== notices.length - 1 ? '2px dashed #eee' : 'none' }}
+                                        >
+                                            <Group justify="space-between" align="start" wrap="nowrap">
+                                                <Text fw={700} size="sm" lineClamp={1}>{notice.title}</Text>
+                                                {notice.priority === 'high' && <Box style={{ width: 8, height: 8, borderRadius: '50%', background: 'red' }} />}
+                                            </Group>
+                                            <Text size="xs" c="dimmed">{new Date(notice.created_at).toLocaleDateString()}</Text>
+                                        </Box>
+                                    ))
+                                )}
+                            </Stack>
+                        </Paper>
+                    </Stack>
                 </Grid.Col>
             </Grid>
         </Container>

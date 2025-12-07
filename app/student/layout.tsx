@@ -10,7 +10,7 @@ import {
     IconMail,
     IconSettings,
     IconLogout,
-    IconCoin,
+
 } from '@tabler/icons-react';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +20,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
     // 학생 정보 상태
     const [studentName, setStudentName] = useState('학생');
-    const [studentDollars, setStudentDollars] = useState(0);
+
 
     // localStorage에서 사용자 정보 가져오기
     useEffect(() => {
@@ -30,7 +30,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 try {
                     const user = JSON.parse(userStr);
                     setStudentName(user.full_name || user.name || '학생');
-                    setStudentDollars(user.dollars || 0);
+                    setStudentName(user.full_name || user.name || '학생');
                 } catch (error) {
                     console.error('Failed to parse user data:', error);
                 }
@@ -107,49 +107,29 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         </Box>
                     </Group>
 
-                    <Group>
-                        {/* 달러 표시 */}
-                        <Box
-                            style={{
-                                background: '#FFD93D', // Yellow
-                                border: '2px solid black',
-                                padding: '0.5rem 1rem',
-                                boxShadow: '3px 3px 0px black',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                            }}
-                        >
-                            <IconCoin size={24} color="black" stroke={2} />
-                            <Text fw={900} size="lg" c="black">
-                                {studentDollars}
-                            </Text>
-                        </Box>
+                    <Text fw={700} size="lg" visibleFrom="xs">
+                        {studentName} 학생
+                    </Text>
 
-                        <Text fw={700} size="lg" visibleFrom="xs">
-                            {studentName} 학생
-                        </Text>
-
-                        <button
-                            onClick={handleLogout}
-                            style={{
-                                background: 'white',
-                                color: 'black',
-                                border: '2px solid black',
-                                fontSize: '0.8rem',
-                                fontWeight: 800,
-                                padding: '0.4rem 0.8rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                marginTop: '2px', // Alignment fix
-                                transition: 'all 0.1s',
-                            }}
-                            className="neo-button"
-                        >
-                            <IconLogout size={16} stroke={2} />
-                        </button>
-                    </Group>
+                    <button
+                        onClick={handleLogout}
+                        style={{
+                            background: 'white',
+                            color: 'black',
+                            border: '2px solid black',
+                            fontSize: '0.8rem',
+                            fontWeight: 800,
+                            padding: '0.4rem 0.8rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginTop: '2px', // Alignment fix
+                            transition: 'all 0.1s',
+                        }}
+                        className="neo-button"
+                    >
+                        <IconLogout size={16} stroke={2} />
+                    </button>
                 </Group>
             </AppShell.Header>
 
@@ -230,6 +210,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             >
                 {children}
             </AppShell.Main>
-        </AppShell>
+        </AppShell >
     );
 }

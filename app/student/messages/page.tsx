@@ -1,54 +1,146 @@
 'use client';
 
-import { useState } from 'react';
-import { Container, Title, Paper, Text, Box, Group, Stack, TextInput, Textarea, ScrollArea } from '@mantine/core';
+import { useState, useEffect, useRef } from 'react';
+import { Container, Title, Paper, Text, Box, Group, Stack, TextInput, Textarea, ScrollArea, Avatar, Loader, Badge, Select } from '@mantine/core';
 import { IconSend, IconUser } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 
 interface Message {
     id: string;
-    sender: 'teacher' | 'student';
+    sender_id: string;
+    recipient_id: string;
     content: string;
-    timestamp: string;
+    is_read: boolean;
+    created_at: string;
+    sender: {
+        id: string;
+        username: string;
+        full_name: string;
+    };
+    recipient: {
+        id: string;
+        username: string;
+        full_name: string;
+    };
+}
+
+interface User {
+    id: string;
+    username: string;
+    full_name: string;
+    role: string;
 }
 
 export default function StudentMessagesPage() {
+    const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [teachers, setTeachers] = useState<User[]>([]);
+    const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
+    const scrollViewport = useRef<HTMLDivElement>(null);
 
-    // 샘플 메시지 데이터
-    const messages: Message[] = [
-        {
-            id: '1',
-            sender: 'teacher',
-            content: '안녕하세요! 이번 주 학습 잘 진행되고 있나요?',
-            timestamp: '2024-01-15 10:30',
-        },
-        {
-            id: '2',
-            sender: 'student',
-            content: '네 선생님! 열심히 하고 있어요 😊',
-            timestamp: '2024-01-15 14:20',
-        },
-        {
-            id: '3',
-            sender: 'teacher',
-            content: '좋아요! 오늘 타이핑 시험 점수가 95점이네요. 정말 잘했어요!',
-            timestamp: '2024-01-15 15:00',
-        },
-        {
-            id: '4',
-            sender: 'student',
-            content: '감사합니다! 다음에는 100점 받을게요!',
-            timestamp: '2024-01-15 15:10',
-        },
-    ];
+    useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            setCurrentUser(user);
+            fetchTeachers(user.academy_id);
+        } else {
+            setLoading(false);
+        }
+    }, []);
 
-    const handleSend = () => {
-        if (newMessage.trim()) {
-            // 메시지 전송 로직 (추후 구현)
-            console.log('전송:', newMessage);
-            setNewMessage('');
+    useEffect(() => {
+        if (currentUser) {
+            fetchMessages();
+            // 주기적으로 메시지 갱신 (폴링)
+            const interval = setInterval(fetchMessages, 10000);
+            return () => clearInterval(interval);
+        }
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (scrollViewport.current) {
+            scrollViewport.current.scrollTo({ top: scrollViewport.current.scrollHeight, behavior: 'smooth' });
+        }
+    }, [messages]);
+
+    const fetchTeachers = async (academyId: string) => {
+        try {
+            const response = await fetch(`/api/users?role=teacher&academy_id=${academyId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setTeachers(data.users || []);
+                if (data.users.length > 0) {
+                    setSelectedTeacherId(data.users[0].id);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch teachers:', error);
         }
     };
+
+    const fetchMessages = async () => {
+        if (!currentUser) return;
+        try {
+            // 현재는 모든 메시지를 가져옴. 추후 대화 상대별 필터링 UI가 필요할 수 있음.
+            const response = await fetch(`/api/messages?user_id=${currentUser.id}`);
+            if (!response.ok) throw new Error('Failed to fetch messages');
+
+            const data = await response.json();
+            // 날짜순 정렬 (오래된 게 위로)
+            const sortedMessages = (data.messages || []).sort((a: Message, b: Message) =>
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+            setMessages(sortedMessages);
+        } catch (error: any) {
+            console.error('Error fetching messages:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSend = async () => {
+        if (!newMessage.trim() || !currentUser || !selectedTeacherId) return;
+
+        try {
+            const response = await fetch('/api/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sender_id: currentUser.id,
+                    recipient_id: selectedTeacherId,
+                    content: newMessage,
+                }),
+            });
+
+            if (!response.ok) throw new Error('Failed to send message');
+
+            setNewMessage('');
+            fetchMessages(); // 메시지 목록 갱신
+        } catch (error: any) {
+            notifications.show({
+                title: '전송 실패',
+                message: error.message || '메시지를 보내지 못했습니다.',
+                color: 'red',
+            });
+        }
+    };
+
+    if (loading) {
+        return (
+            <Container size="md" py={40} style={{ display: 'flex', justifyContent: 'center' }}>
+                <Loader color="yellow" size="xl" />
+            </Container>
+        );
+    }
+
+    // 현재 선택된 선생님과의 대화만 필터링
+    const filteredMessages = messages.filter(m =>
+        (m.sender_id === currentUser?.id && m.recipient_id === selectedTeacherId) ||
+        (m.sender_id === selectedTeacherId && m.recipient_id === currentUser?.id)
+    );
 
     return (
         <Container size="md" py={40}>
@@ -62,6 +154,20 @@ export default function StudentMessagesPage() {
                         선생님과 대화하세요
                     </Text>
                 </Box>
+
+                <Group align="flex-start" mb="md">
+                    <Select
+                        label="대화 상대 선택"
+                        placeholder="선생님을 선택하세요"
+                        data={teachers.map(t => ({ value: t.id, label: t.full_name }))}
+                        value={selectedTeacherId}
+                        onChange={setSelectedTeacherId}
+                        allowDeselect={false}
+                        styles={{
+                            input: { border: '2px solid black', borderRadius: '0px' }
+                        }}
+                    />
+                </Group>
 
                 {/* 메시지 영역 */}
                 <Paper
@@ -82,62 +188,71 @@ export default function StudentMessagesPage() {
                         pb="md"
                         style={{
                             borderBottom: '2px solid black',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1rem'
                         }}
                     >
-                        <Group>
-                            <Box
-                                style={{
-                                    width: '50px',
-                                    height: '50px',
-                                    background: 'black',
-                                    border: '2px solid black',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderRadius: 0,
-                                }}
-                            >
-                                <IconUser size={28} color="white" />
-                            </Box>
-                            <div>
-                                <Text fw={900} size="lg">
-                                    김선생님
-                                </Text>
-                                <Text size="sm" c="dimmed">
-                                    담당 선생님
-                                </Text>
-                            </div>
-                        </Group>
+                        <Box
+                            style={{
+                                width: '50px',
+                                height: '50px',
+                                background: 'black',
+                                border: '2px solid black',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 0,
+                                color: 'white'
+                            }}
+                        >
+                            <IconUser size={28} />
+                        </Box>
+                        <div>
+                            <Text fw={900} size="lg">
+                                {teachers.find(t => t.id === selectedTeacherId)?.full_name || '선생님'}
+                            </Text>
+                            <Text size="sm" c="dimmed">
+                                담당 선생님
+                            </Text>
+                        </div>
                     </Box>
 
                     {/* 메시지 목록 */}
-                    <ScrollArea style={{ flex: 1 }} mb="md">
+                    <ScrollArea style={{ flex: 1 }} mb="md" viewportRef={scrollViewport}>
                         <Stack gap="md">
-                            {messages.map((message) => (
-                                <Box
-                                    key={message.id}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: message.sender === 'student' ? 'flex-end' : 'flex-start',
-                                    }}
-                                >
-                                    <Paper
-                                        p="md"
-                                        style={{
-                                            maxWidth: '70%',
-                                            border: '2px solid black',
-                                            background: message.sender === 'student' ? '#FFD93D' : '#F1F3F5',
-                                            borderRadius: 0,
-                                            boxShadow: '4px 4px 0px black',
-                                        }}
-                                    >
-                                        <Text fw={600} c={message.sender === 'student' ? 'black' : 'black'}>{message.content}</Text>
-                                        <Text size="xs" c="dimmed" mt="xs" ta="right">
-                                            {message.timestamp}
-                                        </Text>
-                                    </Paper>
-                                </Box>
-                            ))}
+                            {filteredMessages.length === 0 ? (
+                                <Text c="dimmed" ta="center" py="xl">대화 내역이 없습니다.</Text>
+                            ) : (
+                                filteredMessages.map((message) => {
+                                    const isMe = message.sender_id === currentUser?.id;
+                                    return (
+                                        <Box
+                                            key={message.id}
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: isMe ? 'flex-end' : 'flex-start',
+                                            }}
+                                        >
+                                            <Paper
+                                                p="md"
+                                                style={{
+                                                    maxWidth: '70%',
+                                                    border: '2px solid black',
+                                                    background: isMe ? '#FFD93D' : '#F1F3F5',
+                                                    borderRadius: 0,
+                                                    boxShadow: '4px 4px 0px black',
+                                                }}
+                                            >
+                                                <Text fw={600} c="black">{message.content}</Text>
+                                                <Text size="xs" c="dimmed" mt="xs" ta="right">
+                                                    {new Date(message.created_at).toLocaleString()}
+                                                </Text>
+                                            </Paper>
+                                        </Box>
+                                    );
+                                })
+                            )}
                         </Stack>
                     </ScrollArea>
 
