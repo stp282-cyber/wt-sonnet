@@ -196,18 +196,18 @@ export default function LoginPage() {
             <Stack gap="xl">
               <Box style={{ textAlign: 'center', marginBottom: '1rem' }}>
                 <Title order={2} style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 900, fontSize: '1.8rem' }}>
-                  WELCOME BACK
+                  환영합니다!
                 </Title>
                 <Text c="dimmed" fw={600} size="sm">
-                  Sign in to continue your journey
+                  학습을 시작하려면 로그인하세요
                 </Text>
               </Box>
 
               <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="lg">
                   <TextInput
-                    label="USERNAME"
-                    placeholder="ENTER YOUR USERNAME"
+                    label="아이디"
+                    placeholder="아이디를 입력하세요"
                     size="lg"
                     required
                     {...form.getInputProps('username')}
@@ -229,8 +229,8 @@ export default function LoginPage() {
                   />
 
                   <PasswordInput
-                    label="PASSWORD"
-                    placeholder="ENTER YOUR PASSWORD"
+                    label="비밀번호"
+                    placeholder="비밀번호를 입력하세요"
                     size="lg"
                     required
                     {...form.getInputProps('password')}
@@ -271,16 +271,15 @@ export default function LoginPage() {
                       transition: 'background 0.2s',
                     }}
                   >
-                    {loading ? 'LOADING...' : 'SIGN IN →'}
+                    {loading ? '로그인 중...' : '로그인 →'}
                   </motion.button>
                 </Stack>
               </form>
 
               <Box style={{ borderTop: '2px solid #E5E7EB', paddingTop: '1.5rem', textAlign: 'center' }}>
                 <Text size="sm" fw={700} c="dimmed">
-                  DON'T HAVE AN ACCOUNT?{' '}
-                  <Text component="span" c="blue" fw={900} style={{ cursor: 'pointer', textDecoration: 'underline' }}>
-                    CREATE ACADEMY
+                  <Text component="span" c="blue" fw={900} style={{ cursor: 'pointer' }}>
+                    이스턴영어공부방
                   </Text>
                 </Text>
               </Box>
