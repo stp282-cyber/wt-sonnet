@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Container,
     Title,
@@ -12,6 +12,8 @@ import {
     Button,
     ActionIcon,
     Select,
+    Loader,
+    Box
 } from '@mantine/core';
 import { IconCheck, IconX, IconTrash, IconClock } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -23,56 +25,46 @@ interface TodayLearning {
     curriculum_name: string;
     item_name: string;
     scheduled_time: string;
-    status: 'pending' | 'in_progress' | 'completed' | 'delayed';
+    status: 'pending' | 'in_progress' | 'completed' | 'delayed' | 'no_schedule';
     score?: number;
 }
 
 export default function TodayManagementPage() {
     const [selectedClass, setSelectedClass] = useState<string>('all');
+    const [todayLearnings, setTodayLearnings] = useState<TodayLearning[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const [todayLearnings, setTodayLearnings] = useState<TodayLearning[]>([
-        {
-            id: '1',
-            student_name: '김철수',
-            class_name: 'A반',
-            curriculum_name: '중학 영단어 1000',
-            item_name: '1-3 소단원',
-            scheduled_time: '14:00',
-            status: 'completed',
-            score: 95,
-        },
-        {
-            id: '2',
-            student_name: '이영희',
-            class_name: 'A반',
-            curriculum_name: '중학 영단어 1000',
-            item_name: '1-4 소단원',
-            scheduled_time: '14:30',
-            status: 'in_progress',
-        },
-        {
-            id: '3',
-            student_name: '박민수',
-            class_name: 'B반',
-            curriculum_name: 'CHAPTER 5: TRAVEL',
-            item_name: '5-2 소단원',
-            scheduled_time: '13:00',
-            status: 'delayed',
-        },
-        {
-            id: '4',
-            student_name: '최지우',
-            class_name: 'A반',
-            curriculum_name: '중학 영단어 1000',
-            item_name: '2-1 소단원',
-            scheduled_time: '15:00',
-            status: 'pending',
-        },
-    ]);
+    const fetchTodayLearnings = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('/api/teacher/today-assignments');
+            if (!res.ok) throw new Error('Failed to fetch');
+            const data = await res.json();
+            setTodayLearnings(data.assignments || []);
+        } catch (error) {
+            console.error(error);
+            notifications.show({
+                title: '오류',
+                message: '데이터를 불러오는데 실패했습니다.',
+                color: 'red'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTodayLearnings();
+    }, []);
 
     const filteredData = selectedClass === 'all'
         ? todayLearnings
         : todayLearnings.filter(l => l.class_name === selectedClass);
+
+    // Filter logic for summary cards (exclude no_schedule usually, or include? usually exclude)
+    const completedCount = filteredData.filter(l => l.status === 'completed').length;
+    const delayedCount = filteredData.filter(l => l.status === 'delayed').length;
+    const pendingCount = filteredData.filter(l => l.status === 'pending').length;
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -80,6 +72,7 @@ export default function TodayManagementPage() {
             case 'in_progress': return 'yellow';
             case 'delayed': return 'red';
             case 'pending': return 'gray';
+            case 'no_schedule': return 'gray';
             default: return 'gray';
         }
     };
@@ -90,35 +83,44 @@ export default function TodayManagementPage() {
             case 'in_progress': return '진행중';
             case 'delayed': return '지연';
             case 'pending': return '대기';
+            case 'no_schedule': return '일정 없음';
             default: return '대기';
         }
     };
 
-    const handleMarkAsCompleted = (id: string) => {
-        setTodayLearnings(
-            todayLearnings.map(l =>
-                l.id === id ? { ...l, status: 'completed' as const, score: 0 } : l
-            )
-        );
+    const handleMarkAsCompleted = async (id: string) => {
+        // Needs API integration to actually mark as completed, but for now just UI update or show notification
         notifications.show({
-            title: '완료 처리',
-            message: '학습이 완료 처리되었습니다.',
-            color: 'green',
+            title: '알림',
+            message: '실제 완료 처리는 학생이 학습을 수행해야 합니다.',
+            color: 'blue',
         });
     };
 
     const handleDelete = (id: string) => {
-        setTodayLearnings(todayLearnings.filter(l => l.id !== id));
+        // Cannot really delete a schedule easily without API
         notifications.show({
-            title: '삭제 완료',
-            message: '학습이 삭제되었습니다.',
-            color: 'red',
+            title: '알림',
+            message: '스케줄 삭제 기능은 준비중입니다.',
+            color: 'blue',
         });
     };
 
-    const completedCount = filteredData.filter(l => l.status === 'completed').length;
-    const delayedCount = filteredData.filter(l => l.status === 'delayed').length;
-    const pendingCount = filteredData.filter(l => l.status === 'pending').length;
+    if (loading) {
+        return (
+            <Container size="xl" py={40} style={{ display: 'flex', justifyContent: 'center' }}>
+                <Loader color="yellow" size="xl" />
+            </Container>
+        );
+    }
+
+    // Extract unique class names for filter
+    const uniqueClasses = Array.from(new Set(todayLearnings.map(l => l.class_name))).filter(c => c && c !== '미배정');
+    const classOptions = [
+        { value: 'all', label: '전체' },
+        ...uniqueClasses.map(c => ({ value: c, label: c })),
+        { value: '미배정', label: '미배정' }
+    ];
 
     return (
         <Container size="xl" py={40}>
@@ -131,6 +133,14 @@ export default function TodayManagementPage() {
                         오늘의 학습 현황을 확인하고 관리하세요
                     </Text>
                 </div>
+                <Button
+                    variant="outline"
+                    color="black"
+                    onClick={() => fetchTodayLearnings()}
+                    style={{ border: '2px solid black', borderRadius: '0px', color: 'black' }}
+                >
+                    새로고침
+                </Button>
             </Group>
 
             {/* 통계 카드 */}
@@ -205,12 +215,7 @@ export default function TodayManagementPage() {
                     label="반 선택"
                     value={selectedClass}
                     onChange={(value) => setSelectedClass(value || 'all')}
-                    data={[
-                        { value: 'all', label: '전체' },
-                        { value: 'A반', label: 'A반' },
-                        { value: 'B반', label: 'B반' },
-                        { value: 'C반', label: 'C반' },
-                    ]}
+                    data={classOptions}
                     style={{ width: 200 }}
                     styles={{ input: { border: '2px solid black', borderRadius: '0px' } }}
                 />
@@ -240,7 +245,7 @@ export default function TodayManagementPage() {
                         </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                        {filteredData.map((learning) => (
+                        {filteredData.length > 0 ? filteredData.map((learning) => (
                             <Table.Tr key={learning.id}>
                                 <Table.Td>
                                     <Text fw={700}>{learning.scheduled_time}</Text>
@@ -273,7 +278,7 @@ export default function TodayManagementPage() {
                                 </Table.Td>
                                 <Table.Td>
                                     <Group gap="xs">
-                                        {learning.status !== 'completed' && (
+                                        {learning.status !== 'no_schedule' && learning.status !== 'completed' && (
                                             <Button
                                                 size="xs"
                                                 color="green"
@@ -283,18 +288,16 @@ export default function TodayManagementPage() {
                                                 완료 처리
                                             </Button>
                                         )}
-                                        <ActionIcon
-                                            variant="filled"
-                                            color="red"
-                                            onClick={() => handleDelete(learning.id)}
-                                            style={{ border: '2px solid black', borderRadius: '0px' }}
-                                        >
-                                            <IconTrash size={18} />
-                                        </ActionIcon>
                                     </Group>
                                 </Table.Td>
                             </Table.Tr>
-                        ))}
+                        )) : (
+                            <Table.Tr>
+                                <Table.Td colSpan={8} align="center">
+                                    <Text c="dimmed">데이터가 없습니다.</Text>
+                                </Table.Td>
+                            </Table.Tr>
+                        )}
                     </Table.Tbody>
                 </Table>
             </Paper>
