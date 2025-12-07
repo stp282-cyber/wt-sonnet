@@ -419,11 +419,7 @@ export default function ClassLogPage() {
     };
 
     const handleOpenDetail = (student: StudentCurriculum) => {
-        setSelectedStudent(student);
-        // Default search start date to this Monday? Or Today?
-        // Let's default to Today's Week Start (Monday)
-        setSearchStartDate(dayjs().startOf('week').add(1, 'day').toDate()); // dayjs startOf week is Sunday usually, adjust
-        setDetailModalOpened(true);
+        router.push(`/teacher/schedule/student/${student.student_id}`);
     };
 
     return (
