@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
     Title,
@@ -11,9 +11,11 @@ import {
     Group,
     Progress,
     Stack,
-    ThemeIcon,
+    Loader,
+    Center,
 } from '@mantine/core';
 import { IconVolume, IconArrowRight, IconBulb, IconCards } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 
 interface Word {
     no: number;
@@ -21,22 +23,72 @@ interface Word {
     korean: string;
 }
 
-const sampleWords: Word[] = [
-    { no: 1, english: 'apple', korean: '사과' },
-    { no: 2, english: 'banana', korean: '바나나' },
-    { no: 3, english: 'orange', korean: '오렌지' },
-    { no: 4, english: 'grape', korean: '포도' },
-    { no: 5, english: 'watermelon', korean: '수박' },
-];
-
 export default function FlashcardPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [showAnswer, setShowAnswer] = useState(false);
     const [isFlipping, setIsFlipping] = useState(false);
+    const [words, setWords] = useState<Word[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const currentWord = sampleWords[currentIndex];
-    const progress = ((currentIndex + 1) / sampleWords.length) * 100;
+    useEffect(() => {
+        const fetchWords = async () => {
+            const itemId = searchParams.get('itemId');
+            const startStr = searchParams.get('start');
+            const endStr = searchParams.get('end');
+
+            if (!itemId || !startStr || !endStr) {
+                // 파라미터가 없으면 샘플 데이터 사용하지 않고 오류 표시 또는 뒤로가기
+                // 개발 중 편의를 위해 일단 빈 배열 유지하거나 알림
+                notifications.show({
+                    title: '오류',
+                    message: '학습 정보를 찾을 수 없습니다.',
+                    color: 'red'
+                });
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const start = parseInt(startStr, 10);
+                const end = parseInt(endStr, 10);
+
+                const res = await fetch(`/api/wordbooks/${itemId}`);
+                if (!res.ok) throw new Error('Failed to fetch wordbook');
+                const data = await res.json();
+
+                const allWords: Word[] = data.wordbook.words || [];
+                // 1-based index (start) to 0-based array index
+                // slice(start - 1, end) includes start..end
+                const targetWords = allWords.slice(start - 1, end);
+
+                if (targetWords.length === 0) {
+                    notifications.show({
+                        title: '알림',
+                        message: '해당 범위에 단어가 없습니다.',
+                        color: 'orange'
+                    });
+                }
+
+                setWords(targetWords);
+            } catch (error) {
+                console.error(error);
+                notifications.show({
+                    title: '오류',
+                    message: '단어 목록을 불러오는데 실패했습니다.',
+                    color: 'red'
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWords();
+    }, [searchParams]);
+
+    const currentWord = words[currentIndex];
+    const progress = words.length > 0 ? ((currentIndex + 1) / words.length) * 100 : 0;
 
     // TTS 음성 재생
     const speakWord = (text: string) => {
@@ -59,21 +111,50 @@ export default function FlashcardPage() {
 
     // 다음 카드
     const handleNext = () => {
-        if (currentIndex < sampleWords.length - 1) {
+        if (currentIndex < words.length - 1) {
             setShowAnswer(false);
             setCurrentIndex(currentIndex + 1);
         } else {
-            // 플래시카드 완료 → 타이핑 시험으로 이동
-            router.push('/test/typing');
+            // 플래시카드 완료 → 타이핑 시험으로 이동 (파라미터 전달)
+            const params = new URLSearchParams(searchParams.toString());
+            router.push(`/test/typing?${params.toString()}`);
         }
     };
 
     // 자동 음성 재생 (영어 면이 나올 때)
     useEffect(() => {
-        if (showAnswer) {
+        if (showAnswer && currentWord) {
             speakWord(currentWord.english);
         }
-    }, [showAnswer, currentWord]); // 의존성 showAnswer로 변경하여 답이 보일 때 재생 선호
+    }, [showAnswer, currentWord]);
+
+    if (loading) {
+        return (
+            <Center style={{ minHeight: '100vh', background: 'white' }}>
+                <Loader size="xl" color="yellow" type="dots" />
+            </Center>
+        );
+    }
+
+    if (words.length === 0) {
+        return (
+            <Center style={{ minHeight: '100vh', background: 'white' }}>
+                <Stack align="center">
+                    <Text size="lg" fw={700}>학습할 단어가 없습니다.</Text>
+                    <button onClick={() => router.back()} style={{
+                        padding: '0.8rem 2rem',
+                        background: 'black',
+                        color: 'white',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer'
+                    }}>
+                        돌아가기
+                    </button>
+                </Stack>
+            </Center>
+        );
+    }
 
     return (
         <Box
@@ -134,7 +215,7 @@ export default function FlashcardPage() {
                                 진행률
                             </Text>
                             <Text fw={900} size="lg">
-                                {currentIndex + 1} / {sampleWords.length}
+                                {currentIndex + 1} / {words.length}
                             </Text>
                         </Group>
                         <Progress
@@ -278,7 +359,7 @@ export default function FlashcardPage() {
                                 }
                             }}
                         >
-                            {currentIndex < sampleWords.length - 1 ? '다음 단어' : '시험 종료'}
+                            {currentIndex < words.length - 1 ? '다음 단어' : '시험 종료'}
                             <IconArrowRight size={24} />
                         </button>
                     </Group>

@@ -83,6 +83,10 @@ interface ScheduleItem {
     wordCount: number;
     progressRange: string;
     status: 'completed' | 'today' | 'upcoming';
+    // Add missing props for test navigation
+    item: CurriculumItem;
+    progressStart: number;
+    progressEnd: number;
 }
 
 const DAY_MAP: { [key: string]: number } = {
@@ -373,6 +377,9 @@ const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: string): Sch
             wordCount: wordCount,
             progressRange: `${progressStart}~${progressEnd}`,
             status,
+            item,
+            progressStart,
+            progressEnd
         };
     }
 
@@ -707,7 +714,11 @@ export default function StudentLearningPage() {
                                                                         {/* 시험 보기 버튼 - Neo-brutalism & Animation */}
                                                                         {schedule.status !== 'completed' && (
                                                                             <button
-                                                                                onClick={() => router.push('/test/flashcard')}
+                                                                                onClick={() => {
+                                                                                    const itemId = schedule.item.item_details?.id || schedule.item.item_id;
+                                                                                    // 1-based index to query string
+                                                                                    router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}`);
+                                                                                }}
                                                                                 style={{
                                                                                     width: '100%',
                                                                                     padding: '0.6rem',

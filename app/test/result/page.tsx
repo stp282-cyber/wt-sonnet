@@ -66,8 +66,8 @@ export default function TestResultPage() {
     };
 
     const handleNextStep = () => {
-        // 다음 단계로 (추후 구현)
-        router.push('/teacher/dashboard');
+        // 학습 메인으로 이동
+        router.push('/student/learning');
     };
 
     return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
     Title,
@@ -12,7 +12,8 @@ import {
     Progress,
     Stack,
     TextInput,
-    Badge,
+    Loader,
+    Center,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconClock, IconCheck, IconX, IconKeyboard, IconAlertTriangle } from '@tabler/icons-react';
@@ -22,14 +23,6 @@ interface Word {
     english: string;
     korean: string;
 }
-
-const sampleWords: Word[] = [
-    { no: 1, english: 'apple', korean: '사과' },
-    { no: 2, english: 'banana', korean: '바나나' },
-    { no: 3, english: 'orange', korean: '오렌지' },
-    { no: 4, english: 'grape', korean: '포도' },
-    { no: 5, english: 'watermelon', korean: '수박' },
-];
 
 // 답안 정규화 함수 (특수문자, 띄어쓰기, 대소문자, 괄호 무시)
 function normalizeAnswer(answer: string): string {
@@ -41,28 +34,83 @@ function normalizeAnswer(answer: string): string {
 
 export default function TypingTestPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [results, setResults] = useState<boolean[]>([]);
     const [timeLeft, setTimeLeft] = useState(20); // 제한 시간 20초
     const [isAnswered, setIsAnswered] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const [words, setWords] = useState<Word[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const currentWord = sampleWords[currentIndex];
-    const progress = ((currentIndex + 1) / sampleWords.length) * 100;
+    useEffect(() => {
+        const fetchWords = async () => {
+            const itemId = searchParams.get('itemId');
+            const startStr = searchParams.get('start');
+            const endStr = searchParams.get('end');
+
+            if (!itemId || !startStr || !endStr) {
+                notifications.show({
+                    title: '오류',
+                    message: '시험 정보를 찾을 수 없습니다.',
+                    color: 'red'
+                });
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const start = parseInt(startStr, 10);
+                const end = parseInt(endStr, 10);
+
+                const res = await fetch(`/api/wordbooks/${itemId}`);
+                if (!res.ok) throw new Error('Failed to fetch wordbook');
+                const data = await res.json();
+
+                const allWords: Word[] = data.wordbook.words || [];
+                // 1-based index to 0-based array index
+                const targetWords = allWords.slice(start - 1, end);
+
+                if (targetWords.length === 0) {
+                    notifications.show({
+                        title: '알림',
+                        message: '해당 범위에 단어가 없습니다.',
+                        color: 'orange'
+                    });
+                }
+
+                setWords(targetWords);
+            } catch (error) {
+                console.error(error);
+                notifications.show({
+                    title: '오류',
+                    message: '단어 목록을 불러오는데 실패했습니다.',
+                    color: 'red'
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWords();
+    }, [searchParams]);
+
+    const currentWord = words[currentIndex];
+    const progress = words.length > 0 ? ((currentIndex + 1) / words.length) * 100 : 0;
     const correctCount = results.filter((r) => r).length;
     const wrongCount = results.filter((r) => !r).length;
 
     // 타이머
     useEffect(() => {
-        if (timeLeft > 0 && !isAnswered) {
+        if (!loading && words.length > 0 && timeLeft > 0 && !isAnswered) {
             const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
             return () => clearTimeout(timer);
         } else if (timeLeft === 0 && !isAnswered) {
             // 시간 초과
             handleSubmit(true);
         }
-    }, [timeLeft, isAnswered]);
+    }, [timeLeft, isAnswered, loading, words]);
 
     // 복사/붙여넣기 방지
     useEffect(() => {
@@ -92,6 +140,8 @@ export default function TypingTestPage() {
 
     // 답안 제출
     const handleSubmit = (timeout = false) => {
+        if (!currentWord) return;
+
         const normalizedUser = normalizeAnswer(userAnswer);
         const normalizedCorrect = normalizeAnswer(currentWord.english);
         const isCorrect = normalizedUser === normalizedCorrect;
@@ -109,7 +159,7 @@ export default function TypingTestPage() {
 
         // 1.5초 후 다음 문제로
         setTimeout(() => {
-            if (currentIndex < sampleWords.length - 1) {
+            if (currentIndex < words.length - 1) {
                 setCurrentIndex(currentIndex + 1);
                 setUserAnswer('');
                 setTimeLeft(20);
@@ -120,15 +170,15 @@ export default function TypingTestPage() {
                 const finalResults = [...results, isCorrect];
                 const finalCorrectCount = finalResults.filter(r => r).length;
                 const finalWrongCount = finalResults.length - finalCorrectCount;
-                const score = Math.round((finalCorrectCount / sampleWords.length) * 100);
+                const score = Math.round((finalCorrectCount / words.length) * 100);
                 const passed = score >= 80;
 
                 // 오답 단어 목록 생성
-                const wrongWords = sampleWords.filter((_, index) => !finalResults[index]);
+                const wrongWords = words.filter((_, index) => !finalResults[index]);
 
                 // 결과 데이터 저장
                 const testResult = {
-                    totalQuestions: sampleWords.length,
+                    totalQuestions: words.length,
                     correctCount: finalCorrectCount,
                     wrongCount: finalWrongCount,
                     score,
@@ -139,7 +189,7 @@ export default function TypingTestPage() {
 
                 localStorage.setItem('testResult', JSON.stringify(testResult));
 
-                // 결과 페이지로 이동
+                // 결과 페이지로 이동 (파라미터 전달 필요 시 추가)
                 setTimeout(() => {
                     router.push('/test/result');
                 }, 1500);
@@ -157,7 +207,35 @@ export default function TypingTestPage() {
     // 포커스 자동 설정
     useEffect(() => {
         inputRef.current?.focus();
-    }, [currentIndex]);
+    }, [currentIndex, loading]);
+
+    if (loading) {
+        return (
+            <Center style={{ minHeight: '100vh', background: 'white' }}>
+                <Loader size="xl" color="yellow" type="dots" />
+            </Center>
+        );
+    }
+
+    if (words.length === 0) {
+        return (
+            <Center style={{ minHeight: '100vh', background: 'white' }}>
+                <Stack align="center">
+                    <Text size="lg" fw={700}>시험볼 단어가 없습니다.</Text>
+                    <button onClick={() => router.back()} style={{
+                        padding: '0.8rem 2rem',
+                        background: 'black',
+                        color: 'white',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer'
+                    }}>
+                        돌아가기
+                    </button>
+                </Stack>
+            </Center>
+        );
+    }
 
     return (
         <Box
@@ -264,7 +342,7 @@ export default function TypingTestPage() {
                                 진행률
                             </Text>
                             <Text fw={900} size="lg">
-                                {currentIndex + 1} / {sampleWords.length}
+                                {currentIndex + 1} / {words.length}
                             </Text>
                         </Group>
                         <Progress

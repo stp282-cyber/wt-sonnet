@@ -136,7 +136,7 @@ export default function WrongRetryPage() {
                     });
 
                     setTimeout(() => {
-                        router.push('/teacher/dashboard');
+                        router.push('/student/learning');
                     }, 2000);
                 } else {
                     // 여전히 오답 존재 → 다시 플래시카드
