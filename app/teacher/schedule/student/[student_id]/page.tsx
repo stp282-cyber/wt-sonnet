@@ -26,7 +26,7 @@ import { DateInput, DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconSettings, IconRefresh, IconCalendar, IconTrash } from '@tabler/icons-react';
 import { StudentCurriculum, CurriculumItem, Section, ScheduleItem, DAY_MAP } from '@/types/curriculum';
-import { getWeekDays, getAllSectionsForCurriculum, getScheduleForDate } from '@/lib/curriculumUtils';
+import { getWeekDays, getAllSectionsForCurriculum, getScheduleForDate, calculateStartDateForProgress } from '@/lib/curriculumUtils';
 
 interface Student {
     id: string;
@@ -141,7 +141,7 @@ export default function StudentSchedulePage() {
     const openProgressModal = (curr: StudentCurriculum) => {
         setSelectedCurriculum(curr);
         setProgressForm({
-            current_item_id: curr.current_item_id || curr.curriculum_items[0]?.item_id || '',
+            current_item_id: curr.current_item_id || curr.curriculum_items[0]?.id || '',
             current_progress: curr.current_progress || 1
         });
         setActiveModal('progress');
@@ -187,11 +187,22 @@ export default function StudentSchedulePage() {
 
     const handleSaveProgress = async () => {
         if (!selectedCurriculum) return;
+
+        // 변경된 진도에 맞춰 시작일 재계산
+        // "오늘"을 기준으로 목표 진도가 되도록 StartDate를 역산합니다.
+        const newStartDate = calculateStartDateForProgress(
+            selectedCurriculum,
+            progressForm.current_progress
+        );
+
         try {
             const res = await fetch(`/api/student-curriculums/${selectedCurriculum.id}/progress`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(progressForm)
+                body: JSON.stringify({
+                    ...progressForm,
+                    start_date: newStartDate
+                })
             });
             if (!res.ok) throw new Error('Failed to update progress');
             notifications.show({ title: '성공', message: '수업 진도가 변경되었습니다.', color: 'green' });
@@ -550,7 +561,7 @@ export default function StudentSchedulePage() {
                     <Select
                         label="현재 단어장/학습항목"
                         data={selectedCurriculum?.curriculum_items.map(item => ({
-                            value: item.item_id,
+                            value: item.id,
                             label: `${item.sequence}. ${item.item_details?.title || '제목 없음'}`
                         })) || []}
                         value={progressForm.current_item_id}

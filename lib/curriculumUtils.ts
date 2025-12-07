@@ -358,3 +358,103 @@ export const getScheduleForDate = (curriculum: StudentCurriculum, dateStr: strin
 
     return null;
 };
+
+// 특정 진도(단어 번호)에 맞와 시작일 역산
+export const calculateStartDateForProgress = (
+    curriculum: StudentCurriculum,
+    targetProgress: number,
+    baseDate: Date = new Date()
+): string => {
+    // 1. 전체 스케줄 청크 생성
+    const allSections = getAllSectionsForCurriculum(curriculum);
+
+    // 2. 목표 진도가 포함된 청크 찾기
+    let targetIndex = -1;
+    for (let i = 0; i < allSections.length; i++) {
+        const section = allSections[i];
+        if (targetProgress >= section.progressStart && targetProgress <= section.progressEnd) {
+            targetIndex = i;
+            break;
+        }
+    }
+
+    // 못 찾으면 (범위 밖) 그냥 오늘을 시작일로 (혹은 유지)
+    if (targetIndex === -1) {
+        // 만약 목표가 마지막보다 크다면, 맨 마지막 날로? 아니면 첫날로?
+        // 일단 검색 실패 시 기존 시작일 반환 (변경 없음)
+        return curriculum.start_date;
+    }
+
+    // targetIndex는 0-based. 즉, targetIndex가 0이면 1일차.
+    // baseDate(오늘)가 (targetIndex + 1)번째 수업일이 되어야 함.
+    const requiredStudyDays = targetIndex + 1;
+
+    // 3. baseDate로부터 역산하여 start_date 찾기
+    // study_days 설정 파싱
+    let studyDays: string[] = [];
+    if (Array.isArray(curriculum.study_days)) {
+        studyDays = curriculum.study_days;
+    } else if (typeof curriculum.study_days === 'string') {
+        try {
+            studyDays = JSON.parse((curriculum.study_days as string).replace(/'/g, '"'));
+        } catch (e) { }
+    }
+    const normalizedStudyDays = studyDays.map(d => d.toLowerCase());
+
+    // Breaks
+    const breaks = (curriculum.breaks || []).map(b => ({
+        start: new Date(b.start_date),
+        end: new Date(b.end_date)
+    }));
+
+    let foundDays = 0;
+    const checkDate = new Date(baseDate); // 오늘부터 역산
+    checkDate.setHours(0, 0, 0, 0);
+
+    // 오늘이 수업일인지 확인하고 카운트 시작?
+    // "오늘"을 포함해서 역산해야 함. 오늘이 수업일이면 count=1.
+    // 계속 뒤로 가면서 count == requiredStudyDays가 되는 날짜를 찾음.
+
+    while (foundDays < requiredStudyDays) {
+        // 날짜 체크
+        let isBreak = false;
+        for (const brk of breaks) {
+            const s = new Date(brk.start); s.setHours(0, 0, 0, 0);
+            const e = new Date(brk.end); e.setHours(0, 0, 0, 0);
+            if (checkDate >= s && checkDate <= e) {
+                isBreak = true;
+                break;
+            }
+        }
+
+        if (!isBreak) {
+            const dayOfWeek = checkDate.getDay();
+            let dayCode = '';
+            Object.entries(DAY_MAP).forEach(([code, num]) => {
+                if (num === dayOfWeek) dayCode = code;
+            });
+
+            if (dayCode && normalizedStudyDays.includes(dayCode.toLowerCase())) {
+                foundDays++;
+            }
+        }
+
+        if (foundDays === requiredStudyDays) {
+            // 이 날짜가 시작일이어야 함
+            const year = checkDate.getFullYear();
+            const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+            const day = String(checkDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // 하루 전으로
+        checkDate.setDate(checkDate.getDate() - 1);
+
+        // 무한 루프 방지 (안전장치: 5년)
+        if (Math.abs(checkDate.getTime() - baseDate.getTime()) > 5 * 365 * 24 * 60 * 60 * 1000) {
+            return curriculum.start_date;
+        }
+    }
+
+    return curriculum.start_date;
+};
