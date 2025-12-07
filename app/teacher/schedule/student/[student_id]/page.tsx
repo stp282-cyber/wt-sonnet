@@ -17,6 +17,7 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { IconArrowLeft, IconSettings, IconRefresh, IconCalendar, IconTrash } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 
 // 소단원 정보 인터페이스
 interface Section {
@@ -394,17 +395,7 @@ export default function StudentSchedulePage() {
                 if (!response.ok) throw new Error('Failed to fetch data');
 
                 const data = await response.json();
-                const { curriculums: curriculumsData, ...studentData } = data;
-
-                // studentData from API includes student info + classes directly as merged object in route?
-                // Actually the API returns: { ...student, classes: ..., studentCurriculums: [ ... ] } ? 
-                // Wait, checking route.ts: 
-                // It returns: 
-                // const studentWithClass = { ...student, classes: studentClass };
-                // const studentCurriculums = ...
-                // BUT the route returns: return NextResponse.json({ ...studentWithClass, curriculums: curriculumsWithItems });
-
-                setStudent(studentData as Student);
+                setStudent(data.student);
                 setCurriculums(data.curriculums || []);
             } catch (error) {
                 console.error(error);

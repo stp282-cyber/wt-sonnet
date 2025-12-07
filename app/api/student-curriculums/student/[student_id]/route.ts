@@ -114,12 +114,18 @@ export async function GET(
                             const { data: sections } = await supabase
                                 .from('wordbook_sections')
                                 .select('id, major_unit, minor_unit, unit_name, words')
-                                .eq('wordbook_id', item.item_id)
-                                .order('major_unit', { ascending: true })
-                                .order('minor_unit', { ascending: true });
+                                .eq('wordbook_id', item.item_id);
+
+                            // 소단원을 대단원-소단원 숫자 기준으로 정렬 (1, 2, ... 10 순서 보장)
+                            const sortedSectionsList = (sections || []).sort((a, b) => {
+                                const majorCompare = (a.major_unit || '').localeCompare(b.major_unit || '', undefined, { numeric: true });
+                                if (majorCompare !== 0) return majorCompare;
+
+                                return (a.minor_unit || '').localeCompare(b.minor_unit || '', undefined, { numeric: true });
+                            });
 
                             // 소단원을 대단원-소단원 순서로 정렬하여 학습 순서 결정
-                            const sortedSections = (sections || []).map((section: any, index: number) => ({
+                            const sortedSections = sortedSectionsList.map((section: any, index: number) => ({
                                 ...section,
                                 sequence: index + 1,
                                 word_count: section.words?.length || 0,

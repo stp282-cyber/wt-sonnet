@@ -79,12 +79,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
                         {/* 로고 영역 */}
                         <Box
+                            onClick={() => router.push('/student/dashboard')}
                             style={{
                                 background: '#FFD93D', // Yellow
                                 border: '2px solid black',
                                 padding: '0.4rem 1rem',
                                 boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
                                 transform: 'rotate(2deg)',
+                                cursor: 'pointer',
                             }}
                         >
                             <Text
@@ -134,9 +136,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                 background: 'white',
                                 color: 'black',
                                 border: '2px solid black',
-                                fontSize: '0.9rem',
+                                fontSize: '0.8rem',
                                 fontWeight: 800,
-                                padding: '0.5rem 1rem',
+                                padding: '0.4rem 0.8rem',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -145,7 +147,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             }}
                             className="neo-button"
                         >
-                            <IconLogout size={18} stroke={2} />
+                            <IconLogout size={16} stroke={2} />
                         </button>
                     </Group>
                 </Group>

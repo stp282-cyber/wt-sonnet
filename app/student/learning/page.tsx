@@ -234,14 +234,18 @@ const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                             const startSection = currentChunk[0];
                             const endSection = currentChunk[currentChunk.length - 1];
 
+                            // 유효한 제목 생성 (unit_name이 없으면 대단원-소단원 조합 사용)
+                            const startTitle = startSection.unit_name || `${startSection.major_unit}-${startSection.minor_unit}`;
+                            const endTitle = endSection.unit_name || `${endSection.major_unit}-${endSection.minor_unit}`;
+
                             scheduleItems.push({
                                 section: endSection,
                                 item,
                                 progressStart: globalWordProgress,
                                 progressEnd: globalWordProgress + currentChunkWords - 1,
-                                title: startSection.unit_name === endSection.unit_name
-                                    ? startSection.unit_name
-                                    : `${startSection.unit_name} ~ ${endSection.unit_name}`,
+                                title: startTitle === endTitle
+                                    ? startTitle
+                                    : `${startTitle} ~ ${endTitle}`,
                                 major: startSection.major_unit,
                                 minor: currentChunk.length > 1
                                     ? `${startSection.minor_unit}~${endSection.minor_unit}`
@@ -264,14 +268,17 @@ const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                         const startSection = currentChunk[0];
                         const endSection = currentChunk[currentChunk.length - 1];
 
+                        const startTitle = startSection.unit_name || `${startSection.major_unit}-${startSection.minor_unit}`;
+                        const endTitle = endSection.unit_name || `${endSection.major_unit}-${endSection.minor_unit}`;
+
                         scheduleItems.push({
                             section: endSection,
                             item,
                             progressStart: globalWordProgress,
                             progressEnd: globalWordProgress + currentChunkWords - 1,
-                            title: startSection.unit_name === endSection.unit_name
-                                ? startSection.unit_name
-                                : `${startSection.unit_name} ~ ${endSection.unit_name}`,
+                            title: startTitle === endTitle
+                                ? startTitle
+                                : `${startTitle} ~ ${endTitle}`,
                             major: startSection.major_unit,
                             minor: currentChunk.length > 1
                                 ? `${startSection.minor_unit}~${endSection.minor_unit}`
@@ -422,6 +429,7 @@ export default function StudentLearningPage() {
                 const data = await response.json();
 
                 // API는 { student: ..., curriculums: ... } 형태로 반환
+                console.log('Fetched Data:', data);
                 setStudent(data.student);
                 setCurriculums(data.curriculums || []);
             } catch (error) {

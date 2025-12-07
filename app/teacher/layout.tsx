@@ -73,6 +73,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
 
                         {/* 로고 영역 */}
                         <Box
+                            onClick={() => router.push('/teacher/dashboard')}
                             style={{
                                 background: 'var(--accent)', // Yellow
                                 border: '3px solid black',
@@ -81,6 +82,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                                 boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
                                 transform: 'rotate(-2deg)',
                                 transition: 'transform 0.2s',
+                                cursor: 'pointer',
                             }}
                         >
                             <Text
@@ -109,13 +111,13 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                             border: '3px solid black',
                             borderRadius: '0px',
                             boxShadow: '4px 4px 0px black',
-                            fontSize: '0.9rem',
+                            fontSize: '0.8rem',
                             fontWeight: 800,
-                            padding: '0.6rem 1.2rem',
+                            padding: '0.4rem 0.8rem',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem',
+                            gap: '0.4rem',
                             transition: 'all 0.1s',
                         }}
                         onMouseDown={(e) => {
@@ -127,7 +129,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                             e.currentTarget.style.boxShadow = '4px 4px 0px black';
                         }}
                     >
-                        <IconLogout size={18} stroke={2.5} />
+                        <IconLogout size={16} stroke={2.5} />
                         LOGOUT
                     </button>
                 </Group>
