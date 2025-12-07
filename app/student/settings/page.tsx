@@ -1,287 +1,190 @@
 'use client';
 
-import { useState } from 'react';
-import { Container, Title, Paper, Text, Box, Stack, TextInput, PasswordInput, Switch, Select, Group } from '@mantine/core';
-import { IconUser, IconLock, IconBell, IconPalette } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
+import { Container, Title, Paper, Text, Box, Group, Stack, PasswordInput, Button, Center, Loader } from '@mantine/core';
+import { IconLock, IconCheck } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 
 export default function StudentSettingsPage() {
-    const [name, setName] = useState('김철수');
-    const [className, setClassName] = useState('A반');
-    const [notifications, setNotifications] = useState(true);
-    const [theme, setTheme] = useState('light');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState<any>(null);
 
-    const handleSave = () => {
-        // 저장 로직 (추후 구현)
-        console.log('설정 저장');
+    useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            setUser(JSON.parse(userStr));
+        }
+    }, []);
+
+    const handleSave = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            notifications.show({ title: '오류', message: '모든 필드를 입력해주세요.', color: 'red' });
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            notifications.show({ title: '오류', message: '새 비밀번호가 일치하지 않습니다.', color: 'red' });
+            return;
+        }
+
+        setLoading(true);
+        // TODO: Implement actual API call for password change here
+        // For now, simulate success
+        setTimeout(() => {
+            setLoading(false);
+            notifications.show({
+                title: '성공',
+                message: '비밀번호가 성공적으로 변경되었습니다.',
+                color: 'green',
+                styles: { root: { border: '2px solid black', boxShadow: '4px 4px 0px black' } }
+            });
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        }, 1000);
     };
 
     return (
-
         <Container size="md" py={40}>
-            <div className="animate-fade-in">
-                {/* 페이지 헤더 */}
-                <Box mb={30}>
-                    <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                        설정
-                    </Title>
-                    <Text size="lg" c="dimmed">
-                        개인 정보 및 환경 설정
+            {/* Custom Animations Styles */}
+            <style jsx global>{`
+                @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .neo-box {
+                    border: 3px solid black;
+                    border-radius: 0px;
+                    box-shadow: 5px 5px 0px black;
+                    background: white;
+                }
+                .neo-input input {
+                    border: 2px solid black !important;
+                    border-radius: 0px !important;
+                    font-size: 1rem !important;
+                    padding: 24px 16px !important;
+                }
+                .neo-input input:focus {
+                    border-color: #339AF0 !important;
+                    box-shadow: 4px 4px 0px rgba(0,0,0,0.1) !important;
+                }
+                .neo-button {
+                    transition: transform 0.1s;
+                }
+                .neo-button:active {
+                    transform: translate(2px, 2px);
+                    box-shadow: 2px 2px 0px #CED4DA !important;
+                }
+            `}</style>
+
+            {/* Header Section - Matches Dashboard */}
+            <Group justify="space-between" align="flex-end" mb={50} className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+                <Box>
+                    <Box
+                        style={{
+                            display: 'inline-block',
+                            background: '#000',
+                            padding: '0.5rem 2rem',
+                            marginBottom: '1rem',
+                            transform: 'skew(-10deg)',
+                            boxShadow: '8px 8px 0px #FFD43B'
+                        }}
+                    >
+                        <Title order={1} style={{
+                            fontWeight: 900,
+                            fontFamily: "'Montserrat', sans-serif",
+                            fontSize: '3rem',
+                            color: 'white',
+                            transform: 'skew(10deg)',
+                            lineHeight: 1
+                        }}>
+                            SETTINGS
+                        </Title>
+                    </Box>
+                    <Text size="xl" fw={800} style={{ letterSpacing: '-0.5px' }}>
+                        개인 정보 수정 (비밀번호 변경)
                     </Text>
                 </Box>
+            </Group>
 
-                <Stack gap="lg">
-                    {/* 프로필 정보 */}
-                    <Paper
-                        p="xl"
-                        style={{
-                            border: '2px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Group mb="md">
-                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
-                                <IconUser size={24} color="white" stroke={2} />
-                            </Box>
-                            <Text size="xl" fw={900}>
-                                프로필 정보
-                            </Text>
-                        </Group>
+            <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+                <Paper
+                    p={40}
+                    className="neo-box"
+                >
+                    <Group mb={30}>
+                        <Box style={{ background: '#FFD43B', padding: '10px', border: '2px solid black' }}>
+                            <IconLock size={32} color="black" stroke={2} />
+                        </Box>
+                        <Title order={2} fw={900}>비밀번호 변경</Title>
+                    </Group>
 
-                        <Stack gap="md">
-                            <TextInput
-                                label="이름"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                styles={{
-                                    input: {
-                                        border: '2px solid black',
-                                        borderRadius: '0px',
-                                        fontSize: '1rem',
-                                    },
-                                    label: {
-                                        fontWeight: 700,
-                                        marginBottom: '0.5rem',
-                                    },
-                                }}
-                            />
+                    <Stack gap="xl">
+                        <PasswordInput
+                            label="현재 비밀번호"
+                            placeholder="현재 사용 중인 비밀번호"
+                            description="보안을 위해 현재 비밀번호를 입력해주세요."
+                            required
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            classNames={{ wrapper: 'neo-input' }}
+                            styles={{
+                                label: { fontWeight: 800, marginBottom: 8, fontSize: '1rem' },
+                                description: { marginBottom: 16 }
+                            }}
+                        />
 
-                            <TextInput
-                                label="반"
-                                value={className}
-                                disabled
-                                styles={{
-                                    input: {
-                                        border: '2px solid black',
-                                        borderRadius: '0px',
-                                        fontSize: '1rem',
-                                        background: '#F1F3F5',
-                                        color: 'black',
-                                    },
-                                    label: {
-                                        fontWeight: 700,
-                                        marginBottom: '0.5rem',
-                                    },
-                                }}
-                            />
-                        </Stack>
-                    </Paper>
-
-                    {/* 비밀번호 변경 */}
-                    <Paper
-                        p="xl"
-                        style={{
-                            border: '2px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Group mb="md">
-                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
-                                <IconLock size={24} color="white" stroke={2} />
-                            </Box>
-                            <Text size="xl" fw={900}>
-                                비밀번호 변경
-                            </Text>
-                        </Group>
-
-                        <Stack gap="md">
-                            <PasswordInput
-                                label="현재 비밀번호"
-                                placeholder="현재 비밀번호를 입력하세요"
-                                styles={{
-                                    input: {
-                                        border: '2px solid black',
-                                        borderRadius: '0px',
-                                        fontSize: '1rem',
-                                    },
-                                    label: {
-                                        fontWeight: 700,
-                                        marginBottom: '0.5rem',
-                                    },
-                                    innerInput: {
-                                        fontSize: '1rem',
-                                    }
-                                }}
-                            />
-
+                        <Stack gap="xs">
                             <PasswordInput
                                 label="새 비밀번호"
-                                placeholder="새 비밀번호를 입력하세요"
+                                placeholder="새로운 비밀번호"
+                                required
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                classNames={{ wrapper: 'neo-input' }}
                                 styles={{
-                                    input: {
-                                        border: '2px solid black',
-                                        borderRadius: '0px',
-                                        fontSize: '1rem',
-                                    },
-                                    label: {
-                                        fontWeight: 700,
-                                        marginBottom: '0.5rem',
-                                    },
-                                    innerInput: {
-                                        fontSize: '1rem',
-                                    }
+                                    label: { fontWeight: 800, marginBottom: 8, fontSize: '1rem' }
                                 }}
                             />
 
                             <PasswordInput
                                 label="새 비밀번호 확인"
-                                placeholder="새 비밀번호를 다시 입력하세요"
+                                placeholder="새로운 비밀번호 다시 입력"
+                                required
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                classNames={{ wrapper: 'neo-input' }}
                                 styles={{
-                                    input: {
-                                        border: '2px solid black',
-                                        borderRadius: '0px',
-                                        fontSize: '1rem',
-                                    },
-                                    label: {
-                                        fontWeight: 700,
-                                        marginBottom: '0.5rem',
-                                    },
-                                    innerInput: {
-                                        fontSize: '1rem',
-                                    }
+                                    label: { fontWeight: 800, marginBottom: 8, fontSize: '1rem' }
                                 }}
                             />
                         </Stack>
-                    </Paper>
 
-                    {/* 알림 설정 */}
-                    <Paper
-                        p="xl"
-                        style={{
-                            border: '2px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Group mb="md">
-                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
-                                <IconBell size={24} color="white" stroke={2} />
-                            </Box>
-                            <Text size="xl" fw={900}>
-                                알림 설정
-                            </Text>
-                        </Group>
-
-                        <Stack gap="md">
-                            <Group justify="space-between">
-                                <div>
-                                    <Text fw={700}>학습 알림</Text>
-                                    <Text size="sm" c="dimmed">
-                                        오늘의 학습이 있을 때 알림을 받습니다
-                                    </Text>
-                                </div>
-                                <Switch
-                                    checked={notifications}
-                                    onChange={(e) => setNotifications(e.currentTarget.checked)}
-                                    size="lg"
-                                    color="gray"
-                                    styles={{
-                                        track: {
-                                            border: '2px solid black',
-                                            cursor: 'pointer',
-                                            backgroundColor: notifications ? 'black' : '#e9ecef',
-                                        },
-                                        thumb: {
-                                            border: '2px solid black',
-                                        }
-                                    }}
-                                />
-                            </Group>
-                        </Stack>
-                    </Paper>
-
-                    {/* 테마 설정 */}
-                    <Paper
-                        p="xl"
-                        style={{
-                            border: '2px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Group mb="md">
-                            <Box style={{ background: 'black', padding: '6px', border: '2px solid black' }}>
-                                <IconPalette size={24} color="white" stroke={2} />
-                            </Box>
-                            <Text size="xl" fw={900}>
-                                테마 설정
-                            </Text>
-                        </Group>
-
-                        <Select
-                            label="테마"
-                            value={theme}
-                            onChange={(value) => setTheme(value || 'light')}
-                            data={[
-                                { value: 'light', label: '라이트 모드' },
-                                { value: 'dark', label: '다크 모드' },
-                            ]}
-                            styles={{
-                                input: {
-                                    border: '2px solid black',
-                                    borderRadius: '0px',
-                                    fontSize: '1rem',
-                                },
-                                label: {
-                                    fontWeight: 700,
-                                    marginBottom: '0.5rem',
-                                },
-                                dropdown: {
-                                    border: '2px solid black',
-                                    borderRadius: 0,
-                                    boxShadow: '4px 4px 0px black',
-                                },
-                                option: {
-                                    borderRadius: 0,
-                                }
+                        <Button
+                            onClick={handleSave}
+                            fullWidth
+                            size="xl"
+                            color="dark"
+                            loading={loading}
+                            radius={0}
+                            className="neo-button"
+                            leftSection={<IconCheck size={24} />}
+                            style={{
+                                border: '3px solid black',
+                                boxShadow: '6px 6px 0px #CED4DA',
+                                fontSize: '1.2rem',
+                                fontWeight: 900,
+                                height: '60px'
                             }}
-                        />
-                    </Paper>
-
-                    {/* 저장 버튼 */}
-                    <button
-                        onClick={handleSave}
-                        style={{
-                            background: 'black',
-                            color: 'white',
-                            border: '2px solid black',
-                            borderRadius: '0px',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                            fontSize: '1.2rem',
-                            fontWeight: 900,
-                            padding: '1.2rem 2rem',
-                            cursor: 'pointer',
-                            width: '100%',
-                        }}
-                    >
-                        설정 저장
-                    </button>
-                </Stack>
+                        >
+                            변경 내용 저장
+                        </Button>
+                    </Stack>
+                </Paper>
             </div>
         </Container>
     );

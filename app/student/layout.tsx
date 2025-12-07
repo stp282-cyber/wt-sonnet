@@ -107,9 +107,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         </Box>
                     </Group>
 
-                    <Text fw={700} size="lg" visibleFrom="xs">
-                        {studentName} 학생
-                    </Text>
+
 
                     <button
                         onClick={handleLogout}

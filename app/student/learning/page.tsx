@@ -147,26 +147,96 @@ export default function StudentLearningPage() {
     }
 
     return (
-        <Container size="xl" py={40}>
-            {/* 페이지 헤더 */}
-            <Box mb={30}>
-                <Group justify="space-between" align="flex-end">
-                    <div>
-                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                            나의 학습
+        <Container size="xl" py={20}>
+            {/* Custom Animations Styles */}
+            <style jsx global>{`
+                @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .hover-lift { transition: transform 0.2s, box-shadow 0.2s; }
+                .hover-lift:hover { 
+                    transform: translate(-4px, -4px); 
+                    box-shadow: 8px 8px 0px black !important;
+                }
+                .neo-box {
+                    border: 3px solid black;
+                    border-radius: 0px;
+                    box-shadow: 5px 5px 0px black;
+                }
+            `}</style>
+
+            {/* Header Section with Date Picker - Compact Layout */}
+            <Group justify="space-between" align="flex-end" mb={20} className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+                <Box>
+                    <Box
+                        style={{
+                            display: 'inline-block',
+                            background: '#000',
+                            padding: '0.5rem 2rem',
+                            marginBottom: '0.5rem',
+                            transform: 'skew(-10deg)',
+                            boxShadow: '8px 8px 0px #FFD43B'
+                        }}
+                    >
+                        <Title order={1} style={{
+                            fontWeight: 900,
+                            fontFamily: "'Montserrat', sans-serif",
+                            fontSize: '2.5rem',
+                            color: 'white',
+                            transform: 'skew(10deg)',
+                            lineHeight: 1
+                        }}>
+                            MY LEARNING
                         </Title>
-                        <Text size="lg" c="dimmed">
-                            주간 학습 일정을 확인하세요
-                        </Text>
-                    </div>
-                </Group>
-            </Box>
+                    </Box>
+                    <Text size="lg" fw={800} style={{ letterSpacing: '-0.5px' }}>
+                        주간 학습 일정 및 진도 현황
+                    </Text>
+                </Box>
+
+                {/* Date Input Moved Here */}
+                <DateInput
+                    value={searchStartDate}
+                    onChange={(value) => setSearchStartDate(value as Date)}
+                    label="검색 시작일"
+                    placeholder="날짜 선택"
+                    valueFormat="YYYY-MM-DD"
+                    leftSection={<IconCalendar size={18} />}
+                    popoverProps={{
+                        shadow: 'md',
+                        styles: {
+                            dropdown: {
+                                border: '3px solid black',
+                                borderRadius: '0px',
+                                boxShadow: '6px 6px 0px black',
+                            }
+                        }
+                    }}
+                    styles={{
+                        input: {
+                            border: '3px solid black',
+                            borderRadius: '0px',
+                            background: '#FFD93D',
+                            fontWeight: 900,
+                            fontSize: '1rem',
+                            height: '50px'
+                        },
+                        label: {
+                            fontWeight: 900,
+                            marginBottom: '0.2rem',
+                        }
+                    }}
+                    style={{ width: 220 }}
+                />
+            </Group>
 
             {/* Resume Banner */}
             {activeSession && (
                 <Paper
                     p="lg"
-                    mb={30}
+                    mb={20}
                     style={{
                         border: '3px solid black',
                         background: '#FFF9DB', // Light yellow
@@ -199,43 +269,6 @@ export default function StudentLearningPage() {
                     </Group>
                 </Paper>
             )}
-
-            {/* 검색 시작일 선택 */}
-            <Group justify="flex-end" mb={30}>
-                <DateInput
-                    value={searchStartDate}
-                    onChange={(value) => setSearchStartDate(value as Date)}
-                    label="검색 시작일"
-                    placeholder="날짜를 선택하세요"
-                    valueFormat="YYYY-MM-DD"
-                    leftSection={<IconCalendar size={18} />}
-                    popoverProps={{
-                        width: 300,
-                        shadow: 'md',
-                        styles: {
-                            dropdown: {
-                                border: '3px solid black',
-                                borderRadius: '0px',
-                                boxShadow: '6px 6px 0px black',
-                            }
-                        }
-                    }}
-                    styles={{
-                        input: {
-                            border: '3px solid black',
-                            borderRadius: '0px',
-                            background: '#FFD93D',
-                            fontWeight: 900,
-                            fontSize: '1rem',
-                        },
-                        label: {
-                            fontWeight: 900,
-                            marginBottom: '0.5rem',
-                        }
-                    }}
-                    style={{ width: 250 }}
-                />
-            </Group>
 
             {/* 주차별 테이블 */}
             <Stack gap={40}>

@@ -144,16 +144,51 @@ export default function StudentMessagesPage() {
 
     return (
         <Container size="md" py={40}>
-            <div className="animate-fade-in">
-                {/* 페이지 헤더 */}
-                <Box mb={30}>
-                    <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                        쪽지함
-                    </Title>
-                    <Text size="lg" c="dimmed">
-                        선생님과 대화하세요
-                    </Text>
-                </Box>
+            {/* Custom Animations Styles */}
+            <style jsx global>{`
+                @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .neo-box {
+                    border: 3px solid black;
+                    border-radius: 0px;
+                    box-shadow: 6px 6px 0px black;
+                    background: white;
+                }
+            `}</style>
+
+            <div className="animate-slide-up">
+                {/* Header Section - Matches Dashboard */}
+                <Group justify="space-between" align="flex-end" mb={50}>
+                    <Box>
+                        <Box
+                            style={{
+                                display: 'inline-block',
+                                background: '#000',
+                                padding: '0.5rem 2rem',
+                                marginBottom: '1rem',
+                                transform: 'skew(-10deg)',
+                                boxShadow: '8px 8px 0px #FFD43B'
+                            }}
+                        >
+                            <Title order={1} style={{
+                                fontWeight: 900,
+                                fontFamily: "'Montserrat', sans-serif",
+                                fontSize: '3rem',
+                                color: 'white',
+                                transform: 'skew(10deg)',
+                                lineHeight: 1
+                            }}>
+                                MESSAGES
+                            </Title>
+                        </Box>
+                        <Text size="xl" fw={800} style={{ letterSpacing: '-0.5px' }}>
+                            선생님과 대화하세요
+                        </Text>
+                    </Box>
+                </Group>
 
                 <Group align="flex-start" mb="md">
                     <Select
