@@ -22,21 +22,31 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     const [studentName, setStudentName] = useState('학생');
 
 
-    // localStorage에서 사용자 정보 가져오기
+    // localStorage에서 사용자 정보 가져오기 및 보안 체크
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const userStr = localStorage.getItem('user');
-            if (userStr) {
-                try {
-                    const user = JSON.parse(userStr);
-                    setStudentName(user.full_name || user.name || '학생');
-                    setStudentName(user.full_name || user.name || '학생');
-                } catch (error) {
-                    console.error('Failed to parse user data:', error);
+            if (!userStr) {
+                router.replace('/');
+                return;
+            }
+
+            try {
+                const user = JSON.parse(userStr);
+
+                // 학생이 아니면 선생님 대시보드로 리다이렉트
+                if (user.role !== 'student') {
+                    router.replace('/teacher/dashboard');
+                    return;
                 }
+
+                setStudentName(user.full_name || user.name || '학생');
+            } catch (error) {
+                console.error('Failed to parse user data:', error);
+                router.replace('/');
             }
         }
-    }, []);
+    }, [router, pathname]);
 
     const handleLogout = () => {
         if (typeof window !== 'undefined') {
