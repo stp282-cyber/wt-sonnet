@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
@@ -119,7 +119,7 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
     );
 }
 
-export default function WrongFlashcardPage() {
+function WrongFlashcardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [words, setWords] = useState<Word[]>([]);
@@ -381,5 +381,21 @@ export default function WrongFlashcardPage() {
                 </Container>
             </Box>
         </StudentLayout>
+    );
+}
+
+export default function WrongFlashcardPage() {
+    return (
+        <Suspense fallback={
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Stack align="center" gap="md">
+                        <Loader size="xl" color="red" type="dots" />
+                    </Stack>
+                </Center>
+            </StudentLayout>
+        }>
+            <WrongFlashcardContent />
+        </Suspense>
     );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
@@ -33,7 +33,7 @@ function normalizeAnswer(answer: string): string {
         .trim();
 }
 
-export default function TypingTestPage() {
+function TypingTestContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -598,5 +598,19 @@ export default function TypingTestPage() {
                 </Container>
             </Box >
         </StudentLayout >
+    );
+}
+
+export default function TypingTestPage() {
+    return (
+        <Suspense fallback={
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Loader size="xl" color="dark" type="dots" />
+                </Center>
+            </StudentLayout>
+        }>
+            <TypingTestContent />
+        </Suspense>
     );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
@@ -21,7 +21,7 @@ import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconClock, IconArrowRight, IconRefresh } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
 
-export default function WrongRetryPage() {
+function WrongRetryContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [words, setWords] = useState<any[]>([]);
@@ -285,5 +285,19 @@ export default function WrongRetryPage() {
                 </Container>
             </Box>
         </StudentLayout>
+    );
+}
+
+export default function WrongRetryPage() {
+    return (
+        <Suspense fallback={
+            <StudentLayout>
+                <Center h="100vh">
+                    <Loader />
+                </Center>
+            </StudentLayout>
+        }>
+            <WrongRetryContent />
+        </Suspense>
     );
 }
