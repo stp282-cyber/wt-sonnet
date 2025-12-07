@@ -480,6 +480,8 @@ export default function StudentSchedulePage() {
                                                         key={idx}
                                                         className={`calendar-cell ${idx < 4 ? 'cell-bordered' : ''}`}
                                                         style={{
+                                                            flex: 1,
+                                                            minWidth: 0,
                                                             borderBottom: idx < 4 ? '2px solid black' : 'none'
                                                         }}
                                                     >
