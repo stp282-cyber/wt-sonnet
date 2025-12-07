@@ -44,23 +44,98 @@ export default function WrongRetryPage() {
     const [isAnswered, setIsAnswered] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    // Save Session Helper
+    const saveProgress = async (idx: number, currentResults: boolean[]) => {
+        try {
+            const studentInfoStr = localStorage.getItem('studentInfo');
+            if (!studentInfoStr) return;
+            const studentInfo = JSON.parse(studentInfoStr);
+
+            const sessionData = {
+                type: 'wrong_retry',
+                words: words,
+                currentIndex: idx,
+                results: currentResults,
+                nextAction: searchParams.get('nextAction'),
+                studentInfo: studentInfo // Keep metadata
+            };
+
+            await fetch('/api/test/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentId: studentInfo.id,
+                    sessionData
+                })
+            });
+        } catch (error) {
+            console.error('Failed to save session:', error);
+        }
+    };
 
     useEffect(() => {
-        // localStorage에서 오답 단어 로드
-        const savedWrongWords = localStorage.getItem('wrongWords');
-        if (savedWrongWords) {
-            const parsedWords = JSON.parse(savedWrongWords);
-            if (parsedWords.length > 0) {
-                setWords(parsedWords);
-            } else {
-                notifications.show({ title: '완료', message: '오답이 없습니다!', color: 'green' });
-                router.push('/student/learning');
+        const initTest = async () => {
+            const isResume = searchParams.get('resume') === 'true';
+
+            if (isResume) {
+                try {
+                    const studentInfoStr = localStorage.getItem('studentInfo');
+                    if (studentInfoStr) {
+                        const studentInfo = JSON.parse(studentInfoStr);
+                        const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.session && (data.session.session_data.type === 'wrong_retry' || data.session.session_data.type === 'wrong_flashcard')) {
+                                const sData = data.session.session_data;
+                                setWords(sData.words);
+                                setCurrentIndex(sData.currentIndex || 0);
+                                setResults(sData.results || []);
+                                setLoading(false);
+                                notifications.show({ title: 'Resumed', message: 'Wrong Retry resumed.', color: 'blue' });
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Resume failed", e);
+                }
             }
-        } else {
-            router.push('/student/learning');
+
+            // localStorage에서 오답 단어 로드 (Fallback / Normal Flow)
+            const savedWrongWords = localStorage.getItem('wrongWords');
+            if (savedWrongWords) {
+                const parsedWords = JSON.parse(savedWrongWords);
+                if (parsedWords.length > 0) {
+                    setWords(parsedWords);
+                } else {
+                    notifications.show({ title: '완료', message: '오답이 없습니다!', color: 'green' });
+                    // If clean, verify next steps immediately
+                    // finishTest(parsedWords, []); // Can't call finishTest here easily due to async/scope, so just redirect
+                    router.push('/student/learning');
+                    return;
+                }
+            } else {
+                if (!isResume) {
+                    router.push('/student/learning');
+                }
+            }
+            setLoading(false);
+        };
+
+        initTest();
+    }, [searchParams]);
+
+    // Auto-focus logic
+    useEffect(() => {
+        if (!isAnswered && !loading && inputRef.current) {
+            // Slight delay to ensure render
+            setTimeout(() => {
+                inputRef.current?.focus();
+            }, 50);
         }
-        setLoading(false);
-    }, [router]);
+    }, [currentIndex, isAnswered, loading]);
 
     const currentWord = words[currentIndex];
 
@@ -93,43 +168,42 @@ export default function WrongRetryPage() {
         };
     }, []);
 
-    // Focus input on move
-    useEffect(() => {
-        if (!isAnswered && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [currentIndex, isAnswered]);
-
     const handleSubmit = (timeOut = false) => {
         if (isAnswered) return;
 
-        const isCorrect = !timeOut && normalizeAnswer(userAnswer) === normalizeAnswer(currentWord.english);
+        const isCorrect = !timeOut && normalizeAnswer(userAnswer) === normalizeAnswer(currentWord?.english || '');
         const newResults = [...results, isCorrect];
         setResults(newResults);
         setIsAnswered(true);
 
         // Sound Effect
-        if (isCorrect) {
-            new Audio('/sounds/correct.mp3').play().catch(() => { });
-        } else {
-            new Audio('/sounds/wrong.mp3').play().catch(() => { });
-        }
+        const audioFile = isCorrect ? '/sounds/correct.mp3' : '/sounds/wrong.mp3';
+        new Audio(audioFile).play().catch(() => { });
+
+        // Save partial progress
+        saveProgress(currentIndex + 1, newResults);
+
+        // Auto Advance after delay
+        setTimeout(() => {
+            handleNext(newResults);
+        }, 1200); // 1.2s delay to see the result
     };
 
-    const handleNext = () => {
+    const handleNext = (currentResults: boolean[]) => {
         if (currentIndex < words.length - 1) {
             setCurrentIndex(currentIndex + 1);
             setUserAnswer('');
             setIsAnswered(false);
             setTimeLeft(20);
         } else {
-            finishTest();
+            finishTest(words, currentResults);
         }
     };
 
-    const finishTest = async () => {
+    const finishTest = async (finalWords: Word[], finalResults: boolean[]) => {
+        setSaving(true);
         // Calculate new wrong words
-        const newWrongWords = words.filter((_, index) => !results[index]);
+        const newWrongWords = finalWords.filter((_, index) => !finalResults[index]);
         const newWrongCount = newWrongWords.length;
         const nextAction = searchParams.get('nextAction');
 
@@ -137,11 +211,30 @@ export default function WrongRetryPage() {
             // RECURSIVE LOOP - Fail
             localStorage.setItem('wrongWords', JSON.stringify(newWrongWords));
 
+            // Save Session for next loop
+            const studentInfoStr = localStorage.getItem('studentInfo');
+            if (studentInfoStr) {
+                const studentInfo = JSON.parse(studentInfoStr);
+                await fetch('/api/test/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: studentInfo.id,
+                        sessionData: {
+                            type: 'wrong_flashcard', // Go to Flashcard
+                            words: newWrongWords, // New set of words
+                            nextAction: nextAction,
+                            studentInfo: studentInfo
+                        }
+                    })
+                });
+            }
+
             notifications.show({
                 title: 'Still Learning!',
                 message: `${newWrongCount} words left. Let's try again!`,
                 color: 'red',
-                autoClose: 3000,
+                autoClose: 2000,
             });
 
             if (nextAction) {
@@ -172,13 +265,28 @@ export default function WrongRetryPage() {
                             const data = await res.json();
                             if (data.reviewWords && data.reviewWords.length > 0) {
                                 localStorage.setItem('reviewWords', JSON.stringify(data.reviewWords));
+
+                                // Save Session for Review Test
+                                await fetch('/api/test/session', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        studentId: studentInfo.id,
+                                        sessionData: {
+                                            type: 'review_test',
+                                            words: data.reviewWords,
+                                            nextAction: 'home', // Completion leads to home
+                                            studentInfo: studentInfo
+                                        }
+                                    })
+                                });
+
                                 notifications.show({
                                     title: 'Good Job! Now Review.',
                                     message: `Wrong answers cleared! Now starting review (${data.reviewWords.length} words).`,
                                     color: 'blue',
-                                    autoClose: 4000
+                                    autoClose: 3000
                                 });
-                                // Next action after review is home
                                 router.push('/test/multiple-choice?nextAction=home');
                                 return;
                             }
@@ -189,7 +297,15 @@ export default function WrongRetryPage() {
                 }
             }
 
-            // Default: All Cleared & Done
+            // Default: All Cleared & Done - Clear Session
+            const studentInfoStr = localStorage.getItem('studentInfo');
+            if (studentInfoStr) {
+                const studentInfo = JSON.parse(studentInfoStr);
+                await fetch(`/api/test/session?studentId=${studentInfo.id}`, {
+                    method: 'DELETE'
+                });
+            }
+
             notifications.show({
                 title: 'Perfect!',
                 message: 'All wrong answers cleared! Great job.',
@@ -198,19 +314,19 @@ export default function WrongRetryPage() {
             });
             router.push('/student/learning');
         }
+        setSaving(false);
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             if (!isAnswered) {
                 handleSubmit();
-            } else {
-                handleNext();
             }
+            // No action needed for Next, it's auto
         }
     };
 
-    if (loading || words.length === 0) {
+    if (loading || saving || words.length === 0) {
         return (
             <StudentLayout>
                 <Center h="100vh" bg="white">
@@ -282,7 +398,7 @@ export default function WrongRetryPage() {
                             </Badge>
 
                             <Text size="3.5rem" fw={900} ta="center" style={{ lineHeight: 1.2 }}>
-                                {currentWord.korean}
+                                {currentWord?.korean}
                             </Text>
 
                             {/* Input Area */}
@@ -306,6 +422,7 @@ export default function WrongRetryPage() {
                                         }
                                     }}
                                     style={{ width: '100%', maxWidth: '500px' }}
+                                    autoComplete="off"
                                 />
                             ) : (
                                 <Stack align="center" gap="md">
@@ -322,28 +439,14 @@ export default function WrongRetryPage() {
 
                                     {!results[currentIndex] && (
                                         <Text size="xl" fw={700} c="dimmed">
-                                            Answer: <span style={{ color: 'red', textDecoration: 'underline' }}>{currentWord.english}</span>
+                                            Answer: <span style={{ color: 'red', textDecoration: 'underline' }}>{currentWord?.english}</span>
                                         </Text>
                                     )}
 
-                                    <button
-                                        onClick={handleNext}
-                                        style={{
-                                            marginTop: '20px',
-                                            padding: '1rem 3rem',
-                                            background: 'black',
-                                            color: 'white',
-                                            border: 'none',
-                                            fontSize: '1.2rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '10px'
-                                        }}
-                                    >
-                                        NEXT <IconArrowRight size={20} />
-                                    </button>
+                                    {/* No Button - Auto Advance message */}
+                                    <Text size="sm" c="dimmed" mt={10} className="animate-pulse">
+                                        Next word in 1 second...
+                                    </Text>
                                 </Stack>
                             )}
                         </Stack>
@@ -353,7 +456,7 @@ export default function WrongRetryPage() {
                     <Box mt={30} style={{ border: '3px solid black', height: '20px', width: '100%', position: 'relative' }}>
                         <Box
                             style={{
-                                width: `${((currentIndex) / words.length) * 100}%`, // Fill based on COMPLETED
+                                width: `${((currentIndex) / words.length) * 100}%`, // Fill based on currentIndex
                                 height: '100%',
                                 background: '#FFD93D',
                                 transition: 'width 0.3s ease'

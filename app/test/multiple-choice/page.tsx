@@ -26,23 +26,85 @@ export default function MultipleChoiceTestPage() {
   const [timeLeft, setTimeLeft] = useState(15);
   const [loading, setLoading] = useState(true);
 
-  // Load Review Words
-  useEffect(() => {
-    const savedReviewWords = localStorage.getItem('reviewWords');
-    if (savedReviewWords) {
-      const parsedWords = JSON.parse(savedReviewWords);
-      if (parsedWords.length > 0) {
-        setWords(parsedWords);
-      } else {
-        notifications.show({ title: '알림', message: '복습할 단어가 없습니다.', color: 'blue' });
-        router.push('/student/learning');
-      }
-    } else {
-      // Fallback for direct testing if needed, or redirect
-      notifications.show({ title: '알림', message: '복습할 단어가 없습니다.', color: 'blue' });
-      router.push('/student/learning');
+  // Save Session Helper
+  const saveProgress = async (idx: number, currentResults: boolean[]) => {
+    try {
+      const studentInfoStr = localStorage.getItem('studentInfo');
+      if (!studentInfoStr) return;
+      const studentInfo = JSON.parse(studentInfoStr);
+
+      const sessionData = {
+        type: 'review_test',
+        words: words, // Full word list
+        currentIndex: idx,
+        results: currentResults,
+        nextAction: searchParams.get('nextAction'),
+        studentInfo: studentInfo
+      };
+
+      await fetch('/api/test/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: studentInfo.id,
+          sessionData
+        })
+      });
+    } catch (error) {
+      console.error('Failed to save session:', error);
     }
-    setLoading(false);
+  };
+
+
+  // Load Logic
+  useEffect(() => {
+    const initTest = async () => {
+      const isResume = searchParams.get('resume') === 'true';
+
+      if (isResume) {
+        try {
+          const studentInfoStr = localStorage.getItem('studentInfo');
+          if (studentInfoStr) {
+            const studentInfo = JSON.parse(studentInfoStr);
+            const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.session && data.session.session_data.type === 'review_test') {
+                const sData = data.session.session_data;
+                setWords(sData.words);
+                setCurrentIndex(sData.currentIndex || 0);
+                setResults(sData.results || []);
+                setLoading(false);
+                notifications.show({ title: 'Resumed', message: 'Review Test resumed.', color: 'blue' });
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Resume failed", e);
+        }
+      }
+
+      const savedReviewWords = localStorage.getItem('reviewWords');
+      if (savedReviewWords) {
+        const parsedWords = JSON.parse(savedReviewWords);
+        if (parsedWords.length > 0) {
+          setWords(parsedWords);
+        } else {
+          notifications.show({ title: '알림', message: '복습할 단어가 없습니다.', color: 'blue' });
+          router.push('/student/learning');
+          return;
+        }
+      } else {
+        if (!isResume) {
+          notifications.show({ title: '알림', message: '복습할 단어가 없습니다.', color: 'blue' });
+          router.push('/student/learning');
+          return;
+        }
+      }
+      setLoading(false);
+    };
+    initTest();
   }, [router]);
 
   const correctCount = results.filter((r) => r).length;
@@ -103,8 +165,12 @@ export default function MultipleChoiceTestPage() {
   const handleSubmit = (choiceIndex: number | null, timeout: boolean) => {
     const currentQuestion = questions[currentIndex];
     const isCorrect = choiceIndex === currentQuestion.correctIndex;
-    setResults([...results, isCorrect]);
+    const newResults = [...results, isCorrect];
+    setResults(newResults);
     setIsAnswered(true);
+
+    // Save partial progress
+    saveProgress(currentIndex + 1, newResults);
 
     // Sound
     if (isCorrect) {
@@ -114,41 +180,88 @@ export default function MultipleChoiceTestPage() {
     }
 
     setTimeout(() => {
-      if (currentIndex < questions.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-        setSelectedChoice(null);
-        setTimeLeft(15);
-        setIsAnswered(false);
+      finishOrMore(newResults);
+    }, 1500); // Wait 1.5s to show result
+  };
+
+  const finishOrMore = async (currentResults: boolean[]) => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setSelectedChoice(null);
+      setTimeLeft(15);
+      setIsAnswered(false);
+    } else {
+      // Finish Test
+      const finalCorrectCount = currentResults.filter(r => r).length;
+      const finalWrongCount = questions.length - finalCorrectCount;
+      const score = Math.round((finalCorrectCount / questions.length) * 100);
+
+      // Find Wrong Words
+      const wrongWords = questions
+        .filter((_, idx) => !currentResults[idx])
+        .map(q => q.word);
+
+      const testResult = {
+        totalQuestions: questions.length,
+        correctCount: finalCorrectCount,
+        wrongCount: finalWrongCount,
+        score,
+        passed: score === 100,
+        wrongWords: wrongWords,
+        timestamp: new Date().toISOString(),
+      };
+      localStorage.setItem('testResult', JSON.stringify(testResult));
+
+      const nextAction = searchParams.get('nextAction');
+
+      if (wrongWords.length > 0) {
+        // Has wrong words -> Go to Wrong Loop (Flashcard -> Retry)
+        localStorage.setItem('wrongWords', JSON.stringify(wrongWords));
+
+        // Update session for Wrong Loop
+        const studentInfoStr = localStorage.getItem('studentInfo');
+        if (studentInfoStr) {
+          const studentInfo = JSON.parse(studentInfoStr);
+          await fetch('/api/test/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: studentInfo.id,
+              sessionData: {
+                type: 'wrong_flashcard', // Loop back to Flashcard
+                words: wrongWords,
+                nextAction: nextAction, // Maintain final goal
+                studentInfo: studentInfo
+              }
+            })
+          });
+        }
+
+        notifications.show({
+          title: 'Review Incomplete',
+          message: `${wrongWords.length} wrong answers. Starting retry loop.`,
+          color: 'orange',
+          autoClose: 3000
+        });
+        const url = nextAction ? `/test/wrong-flashcard?nextAction=${nextAction}` : '/test/wrong-flashcard';
+        router.push(url);
+
       } else {
-        // Finish Test
-        const finalResults = [...results, isCorrect];
-        const finalCorrectCount = finalResults.filter(r => r).length;
-        const finalWrongCount = questions.length - finalCorrectCount;
-        const score = Math.round((finalCorrectCount / questions.length) * 100);
+        // Perfect Score -> Done
+        // Clear Session
+        const studentInfoStr = localStorage.getItem('studentInfo');
+        if (studentInfoStr) {
+          const studentInfo = JSON.parse(studentInfoStr);
+          await fetch(`/api/test/session?studentId=${studentInfo.id}`, {
+            method: 'DELETE'
+          });
+        }
 
-        // Find Wrong Words
-        const wrongWords = questions
-          .filter((_, idx) => !finalResults[idx])
-          .map(q => q.word);
-
-        const testResult = {
-          totalQuestions: questions.length,
-          correctCount: finalCorrectCount,
-          wrongCount: finalWrongCount,
-          score,
-          passed: score === 100, // Strict? Or 80? Usually score doesn't matter for "passed" flag as much as wrongWords list
-          wrongWords: wrongWords,
-          timestamp: new Date().toISOString(),
-        };
-
-        localStorage.setItem('testResult', JSON.stringify(testResult));
-
-        // Redirect to Result Page with nextAction
-        const nextAction = searchParams.get('nextAction');
+        // Redirect to Result Page
         const url = nextAction ? `/test/result?nextAction=${nextAction}` : '/test/result';
         router.push(url);
       }
-    }, 1500); // Wait 1.5s to show result
+    }
   };
 
   if (loading || questions.length === 0) {

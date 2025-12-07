@@ -121,28 +121,55 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
 
 export default function WrongFlashcardPage() {
     const router = useRouter();
-    const searchParams = useSearchParams(); // searchParams 추가
+    const searchParams = useSearchParams();
     const [words, setWords] = useState<Word[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // localStorage에서 오답 단어 로드
-        const savedWrongWords = localStorage.getItem('wrongWords');
-        if (savedWrongWords) {
-            setWords(JSON.parse(savedWrongWords));
-            setLoading(false);
-        } else {
-            // 데이터가 없으면 알림 후 뒤로가기? or 샘플 데이터?
-            // 여기서는 안전하게 학습 메인으로 보내거나 알림 표시
-            notifications.show({
-                title: '알림',
-                message: '복습할 오답 단어가 없습니다.',
-                color: 'blue'
-            });
-            setLoading(false);
-            // router.push('/student/learning'); // 선택적 리다이렉트
-        }
-    }, [router]);
+        const initTest = async () => {
+            const isResume = searchParams.get('resume') === 'true';
+
+            if (isResume) {
+                try {
+                    const studentInfoStr = localStorage.getItem('studentInfo');
+                    if (studentInfoStr) {
+                        const studentInfo = JSON.parse(studentInfoStr);
+                        const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.session && data.session.session_data.type === 'wrong_flashcard') {
+                                const sData = data.session.session_data;
+                                setWords(sData.words);
+                                setLoading(false);
+                                notifications.show({ title: 'Resumed', message: 'Wrong Flashcards resumed.', color: 'blue' });
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Resume failed", e);
+                }
+            }
+
+            // localStorage에서 오답 단어 로드
+            const savedWrongWords = localStorage.getItem('wrongWords');
+            if (savedWrongWords) {
+                setWords(JSON.parse(savedWrongWords));
+                setLoading(false);
+            } else {
+                if (!isResume) {
+                    notifications.show({
+                        title: '알림',
+                        message: '복습할 오답 단어가 없습니다.',
+                        color: 'blue'
+                    });
+                    // router.push('/student/learning'); 
+                }
+                setLoading(false);
+            }
+        };
+        initTest();
+    }, [router, searchParams]);
 
     // TTS 음성 재생
     const speakWord = (text: string) => {
@@ -157,6 +184,16 @@ export default function WrongFlashcardPage() {
 
     const handleStartRetryTest = () => {
         const nextAction = searchParams.get('nextAction');
+        // If reusing session, we might want to propagate resume=true? No, Retry starts a new interaction.
+        // But if we want Retry to also use session, we should support it.
+        // Actually, Retry page loads words from 'wrongWords' in localStorage mainly.
+        // If we resumed from server, we populated local state 'words'.
+        // We should PROBABLY update localStorage 'wrongWords' to align with UI.
+
+        if (words.length > 0) {
+            localStorage.setItem('wrongWords', JSON.stringify(words));
+        }
+
         if (nextAction) {
             router.push(`/test/wrong-retry?nextAction=${nextAction}`);
         } else {

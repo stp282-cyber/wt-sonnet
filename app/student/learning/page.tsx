@@ -14,10 +14,13 @@ import {
     Box,
     Loader,
     Center,
+    Card,
+    ThemeIcon,
+    SimpleGrid
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconCalendar } from '@tabler/icons-react';
+import { IconCalendar, IconRotate, IconPlayerPlay } from '@tabler/icons-react';
 import { StudentCurriculum, CurriculumItem, Section, ScheduleItem, DAY_MAP } from '@/types/curriculum';
 import { getWeekDays, getAllSectionsForCurriculum, getScheduleForDate } from '@/lib/curriculumUtils';
 
@@ -36,6 +39,7 @@ export default function StudentLearningPage() {
     const [student, setStudent] = useState<Student | null>(null);
     const [curriculums, setCurriculums] = useState<StudentCurriculum[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeSession, setActiveSession] = useState<any>(null);
 
     // 초기 날짜 설정: 토/일이면 다음주 월요일로 설정
     const [searchStartDate, setSearchStartDate] = useState<Date>(() => {
@@ -74,16 +78,21 @@ export default function StudentLearningPage() {
             }
 
             try {
-                // 변경된 API 엔드포인트 사용
+                // 1. Fetch Curriculum
                 const response = await fetch(`/api/student-curriculums/student/${user.id}`);
                 if (!response.ok) throw new Error('Failed to fetch data');
-
                 const data = await response.json();
-
-                // API는 { student: ..., curriculums: ... } 형태로 반환
-                console.log('Fetched Data:', data);
                 setStudent(data.student);
                 setCurriculums(data.curriculums || []);
+
+                // 2. Fetch Active Session
+                const sessionRes = await fetch(`/api/test/session?studentId=${user.id}`);
+                if (sessionRes.ok) {
+                    const sessionData = await sessionRes.json();
+                    if (sessionData.session) {
+                        setActiveSession(sessionData.session);
+                    }
+                }
             } catch (error) {
                 console.error(error);
                 notifications.show({
@@ -98,6 +107,24 @@ export default function StudentLearningPage() {
 
         fetchStudentData();
     }, [router]);
+
+    const handleResume = () => {
+        if (!activeSession) return;
+        const type = activeSession.session_data.type;
+        const sData = activeSession.session_data;
+
+        if (type === 'typing_test') {
+            router.push(`/test/typing?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&resume=true`);
+        } else if (type === 'wrong_retry') {
+            router.push(`/test/wrong-retry?resume=true&nextAction=${sData.nextAction || ''}`);
+        } else if (type === 'review_test') {
+            router.push(`/test/multiple-choice?resume=true&nextAction=${sData.nextAction || ''}`);
+        } else if (type === 'wrong_flashcard') {
+            router.push(`/test/wrong-flashcard?resume=true&nextAction=${sData.nextAction || ''}`);
+        } else {
+            notifications.show({ title: 'Error', message: 'Unknown session type', color: 'red' });
+        }
+    };
 
     const weeksToRender = [0, 1, 2]; // 3주 표시
 
@@ -126,6 +153,44 @@ export default function StudentLearningPage() {
                     </div>
                 </Group>
             </Box>
+
+            {/* Resume Banner */}
+            {activeSession && (
+                <Paper
+                    p="lg"
+                    mb={30}
+                    style={{
+                        border: '3px solid black',
+                        background: '#FFF9DB', // Light yellow
+                        boxShadow: '6px 6px 0px black',
+                    }}
+                    className="animate-pulse-slow"
+                >
+                    <Group justify="space-between">
+                        <Group>
+                            <ThemeIcon size={40} color="black" variant="filled" radius="md">
+                                <IconRotate size={24} />
+                            </ThemeIcon>
+                            <div>
+                                <Text fw={900} size="lg">학습 중단된 시험이 있습니다!</Text>
+                                <Text size="sm" c="dimmed">마지막 저장: {new Date(activeSession.updated_at).toLocaleString()}</Text>
+                            </div>
+                        </Group>
+                        <Button
+                            onClick={handleResume}
+                            size="md"
+                            color="dark"
+                            leftSection={<IconPlayerPlay size={20} />}
+                            style={{
+                                border: '2px solid black',
+                                boxShadow: '4px 4px 0px rgba(0,0,0,0.5)',
+                            }}
+                        >
+                            이어서 풀기
+                        </Button>
+                    </Group>
+                </Paper>
+            )}
 
             {/* 검색 시작일 선택 */}
             <Group justify="flex-end" mb={30}>

@@ -29,7 +29,7 @@ interface Word {
 function normalizeAnswer(answer: string): string {
     return answer
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') // 숫자도 포함 가능하면 수정, 현재는 영문+숫자 허용 관례
+        .replace(/[^a-z0-9]/g, '')
         .trim();
 }
 
@@ -45,33 +45,65 @@ export default function TypingTestPage() {
     const [words, setWords] = useState<Word[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Initial Fetch
+    // Initial Fetch & Resume Logic
     useEffect(() => {
-        const fetchWords = async () => {
+        const initTest = async () => {
             const itemId = searchParams.get('itemId');
             const startStr = searchParams.get('start');
             const endStr = searchParams.get('end');
+            const isResume = searchParams.get('resume') === 'true';
 
+            // Check for Resume first
+            if (isResume) {
+                try {
+                    const studentInfoStr = localStorage.getItem('studentInfo');
+                    if (studentInfoStr) {
+                        const studentInfo = JSON.parse(studentInfoStr);
+                        const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.session && data.session.session_data.type === 'typing_test') {
+                                const sData = data.session.session_data;
+                                setWords(sData.words);
+                                setCurrentIndex(sData.currentIndex);
+                                setResults(sData.results);
+                                setLoading(false);
+                                notifications.show({ title: 'Resumed', message: 'Test resumed from last save.', color: 'blue' });
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Resume failed", e);
+                }
+            }
+
+            // Normal Start
             if (!itemId || !startStr || !endStr) {
-                notifications.show({ title: '오류', message: '시험 정보를 찾을 수 없습니다.', color: 'red' });
-                setLoading(false);
-                return;
+                // If parameters missing and not resumed successfully (or not requested)
+                if (!isResume) {
+                    notifications.show({ title: '오류', message: '시험 정보를 찾을 수 없습니다.', color: 'red' });
+                    setLoading(false);
+                    return;
+                }
             }
 
             try {
-                const start = parseInt(startStr, 10);
-                const end = parseInt(endStr, 10);
-                const res = await fetch(`/api/wordbooks/${itemId}`);
-                if (!res.ok) throw new Error('Failed to fetch wordbook');
-                const data = await res.json();
+                if (itemId && startStr && endStr) {
+                    const start = parseInt(startStr, 10);
+                    const end = parseInt(endStr, 10);
+                    const res = await fetch(`/api/wordbooks/${itemId}`);
+                    if (!res.ok) throw new Error('Failed to fetch wordbook');
+                    const data = await res.json();
 
-                const allWords: Word[] = data.wordbook.words || [];
-                const targetWords = allWords.slice(start - 1, end);
+                    const allWords: Word[] = data.wordbook.words || [];
+                    const targetWords = allWords.slice(start - 1, end);
 
-                if (targetWords.length === 0) {
-                    notifications.show({ title: '알림', message: '해당 범위에 단어가 없습니다.', color: 'orange' });
+                    if (targetWords.length === 0) {
+                        notifications.show({ title: '알림', message: '해당 범위에 단어가 없습니다.', color: 'orange' });
+                    }
+                    setWords(targetWords);
                 }
-                setWords(targetWords);
             } catch (error) {
                 console.error(error);
                 notifications.show({ title: '오류', message: '단어 목록을 불러오는데 실패했습니다.', color: 'red' });
@@ -79,8 +111,39 @@ export default function TypingTestPage() {
                 setLoading(false);
             }
         };
-        fetchWords();
+        initTest();
     }, [searchParams]);
+
+    // Save Session Helper
+    const saveProgress = async (idx: number, currentResults: boolean[]) => {
+        try {
+            const studentInfoStr = localStorage.getItem('studentInfo');
+            if (!studentInfoStr) return;
+            const studentInfo = JSON.parse(studentInfoStr);
+
+            const sessionData = {
+                type: 'typing_test',
+                words: words,
+                itemId: searchParams.get('itemId'),
+                start: searchParams.get('start'),
+                end: searchParams.get('end'),
+                currentIndex: idx,
+                results: currentResults,
+                studentInfo: studentInfo
+            };
+
+            await fetch('/api/test/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentId: studentInfo.id,
+                    sessionData
+                })
+            });
+        } catch (error) {
+            console.error('Failed to save session:', error);
+        }
+    };
 
     const currentWord = words[currentIndex];
     const correctCount = results.filter((r) => r).length;
@@ -126,16 +189,23 @@ export default function TypingTestPage() {
         const normalizedCorrect = normalizeAnswer(currentWord.english);
         const isCorrect = normalizedUser === normalizedCorrect;
 
-        setResults([...results, isCorrect]);
+        const newResults = [...results, isCorrect];
+        setResults(newResults);
         setIsAnswered(true);
+
+        // Sound Output
+        if (isCorrect && !timeout) {
+            // Optional: Correct sound
+        } else if (!isCorrect || timeout) {
+            // Optional: Wrong sound
+        }
 
         if (timeout) {
             notifications.show({ title: '시간 초과', message: '다음 문제로 넘어갑니다.', color: 'orange' });
-        } else if (isCorrect) {
-            // 정답 효과음이나 피드백 (선택사항)
-        } else {
-            // 오답 효과음 (선택사항)
         }
+
+        // Save Progress
+        saveProgress(currentIndex + 1, newResults);
 
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
@@ -145,12 +215,12 @@ export default function TypingTestPage() {
                 setIsAnswered(false);
                 setTimeout(() => inputRef.current?.focus(), 50);
             } else {
-                finishTest([...results, isCorrect]);
+                finishTest(newResults);
             }
         }, 1500); // 1.5초 대기
     };
 
-    const finishTest = (finalResults: boolean[]) => {
+    const finishTest = async (finalResults: boolean[]) => {
         const finalCorrectCount = finalResults.filter(r => r).length;
         const finalWrongCount = finalResults.length - finalCorrectCount;
         const score = Math.round((finalCorrectCount / words.length) * 100);
@@ -168,6 +238,16 @@ export default function TypingTestPage() {
         };
 
         localStorage.setItem('testResult', JSON.stringify(testResult));
+
+        // Clear session if complete
+        const studentInfoStr = localStorage.getItem('studentInfo');
+        if (studentInfoStr) {
+            const studentInfo = JSON.parse(studentInfoStr);
+            await fetch(`/api/test/session?studentId=${studentInfo.id}`, {
+                method: 'DELETE'
+            });
+        }
+
         router.push('/test/result');
     };
 
