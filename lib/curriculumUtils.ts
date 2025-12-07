@@ -380,17 +380,14 @@ export const calculateStartDateForProgress = (
 
     // 못 찾으면 (범위 밖) 그냥 오늘을 시작일로 (혹은 유지)
     if (targetIndex === -1) {
-        // 만약 목표가 마지막보다 크다면, 맨 마지막 날로? 아니면 첫날로?
-        // 일단 검색 실패 시 기존 시작일 반환 (변경 없음)
         return curriculum.start_date;
     }
 
-    // targetIndex는 0-based. 즉, targetIndex가 0이면 1일차.
-    // baseDate(오늘)가 (targetIndex + 1)번째 수업일이 되어야 함.
-    const requiredStudyDays = targetIndex + 1;
+    // [New Logic] baseDate(보통 오늘)가 '학습일'이 아니라면, 
+    // 진도를 배정할 수 없으므로(숨겨짐), '가장 가까운 미래의 학습일'로 baseDate를 밀어야 함.
+    // 그래야 "55번부터 시작"이라고 했을 때 눈에 보이는 첫 날에 55번이 배정됨.
 
-    // 3. baseDate로부터 역산하여 start_date 찾기
-    // study_days 설정 파싱
+    // study_days 파싱 REUSE
     let studyDays: string[] = [];
     if (Array.isArray(curriculum.study_days)) {
         studyDays = curriculum.study_days;
@@ -401,19 +398,42 @@ export const calculateStartDateForProgress = (
     }
     const normalizedStudyDays = studyDays.map(d => d.toLowerCase());
 
-    // Breaks
+    const adjustedBaseDate = new Date(baseDate);
+    // 최대 7일 정도 뒤져서 다음 학습일을 찾음
+    for (let i = 0; i < 7; i++) {
+        const dayOfWeek = adjustedBaseDate.getDay();
+        let dayCode = '';
+        Object.entries(DAY_MAP).forEach(([code, num]) => {
+            if (num === dayOfWeek) dayCode = code;
+        });
+
+        // Breaks 체크 로직도 필요하지만, 오늘은 일단 '요일'만이라도 체크
+        if (dayCode && normalizedStudyDays.includes(dayCode.toLowerCase())) {
+            // Found a valid study day!
+            break;
+        }
+        // 다음 날로 이동
+        adjustedBaseDate.setDate(adjustedBaseDate.getDate() + 1);
+    }
+    // adjustedBaseDate가 이제 "목표 진도를 수행할 날짜"가 됨.
+
+    // targetIndex는 0-based. 즉, targetIndex가 0이면 1일차.
+    // adjustedBaseDate가 (targetIndex + 1)번째 수업일이 되어야 함.
+    const requiredStudyDays = targetIndex + 1;
+
+    // 3. adjustedBaseDate로부터 역산하여 start_date 찾기
     const breaks = (curriculum.breaks || []).map(b => ({
         start: new Date(b.start_date),
         end: new Date(b.end_date)
     }));
 
     let foundDays = 0;
-    const checkDate = new Date(baseDate); // 오늘부터 역산
+    const checkDate = new Date(adjustedBaseDate); // 여기서부터 역산
     checkDate.setHours(0, 0, 0, 0);
 
-    // 오늘이 수업일인지 확인하고 카운트 시작?
-    // "오늘"을 포함해서 역산해야 함. 오늘이 수업일이면 count=1.
-    // 계속 뒤로 가면서 count == requiredStudyDays가 되는 날짜를 찾음.
+    // [중요] checkDate가 바로 "목표 진도를 수행할 날짜"임.
+    // 즉, checkDate는 "수업일"이어야 함 (위 로직에서 보장).
+    // 따라서 오늘(checkDate)은 1번째 "수업일"로 카운트됨.
 
     while (foundDays < requiredStudyDays) {
         // 날짜 체크
@@ -450,7 +470,7 @@ export const calculateStartDateForProgress = (
         // 하루 전으로
         checkDate.setDate(checkDate.getDate() - 1);
 
-        // 무한 루프 방지 (안전장치: 5년)
+        // 무한 루프 방지
         if (Math.abs(checkDate.getTime() - baseDate.getTime()) > 5 * 365 * 24 * 60 * 60 * 1000) {
             return curriculum.start_date;
         }
