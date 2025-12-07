@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
             section_start,
             time_limit_seconds,
             passing_score,
+            item_id,
             order_index,
         } = body;
 
@@ -62,8 +63,9 @@ export async function POST(request: NextRequest) {
             .from('curriculum_items')
             .insert({
                 curriculum_id,
-                type,
+                item_type: type,
                 title,
+                item_id,
                 daily_amount_type,
                 daily_word_count,
                 daily_section_amount,

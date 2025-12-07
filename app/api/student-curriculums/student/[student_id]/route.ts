@@ -162,10 +162,13 @@ export async function GET(
             })
         );
 
-        return NextResponse.json({
+        const responseData = {
             student: studentWithClass,
             curriculums: curriculumsWithItems,
-        });
+        };
+        console.log('DEBUG_CURRICULUM_DATA:', JSON.stringify(responseData.curriculums, null, 2));
+
+        return NextResponse.json(responseData);
     } catch (error: any) {
         console.error('Unexpected error:', error);
         return NextResponse.json(

@@ -256,6 +256,29 @@ export const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
                     flushDay();
                 }
             }
+        } else if (item.item_type === 'listening') {
+            // Listening Item Logic
+            // Treat the whole test as one unit
+            const dummySection: Section = {
+                id: item.item_details?.id || 'listening-dummy',
+                major_unit: 'Listening',
+                minor_unit: 'Test',
+                unit_name: item.item_details?.title || 'Listening Test',
+                sequence: 1,
+                word_count: item.daily_word_count || 20 // Default or from settings
+            };
+
+            scheduleItems.push({
+                section: dummySection,
+                item,
+                progressStart: 1,
+                progressEnd: 1,
+                title: dummySection.unit_name,
+                major: dummySection.major_unit,
+                minor: dummySection.minor_unit,
+                isMultiSection: false,
+                wordCount: dummySection.word_count
+            });
         }
     });
 

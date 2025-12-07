@@ -32,6 +32,7 @@ interface CurriculumItem {
     id: string;
     type: 'word' | 'listening';
     title: string;
+    item_id?: string; // Added item_id for linkage
     daily_amount_type: 'count' | 'section';
     daily_word_count?: number;
     daily_section_amount?: 0.5 | 1 | 2;
@@ -172,6 +173,7 @@ export default function CurriculumsPage() {
                     id: item.id,
                     type: item.type,
                     title: item.title,
+                    item_id: item.item_id, // Map item_id
                     daily_amount_type: item.daily_amount_type,
                     daily_word_count: item.daily_word_count,
                     daily_section_amount: item.daily_section_amount,
@@ -301,6 +303,7 @@ export default function CurriculumsPage() {
                 curriculum_id: selectedCurriculum.id,
                 type: values.type,
                 title: values.title,
+                item_id: selectedMaterialId,
                 daily_amount_type: values.daily_amount_type,
                 daily_word_count: values.daily_amount_type === 'count' ? values.word_count : null,
                 daily_section_amount: values.daily_amount_type === 'section' ? values.daily_section_amount : null,
@@ -691,6 +694,7 @@ export default function CurriculumsPage() {
                                                                                     style={{ border: '2px solid black' }}
                                                                                     onClick={() => {
                                                                                         setEditingItem(item);
+                                                                                        setSelectedMaterialId(item.item_id || null);
                                                                                         itemForm.setValues({
                                                                                             type: item.type,
                                                                                             title: item.title,

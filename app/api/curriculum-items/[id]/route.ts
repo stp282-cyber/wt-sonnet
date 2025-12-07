@@ -14,7 +14,7 @@ export async function PUT(
         // 업데이트할 필드만 포함
         const updateData: any = {};
 
-        if (body.type !== undefined) updateData.type = body.type;
+        if (body.type !== undefined) updateData.item_type = body.type;
         if (body.title !== undefined) updateData.title = body.title;
         if (body.daily_amount_type !== undefined) updateData.daily_amount_type = body.daily_amount_type;
         if (body.daily_word_count !== undefined) updateData.daily_word_count = body.daily_word_count;
@@ -24,6 +24,7 @@ export async function PUT(
         if (body.passing_score !== undefined) updateData.passing_score = body.passing_score;
         if (body.order_index !== undefined) updateData.sequence = body.order_index;
         if (body.sequence !== undefined) updateData.sequence = body.sequence;
+        if (body.item_id !== undefined) updateData.item_id = body.item_id;
 
         const { data: item, error } = await supabase
             .from('curriculum_items')

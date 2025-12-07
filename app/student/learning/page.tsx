@@ -488,7 +488,7 @@ export default function StudentLearningPage() {
                                                                     <Stack gap="md" justify="space-between" style={{ position: 'relative', zIndex: 11, height: '100%' }}>
                                                                         <Box>
                                                                             <Badge
-                                                                                color="black"
+                                                                                color={schedule.itemType === 'listening' ? 'grape' : 'black'}
                                                                                 radius="xs"
                                                                                 size="md"
                                                                                 variant="filled"
@@ -498,7 +498,10 @@ export default function StudentLearningPage() {
                                                                                     border: '1px solid black'
                                                                                 }}
                                                                             >
-                                                                                소단원 {schedule.minorUnit}
+                                                                                {schedule.itemType === 'listening'
+                                                                                    ? `듣기 평가`
+                                                                                    : `소단원 ${schedule.minorUnit}`
+                                                                                }
                                                                             </Badge>
                                                                             <Text fw={800} size="md" style={{ lineHeight: 1.3 }}>
                                                                                 {schedule.unitName}
@@ -533,9 +536,13 @@ export default function StudentLearningPage() {
                                                                         {(!isCompleted) && (
                                                                             <button
                                                                                 onClick={() => {
-                                                                                    const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
-                                                                                    if (itemId) {
-                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                    if (schedule.itemType === 'listening') {
+                                                                                        router.push(`/test/listening?id=${schedule.item?.item_id}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                    } else {
+                                                                                        const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
+                                                                                        if (itemId) {
+                                                                                            router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                        }
                                                                                     }
                                                                                 }}
                                                                                 style={{
@@ -567,9 +574,13 @@ export default function StudentLearningPage() {
                                                                         {isCompleted && (
                                                                             <button
                                                                                 onClick={() => {
-                                                                                    const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
-                                                                                    if (itemId) {
-                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                    if (schedule.itemType === 'listening') {
+                                                                                        router.push(`/test/listening?id=${schedule.item?.item_id}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                    } else {
+                                                                                        const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
+                                                                                        if (itemId) {
+                                                                                            router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                        }
                                                                                     }
                                                                                 }}
                                                                                 style={{
