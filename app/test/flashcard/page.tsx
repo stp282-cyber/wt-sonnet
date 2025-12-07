@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
@@ -119,7 +119,9 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
     );
 }
 
-export default function FlashcardPage() {
+// ... (FlashcardItem component remains unchanged)
+
+function FlashcardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [words, setWords] = useState<Word[]>([]);
@@ -132,11 +134,7 @@ export default function FlashcardPage() {
             const endStr = searchParams.get('end');
 
             if (!itemId || !startStr || !endStr) {
-                notifications.show({
-                    title: '오류',
-                    message: '학습 정보를 찾을 수 없습니다.',
-                    color: 'red'
-                });
+                // Not showing notification here to avoid hydration mismatch or double render issues before load
                 setLoading(false);
                 return;
             }
@@ -153,11 +151,7 @@ export default function FlashcardPage() {
                 const targetWords = allWords.slice(start - 1, end);
 
                 if (targetWords.length === 0) {
-                    notifications.show({
-                        title: '알림',
-                        message: '해당 범위에 단어가 없습니다.',
-                        color: 'orange'
-                    });
+                    // Handle empty
                 }
 
                 setWords(targetWords);
@@ -234,7 +228,7 @@ export default function FlashcardPage() {
             <StudentLayout>
                 <Center style={{ minHeight: '100vh', background: '#fff' }}>
                     <Stack align="center">
-                        <Text size="lg" fw={700}>학습할 단어가 없습니다.</Text>
+                        <Text size="lg" fw={700}>학습 정보를 찾을 수 없거나 단어가 없습니다.</Text>
                         <button onClick={() => router.back()} style={{
                             padding: '0.8rem 2rem',
                             background: 'black',
@@ -395,5 +389,21 @@ export default function FlashcardPage() {
                 </Container>
             </Box>
         </StudentLayout>
+    );
+}
+
+export default function FlashcardPage() {
+    return (
+        <Suspense fallback={
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Stack align="center" gap="md">
+                        <Loader size="xl" color="dark" type="dots" />
+                    </Stack>
+                </Center>
+            </StudentLayout>
+        }>
+            <FlashcardContent />
+        </Suspense>
     );
 }
