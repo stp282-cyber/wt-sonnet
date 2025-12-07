@@ -40,6 +40,7 @@ export default function StudentLearningPage() {
     const [curriculums, setCurriculums] = useState<StudentCurriculum[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeSession, setActiveSession] = useState<any>(null);
+    const [studyLogs, setStudyLogs] = useState<any[]>([]);
 
     // 초기 날짜 설정: 토/일이면 다음주 월요일로 설정
     const [searchStartDate, setSearchStartDate] = useState<Date>(() => {
@@ -92,6 +93,13 @@ export default function StudentLearningPage() {
                     if (sessionData.session) {
                         setActiveSession(sessionData.session);
                     }
+                }
+
+                // 3. Fetch Study Logs
+                const logsRes = await fetch(`/api/study-logs?student_id=${user.id}`);
+                if (logsRes.ok) {
+                    const logsData = await logsRes.json();
+                    setStudyLogs(logsData.logs || []);
                 }
             } catch (error) {
                 console.error(error);
@@ -341,8 +349,18 @@ export default function StudentLearningPage() {
                                                 <Box style={{ flex: 1, display: 'flex' }}>
                                                     {weekDays.map((day, idx) => {
                                                         const schedule = getScheduleForDate(curr, day.date);
+
+                                                        // Check completion against logs
+                                                        const isLogCompleted = studyLogs.some(log =>
+                                                            log.curriculum_id === curr.curriculums.id &&
+                                                            log.curriculum_item_id === schedule?.item?.id &&
+                                                            log.scheduled_date === day.date &&
+                                                            log.status === 'completed'
+                                                        );
+
                                                         const isToday = schedule?.status === 'today';
-                                                        const isCompleted = schedule?.status === 'completed';
+                                                        const isCompleted = isLogCompleted; // Override with actual log
+                                                        const isMissed = !isCompleted && new Date(day.date) < new Date(new Date().setHours(0, 0, 0, 0)) && schedule;
 
                                                         // 애니메이션 딜레이: (커리큘럼 인덱스 * 5 + 날짜 인덱스) * 0.1s
                                                         const animationDelay = `${(cIdx * 5 + idx) * 0.05}s`;
@@ -354,7 +372,7 @@ export default function StudentLearningPage() {
                                                                 style={{
                                                                     flex: 1,
                                                                     borderRight: idx < 4 ? '3px solid black' : 'none', // 굵은 구분선
-                                                                    background: isCompleted ? '#E0E7FF' : (isToday ? '#FFFFFF' : '#FFFFFF'), // 완료된 항목은 아주 연한 파랑 or 흰색
+                                                                    background: isCompleted ? '#D3F9D8' : (isMissed ? '#FFE3E3' : '#FFFFFF'), // 완료: 초록, 미완료(과거): 빨강
                                                                     position: 'relative',
                                                                     margin: 0,
                                                                     padding: '1rem',
@@ -421,21 +439,29 @@ export default function StudentLearningPage() {
                                                                             <Text size="sm" fw={800} ta="center">진도: {schedule.progressRange}</Text>
                                                                         </Paper>
 
+                                                                        {/* Status Badge */}
+                                                                        {isCompleted && (
+                                                                            <Badge color="green" variant="filled" size="lg" radius="xs" style={{ border: '2px solid black' }}>COMPLETED</Badge>
+                                                                        )}
+                                                                        {isMissed && (
+                                                                            <Badge color="red" variant="filled" size="lg" radius="xs" style={{ border: '2px solid black' }}>MISSED</Badge>
+                                                                        )}
+
                                                                         {/* 시험 보기 버튼 - Neo-brutalism & Animation */}
-                                                                        {schedule.status !== 'completed' && (
+                                                                        {(!isCompleted) && (
                                                                             <button
                                                                                 onClick={() => {
                                                                                     const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
                                                                                     // 1-based index to query string
                                                                                     if (itemId) {
-                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}`);
+                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}`);
                                                                                     }
                                                                                 }}
                                                                                 style={{
                                                                                     width: '100%',
                                                                                     padding: '0.6rem',
-                                                                                    backgroundColor: '#FFD93D',
-                                                                                    color: 'black',
+                                                                                    backgroundColor: isMissed ? 'black' : '#FFD93D',
+                                                                                    color: isMissed ? 'white' : 'black',
                                                                                     fontWeight: 900,
                                                                                     fontSize: '0.9rem',
                                                                                     border: '3px solid black',
@@ -463,6 +489,32 @@ export default function StudentLearningPage() {
                                                                                 }}
                                                                             >
                                                                                 시험 보기
+                                                                            </button>
+                                                                        )}
+                                                                        {isCompleted && (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
+                                                                                    if (itemId) {
+                                                                                        // Review Mode (maybe just view words for now? or same test)
+                                                                                        // For now, let's allow re-taking but distinct button
+                                                                                        router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}`);
+                                                                                    }
+                                                                                }}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    padding: '0.6rem',
+                                                                                    backgroundColor: '#fff',
+                                                                                    color: 'black',
+                                                                                    fontWeight: 900,
+                                                                                    fontSize: '0.9rem',
+                                                                                    border: '2px solid black',
+                                                                                    boxShadow: '2px 2px 0px 0px black',
+                                                                                    cursor: 'pointer',
+                                                                                    marginTop: '0.5rem',
+                                                                                }}
+                                                                            >
+                                                                                다시 풀기
                                                                             </button>
                                                                         )}
                                                                     </Stack>

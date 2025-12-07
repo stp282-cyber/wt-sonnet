@@ -24,7 +24,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconEdit, IconTrash, IconUserPlus, IconUsers, IconSchool } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash, IconUserPlus, IconUsers, IconSchool, IconCalendar } from '@tabler/icons-react';
 
 interface Student {
     id: string;
@@ -503,6 +503,18 @@ export default function StudentsPage() {
                                                     }}
                                                 >
                                                     <IconEdit size={18} />
+                                                </ActionIcon>
+                                                <ActionIcon
+                                                    variant="filled"
+                                                    color="dark"
+                                                    size="lg"
+                                                    onClick={() => window.open(`/teacher/students/${student.id}`, '_blank')}
+                                                    style={{
+                                                        border: '2px solid black',
+                                                    }}
+                                                    title="학습 현황 보기"
+                                                >
+                                                    <IconCalendar size={18} />
                                                 </ActionIcon>
                                                 <ActionIcon
                                                     variant="filled"

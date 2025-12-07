@@ -129,7 +129,9 @@ export default function TypingTestPage() {
                 end: searchParams.get('end'),
                 currentIndex: idx,
                 results: currentResults,
-                studentInfo: studentInfo
+                studentInfo: studentInfo,
+                curriculumId: searchParams.get('curriculumId'),
+                curriculumItemId: searchParams.get('curriculumItemId')
             };
 
             await fetch('/api/test/session', {
@@ -221,6 +223,7 @@ export default function TypingTestPage() {
     };
 
     const finishTest = async (finalResults: boolean[]) => {
+        const studentInfoStr = localStorage.getItem('studentInfo');
         const finalCorrectCount = finalResults.filter(r => r).length;
         const finalWrongCount = finalResults.length - finalCorrectCount;
         const score = Math.round((finalCorrectCount / words.length) * 100);
@@ -239,8 +242,34 @@ export default function TypingTestPage() {
 
         localStorage.setItem('testResult', JSON.stringify(testResult));
 
+        // Save Study Log
+        const curriculumId = searchParams.get('curriculumId');
+        const curriculumItemId = searchParams.get('curriculumItemId');
+
+        if (studentInfoStr && curriculumId && curriculumItemId) {
+            const studentInfo = JSON.parse(studentInfoStr);
+            try {
+                await fetch('/api/study-logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        student_id: studentInfo.id,
+                        curriculum_id: curriculumId,
+                        curriculum_item_id: curriculumItemId,
+                        scheduled_date: new Date().toISOString().split('T')[0], // Today's date
+                        status: 'completed',
+                        test_phase: 'typing_test',
+                        score: score,
+                        wrong_answers: wrongWords,
+                        test_data: testResult
+                    })
+                });
+            } catch (e) {
+                console.error("Failed to save study log", e);
+            }
+        }
+
         // Clear session if complete
-        const studentInfoStr = localStorage.getItem('studentInfo');
         if (studentInfoStr) {
             const studentInfo = JSON.parse(studentInfoStr);
             await fetch(`/api/test/session?studentId=${studentInfo.id}`, {
@@ -308,7 +337,7 @@ export default function TypingTestPage() {
                                     <Box p={4} bg="black" c="white">
                                         <IconKeyboard size={20} stroke={2} />
                                     </Box>
-                                    <Text fw={700} tt="uppercase" ls={1} c="dimmed">Typing Test</Text>
+                                    <Text fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '1px' }}>Typing Test</Text>
                                 </Group>
                                 <Title
                                     order={1}
@@ -531,7 +560,7 @@ export default function TypingTestPage() {
 
                     </div>
                 </Container>
-            </Box>
-        </StudentLayout>
+            </Box >
+        </StudentLayout >
     );
 }
