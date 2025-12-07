@@ -4,11 +4,11 @@ import { createClient } from '@/lib/supabase/client';
 // GET /api/student-curriculums/[id] - 특정 학생-커리큘럼 상세 조회 (커리큘럼 항목 포함)
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
-        const { id } = params;
+        const { id } = await params;
 
         // student_curriculum 조회 (학생, 커리큘럼 정보 포함)
         const { data: studentCurriculum, error: scError } = await supabase

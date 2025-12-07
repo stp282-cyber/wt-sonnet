@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
             const dateStr = date.toISOString().split('T')[0];
             const schedule = getScheduleForDate(curriculum as StudentCurriculum, dateStr);
 
-            if (schedule && schedule.itemType === 'wordbook') {
+            if (schedule && schedule.itemType === 'wordbook' && schedule.item) {
                 const targetBookId = schedule.item.item_id;
 
                 // Fetch words from wordbook
@@ -80,13 +80,16 @@ export async function POST(req: NextRequest) {
                     const start = schedule.progressStart;
                     const end = schedule.progressEnd;
 
-                    // JSON array slice? simpler to do in JS
-                    const allWords = wordbook.words as any[];
-                    // 1-based index to 0-based slice
-                    // slice(start, end) extracts up to but not including end.
-                    // If start=1, end=20 (20 words). slice(0, 20).
-                    const dailyWords = allWords.slice(start - 1, end);
-                    reviewWords = [...reviewWords, ...dailyWords];
+                    if (typeof start === 'number' && typeof end === 'number') {
+
+                        // JSON array slice? simpler to do in JS
+                        const allWords = wordbook.words as any[];
+                        // 1-based index to 0-based slice
+                        // slice(start, end) extracts up to but not including end.
+                        // If start=1, end=20 (20 words). slice(0, 20).
+                        const dailyWords = allWords.slice(start - 1, end);
+                        reviewWords = [...reviewWords, ...dailyWords];
+                    }
                 }
             }
         }

@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 
                     const schedule = getScheduleForDate(fullCurriculum, dateStr);
 
-                    if (schedule) {
+                    if (schedule && schedule.item) {
                         hasAssignment = true;
 
                         // Check records in study_logs
@@ -101,8 +101,6 @@ export async function GET(request: NextRequest) {
                         let score = undefined;
 
                         if (record) {
-                            // If status is in record, use it. Usually study_logs has 'completed'.
-                            // If record exists, we assume at least attempted.
                             status = record.status || 'completed';
                             score = record.score;
                         }

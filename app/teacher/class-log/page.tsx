@@ -215,7 +215,7 @@ export default function ClassLogPage() {
 
                         // Check Log
                         const isCompleted = logs.some((l: any) =>
-                            l.curriculum_item_id === schedule.item.id &&
+                            l.curriculum_item_id === schedule.item?.id &&
                             /* Check if log is valid (completed) */
                             (l.status === 'completed')
                         );
@@ -737,10 +737,10 @@ export default function ClassLogPage() {
                                 </Paper>
                             ))
                         ) : (
-                            <Text align="center" c="dimmed" py="xl">등록된 커리큘럼이 없습니다.</Text>
+                            <Text ta="center" c="dimmed" py="xl">등록된 커리큘럼이 없습니다.</Text>
                         )
                     ) : (
-                        <Text align="center" c="dimmed" py="xl">정보를 불러올 수 없습니다.</Text>
+                        <Text ta="center" c="dimmed" py="xl">정보를 불러올 수 없습니다.</Text>
                     )}
                 </Stack>
             </Modal>

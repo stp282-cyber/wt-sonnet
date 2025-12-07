@@ -370,29 +370,51 @@ export default function StudentSchedulePage() {
 
                             {curriculums.map((curr) => (
                                 <Paper key={curr.id} mb="md" style={{ border: '3px solid black', borderRadius: '0px', overflow: 'hidden' }}>
-                                    <Box style={{ display: 'flex', flexDirection: 'column' }} mod={{ desktop: true }}>
-                                        <style jsx global>{`
+                                    <style jsx>{`
+                                            .curriculum-wrapper {
+                                                display: flex;
+                                                flex-direction: column;
+                                            }
+                                            .left-column {
+                                                width: 100%;
+                                                background: white;
+                                                padding: 16px;
+                                                border-bottom: 3px solid black;
+                                            }
+                                            .right-column {
+                                                flex: 1;
+                                                display: flex;
+                                                flex-direction: column;
+                                            }
+                                            .calendar-cell {
+                                                flex: 1;
+                                                display: flex;
+                                                flex-direction: column;
+                                                /* Mobile default: border bottom if idx < 4 (legacy logic preserved) */
+                                            }
+
                                             @media (min-width: 62em) {
-                                                [data-desktop] { flex-direction: row !important; }
+                                                .curriculum-wrapper { flex-direction: row; }
+                                                .left-column {
+                                                    width: 200px;
+                                                    min-width: 200px;
+                                                    border-right: 3px solid black;
+                                                    border-bottom: none;
+                                                }
+                                                .right-column {
+                                                    flex-direction: row;
+                                                }
+                                                .calendar-cell {
+                                                    border-bottom: none !important; /* Override inline style */
+                                                }
+                                                .calendar-cell.cell-bordered {
+                                                    border-right: 2px solid black;
+                                                }
                                             }
                                         `}</style>
+                                    <div className="curriculum-wrapper">
                                         {/* 좌측 커리큘럼 정보 */}
-                                        <Box style={{
-                                            width: '100%',
-                                            background: 'white',
-                                            padding: '16px',
-                                            borderBottom: '3px solid black'
-                                        }} mod={{ desktop: true }}>
-                                            <style jsx global>{`
-                                                @media (min-width: 62em) {
-                                                    [data-desktop] { 
-                                                        width: 200px !important;
-                                                        min-width: 200px !important;
-                                                        border-right: 3px solid black !important;
-                                                        border-bottom: none !important;
-                                                    }
-                                                }
-                                            `}</style>
+                                        <div className="left-column">
                                             <Text fw={900} size="md" mb="xs" style={{ lineHeight: 1.2 }}>
                                                 {curr.curriculums.name}
                                             </Text>
@@ -446,38 +468,21 @@ export default function StudentSchedulePage() {
                                                     커리큘럼 삭제
                                                 </Button>
                                             </Stack>
-                                        </Box>
+                                        </div>
 
                                         {/* 우측 달력 영역 */}
-                                        <Box style={{ flex: 1, display: 'flex', flexDirection: 'column' }} mod={{ desktop: true }}>
-                                            <style jsx global>{`
-                                                @media (min-width: 62em) {
-                                                    [data-desktop] { flex-direction: row !important; }
-                                                }
-                                            `}</style>
+                                        <div className="right-column">
                                             {weekDays.map((day, idx) => {
                                                 const schedule = getScheduleForDate(curr, day.date);
 
                                                 return (
                                                     <Box
                                                         key={idx}
+                                                        className={`calendar-cell ${idx < 4 ? 'cell-bordered' : ''}`}
                                                         style={{
-                                                            flex: 1,
-                                                            borderBottom: idx < 4 ? '2px solid black' : 'none',
-                                                            display: 'flex',
-                                                            flexDirection: 'column'
+                                                            borderBottom: idx < 4 ? '2px solid black' : 'none'
                                                         }}
-                                                        mod={{ desktop: true }}
                                                     >
-                                                        <style jsx global>{`
-                                                            @media (min-width: 62em) {
-                                                                [data-desktop] { 
-                                                                    border-right: ${idx < 4 ? '2px solid black' : 'none'} !important;
-                                                                    border-bottom: none !important;
-                                                                }
-                                                            }
-                                                        `}</style>
-
                                                         {/* Mobile Day Header */}
                                                         <Box hiddenFrom="md" p="xs" bg="#FFD93D" style={{ borderBottom: '2px solid black' }}>
                                                             <Group justify="space-between">
@@ -545,8 +550,8 @@ export default function StudentSchedulePage() {
                                                     </Box>
                                                 );
                                             })}
-                                        </Box>
-                                    </Box>
+                                        </div>
+                                    </div>
                                 </Paper>
                             ))}
 

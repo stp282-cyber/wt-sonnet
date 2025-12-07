@@ -111,7 +111,7 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
                     {/* 듣기 아이콘 */}
                     <Group gap={6} style={{ marginTop: '0.8rem', opacity: 0.5 }}>
                         <IconVolume size={20} />
-                        <Text size="xs" fw={700} tt="uppercase" ls={1}>Click to Listen</Text>
+                        <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: '1px' }}>Click to Listen</Text>
                     </Group>
                 </Stack>
             </Paper>
@@ -301,7 +301,7 @@ function FlashcardContent() {
                                     <Box p={4} bg="black" c="white">
                                         <IconCards size={20} stroke={2} />
                                     </Box>
-                                    <Text fw={700} tt="uppercase" ls={1} c="dimmed">Vocabulary / Flashcards</Text>
+                                    <Text fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '1px' }}>Vocabulary / Flashcards</Text>
                                 </Group>
                                 <Title
                                     order={1}

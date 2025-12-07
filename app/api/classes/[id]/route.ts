@@ -4,11 +4,11 @@ import { createClient } from '@/lib/supabase/client';
 // GET /api/classes/[id] - 특정 반 조회
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
-        const { id } = params;
+        const { id } = await params;
 
         const { data: classInfo, error } = await supabase
             .from('classes')
@@ -30,11 +30,11 @@ export async function GET(
 // PUT /api/classes/[id] - 반 수정
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
         const { name } = body;
 
@@ -66,11 +66,11 @@ export async function PUT(
 // DELETE /api/classes/[id] - 반 삭제
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createClient();
-        const { id } = params;
+        const { id } = await params;
 
         // 해당 반에 학생이 있는지 확인
         const { data: students } = await supabase

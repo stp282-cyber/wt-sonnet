@@ -631,7 +631,7 @@ export default function CurriculumsPage() {
                                                             </button>
                                                         </Group>
 
-                                                        <Table size="sm">
+                                                        <Table>
                                                             <Table.Thead>
                                                                 <Table.Tr>
                                                                     <Table.Th>순서</Table.Th>
