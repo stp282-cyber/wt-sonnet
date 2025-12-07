@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Container, Title, Paper, Text, Box, Group, Stack, Badge, Button } from '@mantine/core';
-import { IconCheck, IconX, IconRefresh, IconArrowRight, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { Container, Title, Paper, Text, Box, Group, Stack, Badge, RingProgress, Center } from '@mantine/core';
+import { IconCheck, IconX, IconRefresh, IconArrowRight, IconChevronDown, IconChevronUp, IconTrophy } from '@tabler/icons-react';
+import StudentLayout from '../../student/layout';
 
 interface Word {
     no: number;
@@ -32,30 +33,19 @@ export default function TestResultPage() {
         if (savedResult) {
             setResult(JSON.parse(savedResult));
         } else {
-            // 테스트용 샘플 결과 데이터
-            const sampleResult = {
-                totalQuestions: 5,
-                correctCount: 2,
-                wrongCount: 3,
-                score: 40,
-                passed: false,
-                wrongWords: [
-                    { no: 1, english: 'apple', korean: '사과' },
-                    { no: 3, english: 'orange', korean: '오렌지' },
-                    { no: 5, english: 'watermelon', korean: '수박' },
-                ],
-                timestamp: new Date().toISOString(),
-            };
-            setResult(sampleResult);
-            localStorage.setItem('testResult', JSON.stringify(sampleResult));
+            // 데이터가 없으면 학습 메인으로 리다이렉트 (혹은 개발 중 편의를 위해 샘플 데이터 유지 여부 결정)
+            // 여기서는 사용자 경험을 위해 메인으로 보냅니다.
+            router.push('/student/learning');
         }
     }, [router]);
 
     if (!result) {
         return (
-            <Container size="sm" py={40}>
-                <Text>결과를 불러오는 중...</Text>
-            </Container>
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Text>결과를 불러오는 중...</Text>
+                </Center>
+            </StudentLayout>
         );
     }
 
@@ -71,302 +61,262 @@ export default function TestResultPage() {
     };
 
     return (
-        <Container size="md" py={40}>
-            <div className="animate-fade-in">
-                {/* 결과 헤더 */}
-                <Box mb={30} style={{ textAlign: 'center' }}>
-                    <Title order={1} style={{ fontWeight: 900, marginBottom: '1rem' }}>
-                        시험 결과
-                    </Title>
-                    <Text size="lg" c="dimmed">
-                        {new Date(result.timestamp).toLocaleString('ko-KR')}
-                    </Text>
-                </Box>
-
-                {/* 점수 카드 */}
-                <Paper
-                    p="xl"
-                    radius="lg"
-                    mb={30}
-                    style={{
-                        border: '6px solid black',
-                        background: result.passed
-                            ? 'linear-gradient(135deg, #51CF66 0%, #37B24D 100%)'
-                            : 'linear-gradient(135deg, #FF6B6B 0%, #FA5252 100%)',
-                        boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-                        textAlign: 'center',
-                    }}
-                >
-                    <div
-                        style={{
-                            width: '200px',
-                            height: '200px',
-                            margin: '0 auto',
-                            borderRadius: '50%',
-                            border: '8px solid white',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'rgba(255, 255, 255, 0.2)',
-                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-                        }}
-                    >
-                        <Text size="80px" fw={900} c="white" style={{ lineHeight: 1 }}>
-                            {result.score}
-                        </Text>
-                        <Text size="xl" fw={700} c="white">
-                            점
-                        </Text>
-                    </div>
-
-                    <Title order={2} mt="xl" c="white" style={{ fontWeight: 900 }}>
-                        {result.passed ? '🎉 합격!' : '😢 불합격'}
-                    </Title>
-                    <Text size="lg" c="white" mt="sm">
-                        {result.passed
-                            ? '축하합니다! 다음 단계로 진행할 수 있습니다.'
-                            : '조금 더 노력이 필요합니다. 오답을 복습하세요.'}
-                    </Text>
-                </Paper>
-
-                {/* 통계 카드 */}
-                <Group grow mb={30}>
-                    <Paper
-                        p="lg"
-                        radius="lg"
-                        style={{
-                            border: '4px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                        }}
-                    >
-                        <Group>
-                            <div
-                                style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    borderRadius: '50%',
-                                    background: '#E3FAFC',
-                                    border: '3px solid black',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <Text size="xl" fw={900}>
-                                    📝
+        <StudentLayout>
+            <Box
+                style={{
+                    minHeight: '100%',
+                    background: '#ffffff',
+                    padding: '40px 20px',
+                    position: 'relative',
+                }}
+            >
+                <Container size={800}>
+                    <div className="animate-fade-in">
+                        {/* 헤더 */}
+                        <Group justify="center" mb={50}>
+                            <Stack align="center" gap="xs">
+                                <Box p={8} bg="black" c="white" style={{ borderRadius: '0px' }}>
+                                    <IconTrophy size={32} stroke={2} />
+                                </Box>
+                                <Title
+                                    order={1}
+                                    style={{
+                                        color: 'black',
+                                        fontWeight: 900,
+                                        fontSize: '3rem',
+                                        letterSpacing: '-1px',
+                                        lineHeight: 1,
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    Test Result
+                                </Title>
+                                <Text size="lg" c="dimmed" fw={700}>
+                                    {new Date(result.timestamp).toLocaleDateString()}
                                 </Text>
-                            </div>
-                            <div>
-                                <Text size="sm" c="dimmed">
-                                    총 문제 수
-                                </Text>
-                                <Text size="xl" fw={900}>
-                                    {result.totalQuestions}개
-                                </Text>
-                            </div>
-                        </Group>
-                    </Paper>
-
-                    <Paper
-                        p="lg"
-                        radius="lg"
-                        style={{
-                            border: '4px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                        }}
-                    >
-                        <Group>
-                            <div
-                                style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    borderRadius: '50%',
-                                    background: '#D3F9D8',
-                                    border: '3px solid black',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <IconCheck size={32} color="#37B24D" stroke={3} />
-                            </div>
-                            <div>
-                                <Text size="sm" c="dimmed">
-                                    정답
-                                </Text>
-                                <Text size="xl" fw={900} c="green">
-                                    {result.correctCount}개
-                                </Text>
-                            </div>
-                        </Group>
-                    </Paper>
-
-                    <Paper
-                        p="lg"
-                        radius="lg"
-                        style={{
-                            border: '4px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                        }}
-                    >
-                        <Group>
-                            <div
-                                style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    borderRadius: '50%',
-                                    background: '#FFE3E3',
-                                    border: '3px solid black',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <IconX size={32} color="#FA5252" stroke={3} />
-                            </div>
-                            <div>
-                                <Text size="sm" c="dimmed">
-                                    오답
-                                </Text>
-                                <Text size="xl" fw={900} c="red">
-                                    {result.wrongCount}개
-                                </Text>
-                            </div>
-                        </Group>
-                    </Paper>
-                </Group>
-
-                {/* 오답 목록 */}
-                {result.wrongCount > 0 && (
-                    <Paper
-                        p="lg"
-                        radius="lg"
-                        mb={30}
-                        style={{
-                            border: '4px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                        }}
-                    >
-                        <Group
-                            justify="space-between"
-                            mb="md"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => setShowWrongWords(!showWrongWords)}
-                        >
-                            <Group>
-                                <Text size="lg" fw={900}>
-                                    오답 목록
-                                </Text>
-                                <Badge color="red" size="lg" style={{ border: '2px solid black' }}>
-                                    {result.wrongCount}개
-                                </Badge>
-                            </Group>
-                            {showWrongWords ? <IconChevronUp size={24} /> : <IconChevronDown size={24} />}
-                        </Group>
-
-                        {showWrongWords && (
-                            <Stack gap="sm" mt="md">
-                                {result.wrongWords.map((word) => (
-                                    <Paper
-                                        key={word.no}
-                                        p="md"
-                                        style={{
-                                            border: '3px solid #FFE3E3',
-                                            background: '#FFF5F5',
-                                        }}
-                                    >
-                                        <Group justify="space-between">
-                                            <div>
-                                                <Text fw={700} size="lg">
-                                                    {word.korean}
-                                                </Text>
-                                                <Text c="dimmed" size="sm">
-                                                    정답: {word.english}
-                                                </Text>
-                                            </div>
-                                            <Badge color="red" variant="filled">
-                                                #{word.no}
-                                            </Badge>
-                                        </Group>
-                                    </Paper>
-                                ))}
                             </Stack>
+                        </Group>
+
+                        {/* 점수 카드 */}
+                        <Paper
+                            p={50}
+                            mb={40}
+                            style={{
+                                border: '4px solid black',
+                                borderRadius: '0px',
+                                background: 'white',
+                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <Box
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: '10px',
+                                    background: result.passed ? '#51CF66' : '#FF6B6B',
+                                    borderBottom: '2px solid black'
+                                }}
+                            />
+
+                            <Stack align="center" gap="xl">
+                                <Box style={{ position: 'relative' }}>
+                                    <RingProgress
+                                        size={220}
+                                        thickness={20}
+                                        roundCaps={false}
+                                        sections={[{ value: result.score, color: result.passed ? '#51CF66' : '#FF6B6B' }]}
+                                        rootColor="#f1f3f5"
+                                        label={
+                                            <Stack gap={0} align="center">
+                                                <Text size="4rem" fw={900} lts={-2} style={{ lineHeight: 1 }}>
+                                                    {result.score}
+                                                </Text>
+                                                <Text size="xl" fw={700} c="dimmed">SCORE</Text>
+                                            </Stack>
+                                        }
+                                        style={{ filter: 'drop-shadow(4px 4px 0px black)' }}
+                                    />
+                                </Box>
+
+                                <Box ta="center">
+                                    <Title order={2} style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>
+                                        {result.passed ? 'Excellent Work! 🎉' : 'Keep Trying! 💪'}
+                                    </Title>
+                                    <Text size="lg" c="dimmed" fw={600}>
+                                        {result.passed
+                                            ? 'You successfully passed the test.'
+                                            : 'Review your mistakes and try again.'}
+                                    </Text>
+                                </Box>
+                            </Stack>
+                        </Paper>
+
+                        {/* 통계 요약 */}
+                        <Group grow mb={40} gap="lg">
+                            <Paper
+                                p="lg"
+                                style={{
+                                    border: '3px solid black',
+                                    borderRadius: '0px',
+                                    background: '#D3F9D8',
+                                    boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                }}
+                            >
+                                <Group justify="space-between">
+                                    <Box>
+                                        <Text size="xs" fw={700} tt="uppercase" c="dimmed">Correct</Text>
+                                        <Text size="2.5rem" fw={900} style={{ lineHeight: 1 }}>{result.correctCount}</Text>
+                                    </Box>
+                                    <IconCheck size={40} stroke={3} opacity={0.2} />
+                                </Group>
+                            </Paper>
+
+                            <Paper
+                                p="lg"
+                                style={{
+                                    border: '3px solid black',
+                                    borderRadius: '0px',
+                                    background: '#FFE3E3',
+                                    boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                }}
+                            >
+                                <Group justify="space-between">
+                                    <Box>
+                                        <Text size="xs" fw={700} tt="uppercase" c="dimmed">Wrong</Text>
+                                        <Text size="2.5rem" fw={900} style={{ lineHeight: 1 }}>{result.wrongCount}</Text>
+                                    </Box>
+                                    <IconX size={40} stroke={3} opacity={0.2} />
+                                </Group>
+                            </Paper>
+                        </Group>
+
+                        {/* 오답 목록 */}
+                        {result.wrongCount > 0 && (
+                            <Box mb={40}>
+                                <Paper
+                                    p="lg"
+                                    style={{
+                                        border: '3px solid black',
+                                        borderRadius: '0px',
+                                        background: 'white',
+                                        boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s',
+                                    }}
+                                    onClick={() => setShowWrongWords(!showWrongWords)}
+                                    className="hover-lift"
+                                >
+                                    <Group justify="space-between">
+                                        <Group gap="sm">
+                                            <IconX size={24} color="red" />
+                                            <Text fw={800} size="xl">Review Wrong Answers</Text>
+                                            <Badge color="red" size="lg" radius="xs" variant="filled">{result.wrongCount}</Badge>
+                                        </Group>
+                                        {showWrongWords ? <IconChevronUp size={24} /> : <IconChevronDown size={24} />}
+                                    </Group>
+                                </Paper>
+
+                                {showWrongWords && (
+                                    <Stack gap="md" mt="lg">
+                                        {result.wrongWords.map((word) => (
+                                            <Paper
+                                                key={word.no}
+                                                p="lg"
+                                                style={{
+                                                    border: '2px solid black',
+                                                    borderRadius: '0px',
+                                                    background: '#fff',
+                                                    borderLeft: '8px solid #FF6B6B'
+                                                }}
+                                            >
+                                                <Group justify="space-between">
+                                                    <Box>
+                                                        <Text fw={900} size="xl">{word.korean}</Text>
+                                                        <Group gap="xs">
+                                                            <Text size="sm" c="dimmed">Correct Answer:</Text>
+                                                            <Text fw={700} c="red">{word.english}</Text>
+                                                        </Group>
+                                                    </Box>
+                                                    <Badge color="dark" variant="light" radius="xs">No. {word.no}</Badge>
+                                                </Group>
+                                            </Paper>
+                                        ))}
+                                    </Stack>
+                                )}
+                            </Box>
                         )}
-                    </Paper>
-                )}
 
-                {/* 액션 버튼 */}
-                <Group justify="center" gap="md">
-                    {result.wrongCount > 0 && (
-                        <button
-                            onClick={handleReviewWrongWords}
-                            style={{
-                                background: '#7950f2',
-                                color: 'white',
-                                border: '4px solid black',
-                                borderRadius: '12px',
-                                boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                fontSize: '1.2rem',
-                                fontWeight: 900,
-                                padding: '1.2rem 2.5rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.8rem',
-                                transition: 'all 0.2s',
-                            }}
-                            onMouseDown={(e) => {
-                                e.currentTarget.style.transform = 'translate(3px, 3px)';
-                                e.currentTarget.style.boxShadow = '3px 3px 0px 0px rgba(0, 0, 0, 1)';
-                            }}
-                            onMouseUp={(e) => {
-                                e.currentTarget.style.transform = 'translate(0, 0)';
-                                e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
-                            }}
-                        >
-                            <IconRefresh size={28} />
-                            오답 복습하기
-                        </button>
-                    )}
+                        {/* 액션 버튼 */}
+                        <Group justify="center" gap="md">
+                            {result.wrongCount > 0 && (
+                                <button
+                                    onClick={handleReviewWrongWords}
+                                    style={{
+                                        background: 'white',
+                                        color: 'black',
+                                        border: '3px solid black',
+                                        borderRadius: '0px',
+                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                                        fontSize: '1.1rem',
+                                        fontWeight: 800,
+                                        padding: '1.2rem 2.5rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.8rem',
+                                        transition: 'all 0.2s',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                        e.currentTarget.style.boxShadow = '8px 8px 0px 0px rgba(0, 0, 0, 1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translate(0, 0)';
+                                        e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
+                                    }}
+                                >
+                                    <IconRefresh size={24} />
+                                    REVIEW WRONG WORDS
+                                </button>
+                            )}
 
-                    {result.passed && (
-                        <button
-                            onClick={handleNextStep}
-                            style={{
-                                background: '#51CF66',
-                                color: 'white',
-                                border: '4px solid black',
-                                borderRadius: '12px',
-                                boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                fontSize: '1.2rem',
-                                fontWeight: 900,
-                                padding: '1.2rem 2.5rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.8rem',
-                                transition: 'all 0.2s',
-                            }}
-                            onMouseDown={(e) => {
-                                e.currentTarget.style.transform = 'translate(3px, 3px)';
-                                e.currentTarget.style.boxShadow = '3px 3px 0px 0px rgba(0, 0, 0, 1)';
-                            }}
-                            onMouseUp={(e) => {
-                                e.currentTarget.style.transform = 'translate(0, 0)';
-                                e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
-                            }}
-                        >
-                            다음 단계로
-                            <IconArrowRight size={28} />
-                        </button>
-                    )}
-                </Group>
-            </div>
-        </Container>
+                            <button
+                                onClick={handleNextStep}
+                                style={{
+                                    background: 'black',
+                                    color: '#FFD93D',
+                                    border: '3px solid black',
+                                    borderRadius: '0px',
+                                    boxShadow: '6px 6px 0px 0px #FFD93D',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 800,
+                                    padding: '1.2rem 2.5rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.8rem',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                    e.currentTarget.style.boxShadow = '8px 8px 0px 0px #FFD93D';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translate(0, 0)';
+                                    e.currentTarget.style.boxShadow = '6px 6px 0px 0px #FFD93D';
+                                }}
+                            >
+                                BACK TO LEARNING
+                                <IconArrowRight size={24} />
+                            </button>
+                        </Group>
+                    </div>
+                </Container>
+            </Box>
+        </StudentLayout>
     );
 }

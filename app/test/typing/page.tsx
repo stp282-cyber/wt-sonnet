@@ -9,14 +9,16 @@ import {
     Text,
     Box,
     Group,
-    Progress,
     Stack,
     TextInput,
     Loader,
     Center,
+    Badge,
+    RingProgress,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconClock, IconCheck, IconX, IconKeyboard, IconAlertTriangle } from '@tabler/icons-react';
+import { IconClock, IconCheck, IconX, IconKeyboard, IconAlertTriangle, IconArrowRight } from '@tabler/icons-react';
+import StudentLayout from '../../student/layout';
 
 interface Word {
     no: number;
@@ -24,11 +26,10 @@ interface Word {
     korean: string;
 }
 
-// 답안 정규화 함수 (특수문자, 띄어쓰기, 대소문자, 괄호 무시)
 function normalizeAnswer(answer: string): string {
     return answer
         .toLowerCase()
-        .replace(/[^a-z가-힣]/g, '') // 영문자와 한글만 남김
+        .replace(/[^a-z0-9]/g, '') // 숫자도 포함 가능하면 수정, 현재는 영문+숫자 허용 관례
         .trim();
 }
 
@@ -38,12 +39,13 @@ export default function TypingTestPage() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [results, setResults] = useState<boolean[]>([]);
-    const [timeLeft, setTimeLeft] = useState(20); // 제한 시간 20초
+    const [timeLeft, setTimeLeft] = useState(20);
     const [isAnswered, setIsAnswered] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const [words, setWords] = useState<Word[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Initial Fetch
     useEffect(() => {
         const fetchWords = async () => {
             const itemId = searchParams.get('itemId');
@@ -51,11 +53,7 @@ export default function TypingTestPage() {
             const endStr = searchParams.get('end');
 
             if (!itemId || !startStr || !endStr) {
-                notifications.show({
-                    title: '오류',
-                    message: '시험 정보를 찾을 수 없습니다.',
-                    color: 'red'
-                });
+                notifications.show({ title: '오류', message: '시험 정보를 찾을 수 없습니다.', color: 'red' });
                 setLoading(false);
                 return;
             }
@@ -63,82 +61,64 @@ export default function TypingTestPage() {
             try {
                 const start = parseInt(startStr, 10);
                 const end = parseInt(endStr, 10);
-
                 const res = await fetch(`/api/wordbooks/${itemId}`);
                 if (!res.ok) throw new Error('Failed to fetch wordbook');
                 const data = await res.json();
 
                 const allWords: Word[] = data.wordbook.words || [];
-                // 1-based index to 0-based array index
                 const targetWords = allWords.slice(start - 1, end);
 
                 if (targetWords.length === 0) {
-                    notifications.show({
-                        title: '알림',
-                        message: '해당 범위에 단어가 없습니다.',
-                        color: 'orange'
-                    });
+                    notifications.show({ title: '알림', message: '해당 범위에 단어가 없습니다.', color: 'orange' });
                 }
-
                 setWords(targetWords);
             } catch (error) {
                 console.error(error);
-                notifications.show({
-                    title: '오류',
-                    message: '단어 목록을 불러오는데 실패했습니다.',
-                    color: 'red'
-                });
+                notifications.show({ title: '오류', message: '단어 목록을 불러오는데 실패했습니다.', color: 'red' });
             } finally {
                 setLoading(false);
             }
         };
-
         fetchWords();
     }, [searchParams]);
 
     const currentWord = words[currentIndex];
-    const progress = words.length > 0 ? ((currentIndex + 1) / words.length) * 100 : 0;
     const correctCount = results.filter((r) => r).length;
     const wrongCount = results.filter((r) => !r).length;
 
-    // 타이머
+    // Timer
     useEffect(() => {
         if (!loading && words.length > 0 && timeLeft > 0 && !isAnswered) {
             const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
             return () => clearTimeout(timer);
         } else if (timeLeft === 0 && !isAnswered) {
-            // 시간 초과
             handleSubmit(true);
         }
     }, [timeLeft, isAnswered, loading, words]);
 
-    // 복사/붙여넣기 방지
+    // Copy/Paste Prevention
     useEffect(() => {
-        const preventCopy = (e: ClipboardEvent) => {
+        const preventAction = (e: Event) => {
             e.preventDefault();
             notifications.show({
-                title: '복사/붙여넣기 금지',
-                message: '시험 중에는 복사/붙여넣기를 할 수 없습니다.',
+                title: '경고',
+                message: '시험 중에는 복사/붙여넣기 및 우클릭이 금지됩니다.',
                 color: 'red',
+                autoClose: 2000,
             });
         };
-
-        const preventContextMenu = (e: MouseEvent) => {
-            e.preventDefault();
-        };
-
-        document.addEventListener('copy', preventCopy);
-        document.addEventListener('paste', preventCopy);
-        document.addEventListener('contextmenu', preventContextMenu);
-
+        window.addEventListener('copy', preventAction);
+        window.addEventListener('cut', preventAction);
+        window.addEventListener('paste', preventAction);
+        window.addEventListener('contextmenu', preventAction);
         return () => {
-            document.removeEventListener('copy', preventCopy);
-            document.removeEventListener('paste', preventCopy);
-            document.removeEventListener('contextmenu', preventContextMenu);
+            window.removeEventListener('copy', preventAction);
+            window.removeEventListener('cut', preventAction);
+            window.removeEventListener('paste', preventAction);
+            window.removeEventListener('contextmenu', preventAction);
         };
     }, []);
 
-    // 답안 제출
     const handleSubmit = (timeout = false) => {
         if (!currentWord) return;
 
@@ -150,371 +130,328 @@ export default function TypingTestPage() {
         setIsAnswered(true);
 
         if (timeout) {
-            notifications.show({
-                title: '시간 초과',
-                message: '다음 문제로 넘어갑니다.',
-                color: 'orange',
-            });
+            notifications.show({ title: '시간 초과', message: '다음 문제로 넘어갑니다.', color: 'orange' });
+        } else if (isCorrect) {
+            // 정답 효과음이나 피드백 (선택사항)
+        } else {
+            // 오답 효과음 (선택사항)
         }
 
-        // 1.5초 후 다음 문제로
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
                 setCurrentIndex(currentIndex + 1);
                 setUserAnswer('');
                 setTimeLeft(20);
                 setIsAnswered(false);
-                inputRef.current?.focus();
+                setTimeout(() => inputRef.current?.focus(), 50);
             } else {
-                // 시험 완료 - 결과 저장 및 페이지 이동
-                const finalResults = [...results, isCorrect];
-                const finalCorrectCount = finalResults.filter(r => r).length;
-                const finalWrongCount = finalResults.length - finalCorrectCount;
-                const score = Math.round((finalCorrectCount / words.length) * 100);
-                const passed = score >= 80;
-
-                // 오답 단어 목록 생성
-                const wrongWords = words.filter((_, index) => !finalResults[index]);
-
-                // 결과 데이터 저장
-                const testResult = {
-                    totalQuestions: words.length,
-                    correctCount: finalCorrectCount,
-                    wrongCount: finalWrongCount,
-                    score,
-                    passed,
-                    wrongWords,
-                    timestamp: new Date().toISOString(),
-                };
-
-                localStorage.setItem('testResult', JSON.stringify(testResult));
-
-                // 결과 페이지로 이동 (파라미터 전달 필요 시 추가)
-                setTimeout(() => {
-                    router.push('/test/result');
-                }, 1500);
+                finishTest([...results, isCorrect]);
             }
-        }, 1500);
+        }, 1500); // 1.5초 대기
     };
 
-    // Enter 키로 제출
+    const finishTest = (finalResults: boolean[]) => {
+        const finalCorrectCount = finalResults.filter(r => r).length;
+        const finalWrongCount = finalResults.length - finalCorrectCount;
+        const score = Math.round((finalCorrectCount / words.length) * 100);
+        const passed = score >= 80;
+        const wrongWords = words.filter((_, index) => !finalResults[index]);
+
+        const testResult = {
+            totalQuestions: words.length,
+            correctCount: finalCorrectCount,
+            wrongCount: finalWrongCount,
+            score,
+            passed,
+            wrongWords,
+            timestamp: new Date().toISOString(),
+        };
+
+        localStorage.setItem('testResult', JSON.stringify(testResult));
+        router.push('/test/result');
+    };
+
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !isAnswered && userAnswer.trim()) {
             handleSubmit();
         }
     };
 
-    // 포커스 자동 설정
+    // Auto focus
     useEffect(() => {
-        inputRef.current?.focus();
-    }, [currentIndex, loading]);
+        if (!loading && !isAnswered) {
+            inputRef.current?.focus();
+        }
+    }, [currentIndex, loading, isAnswered]);
 
     if (loading) {
         return (
-            <Center style={{ minHeight: '100vh', background: 'white' }}>
-                <Loader size="xl" color="yellow" type="dots" />
-            </Center>
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Loader size="xl" color="dark" type="dots" />
+                </Center>
+            </StudentLayout>
         );
     }
 
     if (words.length === 0) {
         return (
-            <Center style={{ minHeight: '100vh', background: 'white' }}>
-                <Stack align="center">
-                    <Text size="lg" fw={700}>시험볼 단어가 없습니다.</Text>
-                    <button onClick={() => router.back()} style={{
-                        padding: '0.8rem 2rem',
-                        background: 'black',
-                        color: 'white',
-                        fontWeight: 700,
-                        border: 'none',
-                        cursor: 'pointer'
-                    }}>
-                        돌아가기
-                    </button>
-                </Stack>
-            </Center>
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Stack align="center">
+                        <Text size="lg" fw={700}>시험볼 단어가 없습니다.</Text>
+                        <button onClick={() => router.back()} style={{
+                            padding: '0.8rem 2rem', background: 'black', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 700
+                        }}>돌아가기</button>
+                    </Stack>
+                </Center>
+            </StudentLayout>
         );
     }
 
     return (
-        <Box
-            style={{
-                minHeight: '100vh',
-                background: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px',
-            }}
-        >
-            <Container size={700}>
-                <div className="animate-fade-in">
-                    {/* 헤더 */}
-                    <Box mb={30} style={{ textAlign: 'center' }}>
-                        <Group justify="center" mb="md">
-                            <Box p="sm" style={{ background: '#FFD93D', border: '2px solid black', boxShadow: '4px 4px 0px black' }}>
-                                <IconKeyboard size={32} stroke={2} color="black" />
+        <StudentLayout>
+            <Box
+                style={{
+                    minHeight: '100%',
+                    background: '#ffffff',
+                    padding: '40px 20px',
+                    position: 'relative',
+                }}
+            >
+                <Container size={800}>
+                    <div className="animate-fade-in">
+                        {/* 헤더 */}
+                        <Group justify="space-between" align="flex-end" mb={50}>
+                            <Box>
+                                <Group gap="sm" mb="xs">
+                                    <Box p={4} bg="black" c="white">
+                                        <IconKeyboard size={20} stroke={2} />
+                                    </Box>
+                                    <Text fw={700} tt="uppercase" ls={1} c="dimmed">Typing Test</Text>
+                                </Group>
+                                <Title
+                                    order={1}
+                                    style={{
+                                        color: 'black',
+                                        fontWeight: 900,
+                                        fontSize: '3rem',
+                                        letterSpacing: '-1px',
+                                        lineHeight: 1
+                                    }}
+                                >
+                                    Spelling Check
+                                </Title>
                             </Box>
-                        </Group>
-                        <Title
-                            order={1}
-                            style={{
-                                color: 'black',
-                                fontWeight: 900,
-                                fontSize: '2.5rem',
-                                marginBottom: '0.5rem',
-                            }}
-                        >
-                            타이핑 시험
-                        </Title>
-                        <Text
-                            size="xl"
-                            style={{
-                                color: 'black',
-                                fontWeight: 500,
-                            }}
-                            c="dimmed"
-                        >
-                            한글을 보고 영어로 입력하세요
-                        </Text>
-                    </Box>
 
-                    {/* 상태 바 */}
-                    <Group mb={20} justify="space-between">
-                        <Paper
-                            p="md"
-                            style={{
-                                border: '2px solid black',
-                                borderRadius: '0px',
-                                background: 'white',
-                                boxShadow: '4px 4px 0px black',
-                                flex: 1,
-                            }}
-                        >
-                            <Group gap="xs">
-                                <IconClock size={24} color="black" />
-                                <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'black'}>
-                                    {timeLeft}초
-                                </Text>
+                            <Group gap="xl">
+                                <Box style={{ textAlign: 'right' }}>
+                                    <Text size="xs" fw={700} c="dimmed" tt="uppercase">Progress</Text>
+                                    <Text size="xl" fw={900}>{currentIndex + 1} / {words.length}</Text>
+                                </Box>
+                                <RingProgress
+                                    size={60}
+                                    thickness={6}
+                                    roundCaps
+                                    sections={[{ value: ((currentIndex + 1) / words.length) * 100, color: 'black' }]}
+                                    label={
+                                        <Text c="black" fw={700} ta="center" size="xs">
+                                            {Math.round(((currentIndex + 1) / words.length) * 100)}%
+                                        </Text>
+                                    }
+                                />
                             </Group>
-                        </Paper>
+                        </Group>
 
+                        {/* 메인 문제 카드 */}
                         <Paper
-                            p="md"
+                            p={50}
                             style={{
-                                border: '2px solid black',
+                                border: '3px solid black',
                                 borderRadius: '0px',
-                                background: 'white',
-                                boxShadow: '4px 4px 0px black',
+                                background: isAnswered
+                                    ? (results[results.length - 1] ? '#D3F9D8' : '#FFE3E3')
+                                    : 'white',
+                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+                                minHeight: '400px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative',
+                                transition: 'background-color 0.3s ease'
                             }}
                         >
-                            <Group gap="md">
-                                <Group gap="xs">
-                                    <IconCheck size={20} color="#37b24d" />
-                                    <Text fw={700} c="black">
-                                        {correctCount}
-                                    </Text>
-                                </Group>
-                                <Group gap="xs">
-                                    <IconX size={20} color="#f03e3e" />
-                                    <Text fw={700} c="black">
-                                        {wrongCount}
-                                    </Text>
-                                </Group>
-                            </Group>
-                        </Paper>
-                    </Group>
-
-                    {/* 진행률 */}
-                    <Paper
-                        p="md"
-                        mb={20}
-                        style={{
-                            border: '2px solid black',
-                            borderRadius: '0px',
-                            background: 'white',
-                            boxShadow: '4px 4px 0px black',
-                        }}
-                    >
-                        <Group justify="space-between" mb={10}>
-                            <Text fw={700} size="lg">
-                                진행률
-                            </Text>
-                            <Text fw={900} size="lg">
-                                {currentIndex + 1} / {words.length}
-                            </Text>
-                        </Group>
-                        <Progress
-                            value={progress}
-                            size="xl"
-                            radius="0"
-                            styles={{
-                                root: {
-                                    border: '2px solid black',
-                                    borderRadius: '0px',
-                                    backgroundColor: '#F1F3F5',
-                                },
-                                section: {
-                                    backgroundColor: '#FFD93D',
-                                    borderRight: '2px solid black',
-                                }
-                            }}
-                        />
-                    </Paper>
-
-                    {/* 문제 카드 */}
-                    <Paper
-                        p={60}
-                        style={{
-                            border: '2px solid black',
-                            borderRadius: '0px',
-                            background: isAnswered
-                                ? results[results.length - 1]
-                                    ? '#D3F9D8' // 정답 시 연두색
-                                    : '#FFE3E3' // 오답 시 붉은색
-                                : 'white', // 기본 흰색
-                            boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                            minHeight: '400px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <Stack align="center" gap="xl" style={{ width: '100%' }}>
-                            {/* 한글 문제 */}
-                            <Box
+                            {/* Timer Badge */}
+                            <Badge
+                                size="xl"
+                                variant="filled"
+                                color={timeLeft <= 5 ? 'red' : 'dark'}
+                                radius="xs"
+                                leftSection={<IconClock size={16} />}
                                 style={{
+                                    position: 'absolute',
+                                    top: '20px',
+                                    right: '20px',
+                                    borderRadius: '0px',
                                     border: '2px solid black',
-                                    background: 'black',
                                     color: 'white',
-                                    padding: '0.5rem 1.5rem',
                                     fontWeight: 700,
                                     fontSize: '1.2rem',
+                                    height: 'auto',
+                                    padding: '8px 16px'
                                 }}
                             >
-                                문제 {currentWord.no}
-                            </Box>
+                                {timeLeft}s
+                            </Badge>
 
-                            <Text
-                                size="4rem"
-                                fw={900}
-                                style={{
-                                    color: 'black',
-                                    textAlign: 'center',
-                                }}
-                            >
-                                {currentWord.korean}
-                            </Text>
-
-                            {/* 입력 필드 */}
-                            <TextInput
-                                ref={inputRef}
-                                value={userAnswer}
-                                onChange={(e) => setUserAnswer(e.target.value)}
-                                onKeyPress={handleKeyPress}
-                                placeholder="영어로 입력하세요"
-                                size="xl"
-                                disabled={isAnswered}
-                                styles={{
-                                    input: {
-                                        border: '2px solid black',
-                                        fontSize: '2rem',
-                                        textAlign: 'center',
-                                        fontWeight: 700,
-                                        padding: '2rem',
-                                        borderRadius: '0px',
-                                        background: isAnswered ? 'rgba(0,0,0,0.05)' : 'white',
-                                        color: 'black',
-                                        boxShadow: '4px 4px 0px black',
-                                    },
-                                }}
-                                style={{ width: '100%', maxWidth: '500px' }}
-                            />
-
-                            {/* 정답 표시 */}
-                            {isAnswered && (
-                                <Box
-                                    className="animate-slide-in-right"
-                                    style={{
-                                        background: results[results.length - 1] ? 'black' : 'black',
-                                        color: results[results.length - 1] ? '#A3E635' : '#FF6B6B', // 라임 / 레드
-                                        border: '2px solid black',
-                                        borderRadius: '0px',
-                                        padding: '1rem 2rem',
-                                        boxShadow: '6px 6px 0px rgba(0, 0, 0, 1)',
-                                    }}
-                                >
-                                    <Text fw={900} size="xl" ta="center">
-                                        {results[results.length - 1] ? '✅ 정답!' : '❌ 오답!'}
+                            <Stack align="center" gap="xl" style={{ width: '100%', maxWidth: '600px' }}>
+                                <Box>
+                                    <Text size="sm" ta="center" c="dimmed" fw={700} mb="xs" tt="uppercase">
+                                        Translate to English
                                     </Text>
-                                    {!results[results.length - 1] && (
-                                        <Text fw={700} size="lg" ta="center" mt={5} c="white">
-                                            정답: {currentWord.english}
-                                        </Text>
+                                    <Text
+                                        size="3.5rem"
+                                        fw={900}
+                                        ta="center"
+                                        style={{
+                                            color: 'black',
+                                            lineHeight: 1.2,
+                                            wordBreak: 'keep-all',
+                                        }}
+                                    >
+                                        {currentWord.korean}
+                                    </Text>
+                                </Box>
+
+                                <Box style={{ width: '100%', position: 'relative' }}>
+                                    <TextInput
+                                        ref={inputRef}
+                                        value={userAnswer}
+                                        onChange={(e) => setUserAnswer(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder={isAnswered ? '' : "Type the english word..."}
+                                        size="xl"
+                                        disabled={isAnswered}
+                                        autoComplete="off"
+                                        styles={{
+                                            input: {
+                                                border: '3px solid black',
+                                                fontSize: '2rem',
+                                                textAlign: 'center',
+                                                fontWeight: 700,
+                                                padding: '2.5rem',
+                                                borderRadius: '0px',
+                                                background: isAnswered ? 'transparent' : 'white', // 투명하게 해서 뒤 배경 보이게
+                                                color: 'black',
+                                                transition: 'all 0.2s',
+                                                '&:focus': {
+                                                    borderColor: '#FFD93D',
+                                                }
+                                            },
+                                        }}
+                                        style={{ width: '100%' }}
+                                    />
+
+                                    {/* 결과 피드백 오버레이 */}
+                                    {isAnswered && (
+                                        <Box
+                                            style={{
+                                                position: 'absolute',
+                                                top: '50%',
+                                                left: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                zIndex: 10,
+                                                pointerEvents: 'none',
+                                            }}
+                                        >
+                                            {results[results.length - 1] ? (
+                                                <IconCheck size={60} color="#2b8a3e" stroke={4} />
+                                            ) : (
+                                                <IconX size={60} color="#c92a2a" stroke={4} />
+                                            )}
+                                        </Box>
                                     )}
                                 </Box>
-                            )}
 
-                            {/* 제출 버튼 */}
-                            {!isAnswered && (
-                                <button
-                                    onClick={() => handleSubmit()}
-                                    disabled={!userAnswer.trim()}
-                                    style={{
-                                        background: userAnswer.trim() ? 'black' : '#e9ecef',
-                                        color: userAnswer.trim() ? '#FFD93D' : '#adb5bd',
-                                        border: '2px solid black',
-                                        borderRadius: '0px',
-                                        boxShadow: userAnswer.trim() ? '6px 6px 0px 0px rgba(0, 0, 0, 1)' : 'none',
-                                        fontSize: '1.5rem',
-                                        fontWeight: 900,
-                                        padding: '1.2rem 3rem',
-                                        cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
-                                        transition: 'all 0.15s ease',
-                                        width: '100%',
-                                        maxWidth: '500px',
-                                    }}
-                                    onMouseDown={(e) => {
-                                        if (userAnswer.trim()) {
-                                            e.currentTarget.style.transform = 'translate(2px, 2px)';
-                                            e.currentTarget.style.boxShadow = '4px 4px 0px 0px rgba(0, 0, 0, 1)';
-                                        }
-                                    }}
-                                    onMouseUp={(e) => {
-                                        if (userAnswer.trim()) {
-                                            e.currentTarget.style.transform = 'translate(0px, 0px)';
-                                            e.currentTarget.style.boxShadow = '6px 6px 0px 0px rgba(0, 0, 0, 1)';
-                                        }
-                                    }}
-                                >
-                                    제출하기
-                                </button>
-                            )}
-                        </Stack>
-                    </Paper>
+                                {/* 정답 및 피드백 */}
+                                {isAnswered && !results[results.length - 1] && (
+                                    <Box style={{ animation: 'fadeIn 0.3s ease' }}>
+                                        <Text size="lg" fw={700} c="red" ta="center">
+                                            정답: <span style={{ textDecoration: 'underline' }}>{currentWord.english}</span>
+                                        </Text>
+                                    </Box>
+                                )}
 
-                    {/* 하단 경고 */}
-                    <Paper
-                        p="md"
-                        mt={20}
-                        style={{
-                            border: '2px solid black',
-                            background: '#F1F3F5',
-                            borderRadius: '0px',
-                            boxShadow: '4px 4px 0px black',
-                        }}
-                    >
-                        <Group justify="center" gap="xs">
-                            <IconAlertTriangle size={20} color="black" />
-                            <Text c="black" ta="center" fw={700}>
-                                복사/붙여넣기 및 우클릭이 금지되어 있습니다
-                            </Text>
+                                {/* 제출 버튼 */}
+                                {!isAnswered && (
+                                    <button
+                                        onClick={() => handleSubmit()}
+                                        disabled={!userAnswer.trim()}
+                                        style={{
+                                            background: 'black',
+                                            color: '#FFD93D',
+                                            border: 'none',
+                                            borderRadius: '0px',
+                                            fontSize: '1.2rem',
+                                            fontWeight: 900,
+                                            padding: '1.2rem 4rem',
+                                            cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            transition: 'all 0.2s ease',
+                                            opacity: userAnswer.trim() ? 1 : 0.5,
+                                            boxShadow: userAnswer.trim() ? '6px 6px 0px #FFD93D' : 'none',
+                                            marginTop: '1rem'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (userAnswer.trim()) {
+                                                e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                                e.currentTarget.style.boxShadow = '8px 8px 0px #FFD93D';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (userAnswer.trim()) {
+                                                e.currentTarget.style.transform = 'translate(0px, 0px)';
+                                                e.currentTarget.style.boxShadow = '6px 6px 0px #FFD93D';
+                                            }
+                                        }}
+                                    >
+                                        SUBMIT ANSWER
+                                        <IconArrowRight size={20} stroke={3} />
+                                    </button>
+                                )}
+                            </Stack>
+                        </Paper>
+
+                        {/* 하단 점수판 */}
+                        <Group mt={40} justify="center" gap={30}>
+                            <Paper p="md" style={{ border: '2px solid black', borderRadius: '0px', boxShadow: '4px 4px 0px #D3F9D8', background: 'white', minWidth: '150px' }}>
+                                <Group justify="center" gap="xs">
+                                    <IconCheck color="black" size={20} />
+                                    <Text fw={700} size="sm" tt="uppercase" c="dimmed">Correct</Text>
+                                </Group>
+                                <Text fw={900} size="2rem" ta="center" c="#2b8a3e">{correctCount}</Text>
+                            </Paper>
+                            <Paper p="md" style={{ border: '2px solid black', borderRadius: '0px', boxShadow: '4px 4px 0px #FFE3E3', background: 'white', minWidth: '150px' }}>
+                                <Group justify="center" gap="xs">
+                                    <IconX color="black" size={20} />
+                                    <Text fw={700} size="sm" tt="uppercase" c="dimmed">Wrong</Text>
+                                </Group>
+                                <Text fw={900} size="2rem" ta="center" c="#c92a2a">{wrongCount}</Text>
+                            </Paper>
                         </Group>
-                    </Paper>
-                </div>
-            </Container>
-        </Box>
+
+                        {/* 경고 문구 */}
+                        <Group justify="center" gap="xs" mt={40} style={{ opacity: 0.5 }}>
+                            <IconAlertTriangle size={16} />
+                            <Text size="xs" fw={600}>Copying and Pasting is disabled during the test.</Text>
+                        </Group>
+
+                    </div>
+                </Container>
+            </Box>
+        </StudentLayout>
     );
 }
