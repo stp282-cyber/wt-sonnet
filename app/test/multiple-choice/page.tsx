@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Container,
@@ -12,16 +12,15 @@ import {
   Stack,
   Loader,
   Center,
-  Badge,
   RingProgress,
   SimpleGrid,
   Button
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconClock, IconArrowRight, IconBrain } from '@tabler/icons-react';
+import { IconCheck, IconX, IconBrain } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
 
-export default function MultipleChoiceTestPage() {
+function MultipleChoiceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [questions, setQuestions] = useState<any[]>([]);
@@ -113,7 +112,6 @@ export default function MultipleChoiceTestPage() {
       start: searchParams.get('start'),
       end: searchParams.get('end'),
       curriculumId: searchParams.get('curriculumId'),
-      curriculumId: searchParams.get('curriculumId'),
       curriculumItemId: searchParams.get('curriculumItemId'),
       scheduledDate: searchParams.get('scheduledDate') // Persist
     };
@@ -168,7 +166,6 @@ export default function MultipleChoiceTestPage() {
       start: searchParams.get('start'),
       end: searchParams.get('end'),
       curriculumId: searchParams.get('curriculumId'),
-      curriculumId: searchParams.get('curriculumId'),
       curriculumItemId: searchParams.get('curriculumItemId'),
       scheduledDate: searchParams.get('scheduledDate')
     };
@@ -185,21 +182,6 @@ export default function MultipleChoiceTestPage() {
       router.push(`/test/wrong-retry?${params.toString()}`);
     } else {
       // Mark Complete!
-      // We need to call API to save study_logs
-      // Note: Score? We usually score based on the MAIN test (Typing).
-      // However, maybe we average them? Or just use main test score?
-      // User didn't specify. Let's assume we maintain the score from the basic test if passed?
-      // Or calculate new score.
-      // Usually, if "Completed", it's 100% or whatever the main test was.
-      // We'll read the main test score if possible, but we don't have it here easily unless we passed it.
-      // Let's just save as "Completed" with the CURRENT REVIEW SCORE? Or Previous?
-      // Simplest: Recalculate score based on this review? No, Review is auxiliary.
-      // Let's just save without updating score if the record already exists?
-      // Or Create a NEW record for "Review"?
-      // User said "When session completed... save until completed part".
-      // "If all done, test ends".
-      // Final status: 'completed'.
-
       // Logic: Update study_logs status to 'completed'.
       await fetch('/api/study-logs', {
         method: 'POST', // Or PUT to update? POST usually creates.
@@ -210,8 +192,6 @@ export default function MultipleChoiceTestPage() {
           scheduled_date: searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
           status: 'completed',
           test_phase: 'review_test',
-          // Basic score is lost if we don't pass it. 
-          // Let's assume passed 100 for now or ignore score update if backend handles it.
         })
       });
 
@@ -323,5 +303,19 @@ export default function MultipleChoiceTestPage() {
         </Container>
       </Box>
     </StudentLayout>
+  );
+}
+
+export default function MultipleChoiceTestPage() {
+  return (
+    <Suspense fallback={
+      <StudentLayout>
+        <Center h="100vh">
+          <Loader color="black" type="dots" />
+        </Center>
+      </StudentLayout>
+    }>
+      <MultipleChoiceContent />
+    </Suspense>
   );
 }
