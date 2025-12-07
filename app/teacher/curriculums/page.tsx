@@ -30,7 +30,7 @@ import {
 
 interface CurriculumItem {
     id: string;
-    type: 'word' | 'listening';
+    type: 'wordbook' | 'listening';
     title: string;
     item_id?: string; // Added item_id for linkage
     daily_amount_type: 'count' | 'section';
@@ -73,7 +73,7 @@ export default function CurriculumsPage() {
 
     const itemForm = useForm({
         initialValues: {
-            type: 'word' as 'word' | 'listening',
+            type: 'wordbook' as 'wordbook' | 'listening',
             title: '',
             daily_amount_type: 'count' as 'count' | 'section',
             daily_word_count: 20,
@@ -94,7 +94,7 @@ export default function CurriculumsPage() {
         ...availableWordbooks.map(wb => ({
             value: wb.id,
             label: `${wb.title} (단어장)`,
-            type: 'word' as const,
+            type: 'wordbook' as const,
         })),
         ...availableListeningTests.map(lt => ({
             value: lt.id,
@@ -649,13 +649,13 @@ export default function CurriculumsPage() {
                                                                         <Table.Td>{index + 1}</Table.Td>
                                                                         <Table.Td>
                                                                             <Badge
-                                                                                color={item.type === 'word' ? 'blue' : 'green'}
+                                                                                color={item.type === 'wordbook' ? 'blue' : 'green'}
                                                                                 variant="filled"
                                                                                 radius="xs"
                                                                                 size="sm"
                                                                                 style={{ border: '1px solid black' }}
                                                                             >
-                                                                                {item.type === 'word' ? '단어' : '듣기'}
+                                                                                {item.type === 'wordbook' ? '단어' : '듣기'}
                                                                             </Badge>
                                                                         </Table.Td>
                                                                         <Table.Td style={{ fontWeight: 600 }}>{item.title}</Table.Td>
