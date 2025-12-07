@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     AppShell,
@@ -29,6 +29,22 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
     const [opened, { toggle }] = useDisclosure();
     const router = useRouter();
     const pathname = usePathname();
+
+    useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            router.push('/');
+            return;
+        }
+        try {
+            const user = JSON.parse(userStr);
+            if (user.role === 'student') {
+                router.replace('/student/dashboard');
+            }
+        } catch (e) {
+            router.push('/');
+        }
+    }, [router, pathname]);
 
     const menuItems = [
         { icon: IconDashboard, label: '대시보드', href: '/teacher/dashboard' },
