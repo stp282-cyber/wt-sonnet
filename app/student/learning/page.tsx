@@ -606,78 +606,133 @@ export default function StudentLearningPage() {
                                                     textAlign: 'center',
                                                     borderRight: '2px solid black'
                                                 }}>
-                                                    <Text fw={900}>{curr.curriculums.name}</Text>
+                                                    <Text fw={900} size="lg" style={{ fontStyle: 'italic' }}>{curr.curriculums.name}</Text>
                                                     <Text size="xs" c="dimmed" mt={4}>
                                                         시작일: {curr.start_date}
                                                     </Text>
                                                 </Box>
 
-                                                {/* 오른쪽: 일정 셀 */}
+                                                {/* 오른쪽: 일정 셀 (Entrance Animation 적용) */}
                                                 <Box style={{ flex: 1, display: 'flex' }}>
                                                     {weekDays.map((day, idx) => {
                                                         const schedule = getScheduleForDate(curr, day.date);
                                                         const isToday = schedule?.status === 'today';
                                                         const isCompleted = schedule?.status === 'completed';
 
+                                                        // 애니메이션 딜레이: (커리큘럼 인덱스 * 5 + 날짜 인덱스) * 0.1s
+                                                        const animationDelay = `${(cIdx * 5 + idx) * 0.05}s`;
+
                                                         return (
                                                             <Box
                                                                 key={idx}
+                                                                className="animate-fade-in-up"
                                                                 style={{
                                                                     flex: 1,
-                                                                    borderRight: idx < 4 ? '2px solid black' : 'none',
-                                                                    background: isCompleted ? '#90EE90' : (isToday ? '#FFFFFF' : '#FFFFFF'),
-                                                                    border: isToday ? '4px solid black' : undefined,
-                                                                    margin: isToday ? '-2px' : undefined, // 보더 두께만큼 조정
-                                                                    zIndex: isToday ? 1 : 0,
+                                                                    borderRight: idx < 4 ? '3px solid black' : 'none', // 굵은 구분선
+                                                                    background: isCompleted ? '#E0E7FF' : (isToday ? '#FFFFFF' : '#FFFFFF'), // 완료된 항목은 아주 연한 파랑 or 흰색
+                                                                    position: 'relative',
+                                                                    margin: 0,
                                                                     padding: '1rem',
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
                                                                     justifyContent: 'center',
-                                                                    minHeight: '180px'
+                                                                    minHeight: '220px',
+                                                                    animationDelay: animationDelay,
+                                                                    opacity: 0, // 초기 투명도 (애니메이션으로 1됨)
+                                                                    transition: 'background-color 0.2s ease'
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    if (!isCompleted && schedule) {
+                                                                        e.currentTarget.style.backgroundColor = '#FFFBE6'; // 호버 시 연한 노랑
+                                                                    }
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    if (!isCompleted && schedule) {
+                                                                        e.currentTarget.style.backgroundColor = isToday ? '#FFFFFF' : '#FFFFFF';
+                                                                    }
                                                                 }}
                                                             >
+                                                                {/* 오늘 표시 테두리 (Overlay) */}
+                                                                {isToday && (
+                                                                    <div style={{
+                                                                        position: 'absolute',
+                                                                        top: 0, left: 0, right: 0, bottom: 0,
+                                                                        border: '4px solid #FFD93D', // 오늘 날짜 강조 테두리
+                                                                        zIndex: 10,
+                                                                        pointerEvents: 'none'
+                                                                    }} />
+                                                                )}
+
                                                                 {schedule ? (
-                                                                    <Stack gap="sm">
+                                                                    <Stack gap="md" style={{ position: 'relative', zIndex: 11 }}>
                                                                         <Box>
-                                                                            <Badge color="black" radius="sm" size="sm" variant="filled">
+                                                                            <Badge
+                                                                                color="black"
+                                                                                radius="xs"
+                                                                                size="md"
+                                                                                variant="filled"
+                                                                                style={{
+                                                                                    marginBottom: '8px',
+                                                                                    boxShadow: '2px 2px 0px black',
+                                                                                    border: '1px solid black'
+                                                                                }}
+                                                                            >
                                                                                 소단원 {schedule.minorUnit}
                                                                             </Badge>
-                                                                            <Text fw={700} size="sm" mt={4} lineClamp={2}>
+                                                                            <Text fw={800} size="md" style={{ lineHeight: 1.3 }}>
                                                                                 {schedule.unitName}
                                                                             </Text>
                                                                         </Box>
 
                                                                         <Paper
-                                                                            p={4}
+                                                                            p="xs"
                                                                             style={{
                                                                                 background: '#FEF3C7',
-                                                                                border: '1px solid black',
+                                                                                border: '2px solid black',
                                                                                 borderRadius: '0px',
+                                                                                boxShadow: '3px 3px 0px #E5E7EB'
                                                                             }}
                                                                         >
-                                                                            <Text size="xs" fw={700} ta="center">진도: {schedule.progressRange}</Text>
+                                                                            <Text size="sm" fw={800} ta="center">진도: {schedule.progressRange}</Text>
                                                                         </Paper>
 
-                                                                        {/* 오늘 학습이거나 아직 안한 경우 시험 보기 버튼 표시 
-                                                                            (Teacher Log에는 없지만 학생 기능 유지를 위해 추가, 
-                                                                             단 '수업일지 출력내용 가져오기'가 핵심이므로 정보 표시는 Teacher Log 따름) 
-                                                                        */}
+                                                                        {/* 시험 보기 버튼 - Neo-brutalism & Animation */}
                                                                         {schedule.status !== 'completed' && (
-                                                                            <Button
-                                                                                size="xs"
-                                                                                color="yellow"
-                                                                                c="black"
-                                                                                fullWidth
-                                                                                styles={{
-                                                                                    root: {
-                                                                                        border: '2px solid black',
-                                                                                        boxShadow: '2px 2px 0px 0px black',
-                                                                                    }
-                                                                                }}
+                                                                            <button
                                                                                 onClick={() => router.push('/test/flashcard')}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    padding: '0.6rem',
+                                                                                    backgroundColor: '#FFD93D',
+                                                                                    color: 'black',
+                                                                                    fontWeight: 900,
+                                                                                    fontSize: '0.9rem',
+                                                                                    border: '3px solid black',
+                                                                                    boxShadow: '4px 4px 0px 0px black',
+                                                                                    cursor: 'pointer',
+                                                                                    transition: 'all 0.1s ease',
+                                                                                    marginTop: '0.5rem',
+                                                                                    position: 'relative',
+                                                                                }}
+                                                                                onMouseEnter={(e) => {
+                                                                                    e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                                                                    e.currentTarget.style.boxShadow = '6px 6px 0px 0px black';
+                                                                                }}
+                                                                                onMouseLeave={(e) => {
+                                                                                    e.currentTarget.style.transform = 'translate(0, 0)';
+                                                                                    e.currentTarget.style.boxShadow = '4px 4px 0px 0px black';
+                                                                                }}
+                                                                                onMouseDown={(e) => {
+                                                                                    e.currentTarget.style.transform = 'translate(2px, 2px)';
+                                                                                    e.currentTarget.style.boxShadow = '0px 0px 0px 0px black';
+                                                                                }}
+                                                                                onMouseUp={(e) => {
+                                                                                    e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                                                                    e.currentTarget.style.boxShadow = '6px 6px 0px 0px black';
+                                                                                }}
                                                                             >
                                                                                 시험 보기
-                                                                            </Button>
+                                                                            </button>
                                                                         )}
                                                                     </Stack>
                                                                 ) : (
