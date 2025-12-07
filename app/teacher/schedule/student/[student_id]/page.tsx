@@ -287,8 +287,8 @@ export default function StudentSchedulePage() {
                     </Badge>
                 </Group>
                 <Group>
-                    <Group gap="xs">
-                        <Text fw={700}>검색시작일</Text>
+                    <Stack gap={0} visibleFrom="sm">
+                        <Text fw={700} size="xs" ta="right">검색시작일</Text>
                         <DateInput
                             value={searchStartDate}
                             onChange={(date) => date && setSearchStartDate(date)}
@@ -303,7 +303,26 @@ export default function StudentSchedulePage() {
                                 }
                             }}
                         />
-                    </Group>
+                    </Stack>
+                    {/* Mobile Date Input */}
+                    <Box hiddenFrom="sm">
+                        <DateInput
+                            value={searchStartDate}
+                            onChange={(date) => date && setSearchStartDate(date)}
+                            valueFormat="MM.DD"
+                            size="sm"
+                            styles={{
+                                input: {
+                                    fontWeight: 'bold',
+                                    border: '2px solid black',
+                                    borderRadius: '0px',
+                                    width: '80px',
+                                    textAlign: 'center'
+                                }
+                            }}
+                        />
+                    </Box>
+
                     <Button
                         variant="outline"
                         color="dark"
@@ -326,8 +345,8 @@ export default function StudentSchedulePage() {
                         <Box key={weekOffset}>
                             <Text fw={900} size="lg" mb="xs">{weekLabel}</Text>
 
-                            {/* 공통 헤더 (요일/날짜) */}
-                            <div style={{ display: 'flex', marginBottom: -3 }}> {/* 음수 마진으로 아래 테이블과 연결된 느낌 */}
+                            {/* 공통 헤더 (요일/날짜) - PC만 표시 */}
+                            <Box visibleFrom="md" style={{ display: 'flex', marginBottom: -3 }}>
                                 <Box style={{ width: '200px', minWidth: '200px' }} />
                                 <Box style={{
                                     flex: 1,
@@ -336,33 +355,44 @@ export default function StudentSchedulePage() {
                                     background: '#FFD93D'
                                 }}>
                                     {weekDays.map((day, idx) => (
-                                        <Box
-                                            key={idx}
-                                            style={{
-                                                flex: 1,
-                                                padding: '8px',
-                                                borderRight: idx < 4 ? '2px solid black' : 'none',
-                                                textAlign: 'center'
-                                            }}
-                                        >
+                                        <Box key={idx} style={{
+                                            flex: 1,
+                                            padding: '8px',
+                                            borderRight: idx < 4 ? '2px solid black' : 'none',
+                                            textAlign: 'center'
+                                        }}>
                                             <Text fw={900} size="lg">{day.dayOfWeek}</Text>
                                             <Text size="xs" fw={700}>{day.date}</Text>
                                         </Box>
                                     ))}
                                 </Box>
-                            </div>
+                            </Box>
 
                             {curriculums.map((curr) => (
-                                <Paper key={curr.id} mb="xs" style={{ border: '3px solid black', borderRadius: '0px', overflow: 'hidden' }}>
-                                    <div style={{ display: 'flex' }}>
+                                <Paper key={curr.id} mb="md" style={{ border: '3px solid black', borderRadius: '0px', overflow: 'hidden' }}>
+                                    <Box style={{ display: 'flex', flexDirection: 'column' }} mod={{ desktop: true }}>
+                                        <style jsx global>{`
+                                            @media (min-width: 62em) {
+                                                [data-desktop] { flex-direction: row !important; }
+                                            }
+                                        `}</style>
                                         {/* 좌측 커리큘럼 정보 */}
                                         <Box style={{
-                                            width: '200px',
-                                            minWidth: '200px',
+                                            width: '100%',
                                             background: 'white',
-                                            borderRight: '3px solid black',
-                                            padding: '16px'
-                                        }}>
+                                            padding: '16px',
+                                            borderBottom: '3px solid black'
+                                        }} mod={{ desktop: true }}>
+                                            <style jsx global>{`
+                                                @media (min-width: 62em) {
+                                                    [data-desktop] { 
+                                                        width: 200px !important;
+                                                        min-width: 200px !important;
+                                                        border-right: 3px solid black !important;
+                                                        border-bottom: none !important;
+                                                    }
+                                                }
+                                            `}</style>
                                             <Text fw={900} size="md" mb="xs" style={{ lineHeight: 1.2 }}>
                                                 {curr.curriculums.name}
                                             </Text>
@@ -418,8 +448,13 @@ export default function StudentSchedulePage() {
                                             </Stack>
                                         </Box>
 
-                                        {/* 우측 달력 영역 (헤더 없음) */}
-                                        <Box style={{ flex: 1, display: 'flex' }}>
+                                        {/* 우측 달력 영역 */}
+                                        <Box style={{ flex: 1, display: 'flex', flexDirection: 'column' }} mod={{ desktop: true }}>
+                                            <style jsx global>{`
+                                                @media (min-width: 62em) {
+                                                    [data-desktop] { flex-direction: row !important; }
+                                                }
+                                            `}</style>
                                             {weekDays.map((day, idx) => {
                                                 const schedule = getScheduleForDate(curr, day.date);
 
@@ -428,11 +463,29 @@ export default function StudentSchedulePage() {
                                                         key={idx}
                                                         style={{
                                                             flex: 1,
-                                                            borderRight: idx < 4 ? '2px solid black' : 'none',
+                                                            borderBottom: idx < 4 ? '2px solid black' : 'none',
                                                             display: 'flex',
                                                             flexDirection: 'column'
                                                         }}
+                                                        mod={{ desktop: true }}
                                                     >
+                                                        <style jsx global>{`
+                                                            @media (min-width: 62em) {
+                                                                [data-desktop] { 
+                                                                    border-right: ${idx < 4 ? '2px solid black' : 'none'} !important;
+                                                                    border-bottom: none !important;
+                                                                }
+                                                            }
+                                                        `}</style>
+
+                                                        {/* Mobile Day Header */}
+                                                        <Box hiddenFrom="md" p="xs" bg="#FFD93D" style={{ borderBottom: '2px solid black' }}>
+                                                            <Group justify="space-between">
+                                                                <Text fw={900}>{day.dayOfWeek}</Text>
+                                                                <Text size="sm" fw={700}>{day.date}</Text>
+                                                            </Group>
+                                                        </Box>
+
                                                         {/* 학습 내용 */}
                                                         <Box style={{
                                                             padding: '10px',
@@ -471,15 +524,20 @@ export default function StudentSchedulePage() {
                                                                         <Text size="xs" ta="center">{schedule.progressRange}</Text>
                                                                     </Box>
 
-                                                                    <Group justify="space-between" mt={4}>
+                                                                    <Group justify="space-between" mt={4} visibleFrom="md"> {/* Mobile hides duplicate date */}
                                                                         <Text size="xs" c="dimmed">{day.date}</Text>
                                                                         <Badge size="sm" color="yellow" variant="filled" radius="xs" style={{ border: '1px solid black', color: 'black' }}>
-                                                                            {schedule.wordCount}개 단어
+                                                                            {schedule.wordCount}개
+                                                                        </Badge>
+                                                                    </Group>
+                                                                    <Group justify="flex-end" mt={4} hiddenFrom="md">
+                                                                        <Badge size="sm" color="yellow" variant="filled" radius="xs" style={{ border: '1px solid black', color: 'black' }}>
+                                                                            {schedule.wordCount}개
                                                                         </Badge>
                                                                     </Group>
                                                                 </Stack>
                                                             ) : (
-                                                                <Center style={{ height: '100%', minHeight: '120px' }}>
+                                                                <Center style={{ height: '100%', minHeight: '80px' }}>
                                                                     <Text size="xs" c="dimmed">-</Text>
                                                                 </Center>
                                                             )}
@@ -488,7 +546,7 @@ export default function StudentSchedulePage() {
                                                 );
                                             })}
                                         </Box>
-                                    </div>
+                                    </Box>
                                 </Paper>
                             ))}
 
