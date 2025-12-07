@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Button } from '@mantine/core';
 import { IconClock, IconCheck, IconX, IconPlayerPlay, IconPlayerPause, IconVolume } from '@tabler/icons-react';
+import StudentLayout from '../../student/layout';
 
 interface ListeningQuestion {
     question_no: number;
@@ -141,198 +142,171 @@ export default function ListeningTestPage() {
     const numberSymbols = ['①', '②', '③', '④'];
 
     return (
-        <Box
-            style={{
-                minHeight: '100vh',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px',
-            }}
-        >
-            <Container size={700}>
-                <div className="animate-fade-in">
-                    <Box mb={30} style={{ textAlign: 'center' }}>
-                        <Title
-                            order={1}
+        <StudentLayout>
+            <Container size="md" h="100%" py="xl" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <Box className="animate-fade-in" style={{ width: '100%' }}>
+
+                    {/* Header Area: Title, Timer, Progress */}
+                    <Group justify="space-between" align="flex-end" mb="lg">
+                        <Box>
+                            <Group gap="xs" mb={4}>
+                                <Badge color="grape" variant="filled" size="lg" radius="xs" style={{ border: '2px solid black' }}>
+                                    LISTENING TEST
+                                </Badge>
+                                <Text fw={700} c="dimmed">Question {currentIndex + 1} / {questions.length}</Text>
+                            </Group>
+                            <Title order={2} style={{ fontSize: '2rem', fontWeight: 900 }}>
+                                {currentQuestion.question_text}
+                            </Title>
+                        </Box>
+
+                        <Paper
+                            p="xs"
+                            px="md"
                             style={{
-                                color: 'white',
-                                fontWeight: 900,
-                                fontSize: '2.5rem',
-                                textShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
-                                marginBottom: '1rem',
+                                border: '3px solid black',
+                                background: timeLeft <= 10 ? '#ffe3e3' : '#fff',
+                                boxShadow: '4px 4px 0px black'
                             }}
                         >
-                            🎧 듣기 시험
-                        </Title>
-                        <Text size="xl" style={{ color: 'white', fontWeight: 600, textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)' }}>
-                            오디오를 듣고 정답을 선택하세요!
-                        </Text>
-                    </Box>
-
-                    <Group mb={20} justify="space-between">
-                        <Paper p="md" style={{ border: '4px solid black', borderRadius: '12px', background: 'white', flex: 1 }}>
                             <Group gap="xs">
-                                <IconClock size={24} color="#7950f2" />
-                                <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'violet'}>
-                                    {timeLeft}초
+                                <IconClock size={20} />
+                                <Text fw={900} size="xl" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                    {timeLeft}s
                                 </Text>
-                            </Group>
-                        </Paper>
-                        <Paper p="md" style={{ border: '4px solid black', borderRadius: '12px', background: 'white' }}>
-                            <Group gap="md">
-                                <Group gap="xs">
-                                    <IconCheck size={20} color="green" />
-                                    <Text fw={700} c="green">
-                                        {correctCount}
-                                    </Text>
-                                </Group>
-                                <Group gap="xs">
-                                    <IconX size={20} color="red" />
-                                    <Text fw={700} c="red">
-                                        {wrongCount}
-                                    </Text>
-                                </Group>
                             </Group>
                         </Paper>
                     </Group>
 
-                    <Paper p="md" mb={20} style={{ border: '4px solid black', borderRadius: '12px', background: 'white' }}>
-                        <Group justify="space-between" mb={10}>
-                            <Text fw={700} size="lg">
-                                진행률
-                            </Text>
-                            <Text fw={900} size="lg" c="violet">
-                                {currentIndex + 1} / {questions.length}
-                            </Text>
-                        </Group>
+                    {/* Progress Bar */}
+                    <Box mb="xl">
                         <Progress
                             value={progress}
-                            size="xl"
-                            radius="xl"
+                            size="lg"
+                            radius="xs"
+                            color="grape"
                             styles={{
-                                root: { border: '3px solid black' },
-                                section: { background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)' },
+                                root: { border: '2px solid black', backgroundColor: '#f1f3f5' },
+                                section: { borderRight: '2px solid black' } // Optional style
                             }}
                         />
-                    </Paper>
+                    </Box>
 
-                    <Paper
-                        p={60}
-                        mb={20}
-                        style={{
-                            border: '6px solid black',
-                            borderRadius: '20px',
-                            background: 'white',
-                            boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-                            textAlign: 'center',
-                        }}
-                    >
-                        <Badge
-                            size="xl"
-                            variant="filled"
-                            color="grape"
-                            style={{ border: '3px solid black', fontSize: '1.2rem', padding: '1rem 2rem', marginBottom: '2rem' }}
+                    {/* Main Interaction Area */}
+                    <Group align="stretch" grow>
+                        {/* Audio Player Card - Left (or Top on mobile) */}
+                        <Paper
+                            p="xl"
+                            style={{
+                                border: '3px solid black',
+                                borderRadius: '0px',
+                                background: 'white',
+                                boxShadow: '6px 6px 0px black',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: '250px'
+                            }}
                         >
-                            문제 {currentQuestion.question_no}
-                        </Badge>
-
-                        <Box mb={30}>
                             <button
                                 onClick={handlePlayAudio}
                                 disabled={playCount >= 3 || isPlaying}
                                 style={{
-                                    background: playCount >= 3 ? '#ccc' : '#667eea',
+                                    background: playCount >= 3 ? '#e9ecef' : '#BE4BDB', // Grape color
                                     color: 'white',
-                                    border: '4px solid black',
+                                    border: '3px solid black',
                                     borderRadius: '50%',
-                                    width: '120px',
-                                    height: '120px',
-                                    boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                                    fontSize: '3rem',
+                                    width: '100px',
+                                    height: '100px',
+                                    boxShadow: playCount >= 3 ? 'none' : '4px 4px 0px black',
+                                    fontSize: '2.5rem',
                                     cursor: playCount >= 3 ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    margin: '0 auto',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (playCount < 3 && !isPlaying) e.currentTarget.style.transform = 'translateY(-4px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    transition: 'all 0.1s',
+                                    transform: isPlaying ? 'scale(0.95)' : 'scale(1)',
                                 }}
                             >
-                                {isPlaying ? '🔊' : '🎵'}
+                                {isPlaying ? <IconPlayerPause size={40} /> : <IconPlayerPlay size={40} />}
                             </button>
-                            <Text size="sm" c="dimmed" mt={10}>
-                                재생 횟수: {playCount} / 3
+                            <Text fw={700} mt="md">
+                                Play Audio ({playCount}/3)
                             </Text>
+                            <Text size="sm" c="dimmed">Click button to listen</Text>
+                        </Paper>
+
+                        {/* Choices Grid - Right (or Bottom on mobile) */}
+                        <Box style={{ flex: 2 }}>
+                            <Box
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '16px',
+                                    height: '100%'
+                                }}
+                            >
+                                {currentQuestion.choices.map((choice: string, index: number) => {
+                                    const isSelected = selectedChoice === index;
+                                    const isCorrect = index === currentQuestion.correct_answer;
+                                    const showResult = isAnswered;
+
+                                    let bg = 'white';
+                                    let borderColor = 'black';
+
+                                    if (showResult) {
+                                        if (isCorrect) { bg = '#d3f9d8'; borderColor = '#2b8a3e'; }
+                                        else if (isSelected) { bg = '#ffe3e3'; borderColor = '#e03131'; }
+                                    } else if (isSelected) {
+                                        bg = '#f3d9fa'; // Light grape
+                                    }
+
+                                    return (
+                                        <button
+                                            key={index}
+                                            onClick={() => handleChoiceClick(index)}
+                                            disabled={isAnswered}
+                                            style={{
+                                                background: bg,
+                                                border: `3px solid ${borderColor}`,
+                                                borderRadius: '0px', // Brutalist
+                                                padding: '1.5rem',
+                                                cursor: isAnswered ? 'default' : 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'flex-start',
+                                                textAlign: 'left',
+                                                gap: '12px',
+                                                boxShadow: isSelected ? '2px 2px 0px black' : '4px 4px 0px black',
+                                                transform: isSelected ? 'translate(2px, 2px)' : 'none',
+                                                transition: 'all 0.1s',
+                                                height: '100%'
+                                            }}
+                                        >
+                                            <Badge
+                                                size="lg"
+                                                circle
+                                                variant={isSelected ? "filled" : "outline"}
+                                                color="dark"
+                                                style={{ border: '1px solid black' }}
+                                            >
+                                                {index + 1}
+                                            </Badge>
+                                            <Text size="lg" fw={700} style={{ lineHeight: 1.2 }}>
+                                                {choice}
+                                            </Text>
+
+                                            {showResult && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} color="green" />}
+                                            {showResult && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} color="red" />}
+                                        </button>
+                                    );
+                                })}
+                            </Box>
                         </Box>
-
-                        <Text size="2rem" fw={900} style={{ color: '#764ba2', marginBottom: '1rem' }}>
-                            {currentQuestion.question_text}
-                        </Text>
-                        <Text size="lg" c="dimmed">
-                            정답을 선택하세요
-                        </Text>
-                    </Paper>
-
-                    <Box>
-                        {currentQuestion.choices.map((choice: string, index: number) => {
-                            const isSelected = selectedChoice === index;
-                            const isCorrect = index === currentQuestion.correct_answer;
-                            const showResult = isAnswered;
-                            let backgroundColor = 'white';
-                            if (showResult) {
-                                if (isCorrect) backgroundColor = '#d3f9d8';
-                                else if (isSelected && !isCorrect) backgroundColor = '#ffe3e3';
-                            } else if (isSelected) backgroundColor = '#fff3bf';
-
-                            return (
-                                <button
-                                    key={index}
-                                    onClick={() => handleChoiceClick(index)}
-                                    disabled={isAnswered}
-                                    style={{
-                                        width: '100%',
-                                        background: backgroundColor,
-                                        border: '4px solid black',
-                                        borderRadius: '12px',
-                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                        fontSize: '1.5rem',
-                                        fontWeight: 700,
-                                        padding: '1.5rem 2rem',
-                                        marginBottom: '1rem',
-                                        cursor: isAnswered ? 'not-allowed' : 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '1rem',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isAnswered) e.currentTarget.style.transform = 'translateY(-4px)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                    }}
-                                >
-                                    <Text size="2rem" fw={900}>
-                                        {numberSymbols[index]}
-                                    </Text>
-                                    <Text size="xl" fw={700} style={{ flex: 1, textAlign: 'left' }}>
-                                        {choice}
-                                    </Text>
-                                    {showResult && isCorrect && <IconCheck size={32} color="#37B24D" stroke={3} />}
-                                    {showResult && isSelected && !isCorrect && <IconX size={32} color="#FA5252" stroke={3} />}
-                                </button>
-                            );
-                        })}
-                    </Box>
-                </div>
+                    </Group>
+                </Box>
             </Container>
-        </Box>
+        </StudentLayout>
     );
 }
