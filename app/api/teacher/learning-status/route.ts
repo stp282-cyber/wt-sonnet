@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
                                 .maybeSingle();
 
                             studentResults.assignments.push({
-                                id: `${student.id}-${item.id}`, // Unique key for list
+                                id: `${student.id}-${sc.curriculum_id}-${item.id}`, // Unique key for list
                                 curriculum_name: sc.curriculums.name,
                                 item_id: item.id,
                                 item_title: item.title,

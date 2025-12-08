@@ -367,10 +367,10 @@ export default function WordbooksPage() {
             <div className="animate-fade-in">
                 <Group justify="space-between" mb={30}>
                     <Box>
-                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
+                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>
                             단어장 관리
                         </Title>
-                        <Text c="dimmed" size="lg">
+                        <Text c="gray.3" size="lg">
                             단어장 등록, Excel 업로드/다운로드, 개별 단어 수정
                         </Text>
                     </Box>

@@ -287,7 +287,7 @@ export default function NoticesPage() {
 
     return (
         <Container size="xl" py={40}>
-            <Title order={1} style={{ fontWeight: 900, marginBottom: '2rem' }}>
+            <Title order={1} style={{ fontWeight: 900, marginBottom: '2rem', color: 'white' }}>
                 공지/쪽지 관리
             </Title>
 
@@ -298,11 +298,11 @@ export default function NoticesPage() {
                         fontWeight: 700,
                         marginRight: '0.5rem',
                         backgroundColor: 'white',
-                        '&[data-active]': {
-                            backgroundColor: 'black',
-                            color: 'white',
-                        }
+                        color: 'black',
                     }
+                }}
+                classNames={{
+                    tab: "data-[active]:bg-black data-[active]:text-white"
                 }}
             >
                 <Tabs.List mb="xl">
@@ -317,7 +317,7 @@ export default function NoticesPage() {
                 {/* --- NOTICES PANEL --- */}
                 <Tabs.Panel value="notices">
                     <Group justify="space-between" mb="md">
-                        <Text c="dimmed">학생들에게 공지사항을 전달하세요</Text>
+                        <Text c="gray.3">학생들에게 공지사항을 전달하세요</Text>
                         <Button
                             leftSection={<IconPlus size={20} />}
                             onClick={() => {
@@ -539,6 +539,6 @@ export default function NoticesPage() {
                     </Stack>
                 </form>
             </Modal>
-        </Container>
+        </Container >
     );
 }

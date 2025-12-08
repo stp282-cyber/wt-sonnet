@@ -93,7 +93,7 @@ export default function LearningStatusPage() {
     return (
         <Stack p="md" gap="lg">
             <Group justify="space-between">
-                <Title order={2}>Student Learning Status</Title>
+                <Title order={2} c="white">Student Learning Status</Title>
                 <Button
                     leftSection={<IconRefresh size={16} />}
                     variant="light"
@@ -114,10 +114,13 @@ export default function LearningStatusPage() {
                     onChange={setSelectedClass}
                     searchable
                     clearable
+                    styles={{
+                        label: { color: 'white' }
+                    }}
                 />
             </Group>
 
-            <Text c="dimmed" size="sm">Date: {date}</Text>
+            <Text c="gray.3" size="sm">Date: {date}</Text>
 
             {loading ? (
                 <Loader />

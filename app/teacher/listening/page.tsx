@@ -286,10 +286,10 @@ export default function ListeningPage() {
             <div className="animate-fade-in">
                 <Group justify="space-between" mb={30}>
                     <Box>
-                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
+                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>
                             듣기 문제 관리
                         </Title>
-                        <Text c="dimmed" size="lg">
+                        <Text c="gray.3" size="lg">
                             듣기 문제 등록, Excel 업로드/다운로드, 개별 문제 수정
                         </Text>
                     </Box>
@@ -433,7 +433,7 @@ export default function ListeningPage() {
                     onClose={() => setModalOpened(false)}
                     title={
                         <Title order={3} style={{ fontWeight: 900 }}>
-                            🎧 {selectedTest?.title}
+                            {selectedTest?.title}
                         </Title>
                     }
                     size="xl"

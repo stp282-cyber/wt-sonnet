@@ -158,18 +158,18 @@ export default function TodayManagementPage() {
         <Container size="xl" py={40}>
             <Group justify="space-between" mb="xl">
                 <div>
-                    <Title order={1} style={{ fontWeight: 900 }}>
+                    <Title order={1} style={{ fontWeight: 900, color: 'white' }}>
                         당일 학습 관리
                     </Title>
-                    <Text c="dimmed" mt="xs">
+                    <Text c="gray.3" mt="xs">
                         오늘의 학습 현황을 확인하고 관리하세요
                     </Text>
                 </div>
                 <Button
                     variant="outline"
-                    color="black"
+                    color="yellow"
                     onClick={() => fetchTodayLearnings()}
-                    style={{ border: '2px solid black', borderRadius: '0px', color: 'black' }}
+                    style={{ border: '2px solid #FACC15', borderRadius: '0px', color: '#FACC15', fontWeight: 800 }}
                 >
                     새로고침
                 </Button>

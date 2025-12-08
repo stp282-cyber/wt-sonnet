@@ -305,10 +305,10 @@ export default function StudentsPage() {
             <div className="animate-fade-in">
                 <Group justify="space-between" mb={30}>
                     <Box>
-                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
+                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>
                             학생 관리
                         </Title>
-                        <Text c="dimmed" size="lg">
+                        <Text c="gray.3" size="lg">
                             학생 등록, 수정, 삭제 및 상태 관리
                         </Text>
                     </Box>

@@ -278,7 +278,7 @@ export default function StudentSchedulePage() {
             {/* 상단 헤더 */}
             <Group justify="space-between" mb="xl">
                 <Group>
-                    <Title order={2} style={{ fontWeight: 900 }}>수업일지</Title>
+                    <Title order={2} style={{ fontWeight: 900, color: 'white' }}>수업일지</Title>
                     <Badge size="lg" color="yellow" variant="filled" radius="xs" style={{ border: '2px solid black', color: 'black' }}>
                         {student.full_name}
                     </Badge>
@@ -288,7 +288,7 @@ export default function StudentSchedulePage() {
                 </Group>
                 <Group>
                     <Stack gap={0} visibleFrom="sm">
-                        <Text fw={700} size="xs" ta="right">검색시작일</Text>
+                        <Text fw={700} size="xs" ta="right" c="white">검색시작일</Text>
                         <DateInput
                             value={searchStartDate}
                             onChange={(date) => date && setSearchStartDate(date)}
@@ -325,10 +325,10 @@ export default function StudentSchedulePage() {
 
                     <Button
                         variant="outline"
-                        color="dark"
+                        color="gray"
                         leftSection={<IconArrowLeft size={16} />}
                         onClick={() => router.back()}
-                        style={{ border: '2px solid black', borderRadius: '0px' }}
+                        style={{ border: '2px solid white', borderRadius: '0px', color: 'white' }}
                     >
                         뒤로가기
                     </Button>
@@ -343,7 +343,7 @@ export default function StudentSchedulePage() {
 
                     return (
                         <Box key={weekOffset}>
-                            <Text fw={900} size="lg" mb="xs">{weekLabel}</Text>
+                            <Text fw={900} size="lg" mb="xs" c="white">{weekLabel}</Text>
 
                             {/* 공통 헤더 (요일/날짜) - PC만 표시 */}
                             <Box visibleFrom="md" style={{ display: 'flex', marginBottom: -3 }}>

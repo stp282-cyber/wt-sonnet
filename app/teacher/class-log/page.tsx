@@ -426,10 +426,10 @@ export default function ClassLogPage() {
         <Container size="xl" py={40}>
             <Group justify="space-between" mb="xl">
                 <div>
-                    <Title order={1} style={{ fontWeight: 900 }}>
+                    <Title order={1} style={{ fontWeight: 900, color: 'white' }}>
                         수업 일지
                     </Title>
-                    <Text c="dimmed" mt="xs">
+                    <Text c="gray.3" mt="xs">
                         학생별 커리큘럼 진도 및 학습 현황을 확인하세요
                     </Text>
                 </div>

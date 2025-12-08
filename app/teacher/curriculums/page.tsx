@@ -425,10 +425,10 @@ export default function CurriculumsPage() {
             <div className="animate-fade-in">
                 <Group justify="space-between" mb={30}>
                     <Box>
-                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem' }}>
-                            📅 커리큘럼 관리
+                        <Title order={1} style={{ fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>
+                            커리큘럼 관리
                         </Title>
-                        <Text c="dimmed" size="lg">
+                        <Text c="gray.3" size="lg">
                             학생들에게 적용할 학습 커리큘럼을 관리합니다
                         </Text>
                     </Box>
