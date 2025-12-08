@@ -38,7 +38,7 @@ export default function StudentDashboardPage() {
 
             try {
                 // 1. Fetch Notices
-                const noticeRes = await fetch(`/api/notices?academy_id=${userData.academy_id}`);
+                const noticeRes = await fetch(`/api/notices?academy_id=${userData.academy_id}&active_only=true`);
                 if (noticeRes.ok) {
                     const data = await noticeRes.json();
                     setNotices((data.notices || []).slice(0, 3));
@@ -350,27 +350,16 @@ export default function StudentDashboardPage() {
                         <Paper
                             p={30}
                             className="neo-box"
-                            style={{ position: 'relative', boxShadow: '5px 5px 0px white' }} // White shadow for contrast
+                            style={{ position: 'relative', boxShadow: '5px 5px 0px white' }}
                         >
-                            <Box style={{
-                                position: 'absolute',
-                                top: '-15px',
-                                right: '-15px',
-                                background: '#FF0000',
-                                color: 'white',
-                                padding: '5px 10px',
-                                border: '2px solid black',
-                                fontWeight: 900,
-                                transform: 'rotate(5deg)'
-                            }}>
-                                NOTICE
-                            </Box>
-
-                            <Group mb="xl" justify="space-between">
+                            <Group mb="xl" justify="space-between" align="center">
                                 <Group gap="xs">
                                     <IconBell size={28} stroke={2.5} />
                                     <Title order={3} fw={900}>LATEST NEWS</Title>
                                 </Group>
+                                <Badge color="red" size="lg" radius={0} variant="filled" style={{ border: '2px solid black' }}>
+                                    NOTICE
+                                </Badge>
                             </Group>
 
                             <Stack gap="md">
@@ -384,15 +373,16 @@ export default function StudentDashboardPage() {
                                             className="hover-lift"
                                             style={{
                                                 cursor: 'pointer',
-                                                padding: '15px',
+                                                padding: '16px',
                                                 border: '2px solid black',
-                                                background: '#F8F9FA'
+                                                background: 'white',
+                                                boxShadow: '3px 3px 0px #dee2e6'
                                             }}
                                         >
-                                            <Group justify="space-between" align="start" wrap="nowrap" mb={5}>
-                                                <Text fw={800} size="sm" lineClamp={1}>{notice.title}</Text>
+                                            <Group justify="space-between" align="start" wrap="nowrap" mb={4}>
+                                                <Text fw={800} size="md" lineClamp={1} style={{ flex: 1 }}>{notice.title}</Text>
                                                 {notice.priority === 'high' && (
-                                                    <Box style={{ width: 10, height: 10, background: '#FF0000', border: '1px solid black' }} />
+                                                    <Badge size="xs" color="red" variant="dot">!</Badge>
                                                 )}
                                             </Group>
                                             <Text size="xs" fw={600} c="dimmed">{new Date(notice.created_at).toLocaleDateString()}</Text>
@@ -404,10 +394,17 @@ export default function StudentDashboardPage() {
                             <Button
                                 fullWidth
                                 mt="lg"
-                                variant="outline"
-                                color="dark"
                                 radius={0}
-                                style={{ border: '2px solid black', borderTop: 'none' }}
+                                size="lg" // Increased size
+                                color="black"
+                                variant="filled"
+                                style={{
+                                    border: '2px solid black',
+                                    boxShadow: '4px 4px 0px #CED4DA',
+                                    transition: 'all 0.2s',
+                                    height: '50px' // Explicit height
+                                }}
+                                className="neo-button"
                                 onClick={() => router.push('/student/notices')}
                             >
                                 VIEW ALL
@@ -416,7 +413,7 @@ export default function StudentDashboardPage() {
                     </Stack>
                 </Grid.Col>
             </Grid>
-        </Container>
+        </Container >
     );
 }
 

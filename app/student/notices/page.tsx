@@ -95,8 +95,8 @@ export default function StudentNoticesPage() {
 
     return (
         <Container size="xl" py={40}>
-            <Title order={1} mb="xl" style={{ fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <IconBell size={32} /> 공지사항
+            <Title order={1} mb="xl" style={{ fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+                공지사항
             </Title>
 
             <Paper

@@ -23,6 +23,26 @@ export async function GET(request: NextRequest) {
             query = query.or(`target_class_id.eq.${classId},target_type.eq.all`);
         }
 
+        // 유효 기간 필터링 (active_only=true 인 경우)
+        if (searchParams.get('active_only') === 'true') {
+            const today = new Date().toISOString().split('T')[0];
+            // start_date is null or <= today AND (end_date is null or >= today)
+            // supabase doesn't have complex grouping in JS client easily without rpc or raw string building sometimes, 
+            // but we can try generic filtering.
+            // Actually, for simplicity with "or" logic mixing (is_permanent), it's easiest to filter in memory if list is small, 
+            // OR use precise query.
+            // Let's assume is_permanent means end_date is ignored.
+
+            // Logic: (is_permanent = true) OR (end_date >= today OR end_date is null)
+            // AND (start_date <= today OR start_date is null)
+
+            // Allow start_date <= today (or null)
+            query = query.or(`start_date.lte.${today},start_date.is.null`);
+
+            // Allow is_permanent=true OR end_date >= today OR end_date is null
+            query = query.or(`is_permanent.eq.true,end_date.gte.${today},end_date.is.null`);
+        }
+
         const { data: notices, error } = await query;
 
         if (error) {
