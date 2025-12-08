@@ -43,7 +43,21 @@ export default function ListeningTestPage() {
                 if (data.listeningTest) {
                     setTitle(data.listeningTest.title);
                     if (data.listeningTest.questions && Array.isArray(data.listeningTest.questions)) {
-                        setQuestions(data.listeningTest.questions);
+                        let fetchedQuestions = data.listeningTest.questions;
+
+                        // Handle Range Slicing (1-based index)
+                        const start = searchParams.get('start');
+                        const end = searchParams.get('end');
+
+                        if (start && end) {
+                            const startIndex = parseInt(start) - 1;
+                            const endIndex = parseInt(end);
+                            if (!isNaN(startIndex) && !isNaN(endIndex)) {
+                                fetchedQuestions = fetchedQuestions.slice(startIndex, endIndex);
+                            }
+                        }
+
+                        setQuestions(fetchedQuestions);
                     }
                 }
             } catch (error) {

@@ -51,25 +51,24 @@ export const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
     const scheduleItems: any[] = [];
 
     (curriculum.curriculum_items || []).forEach((item) => {
-        if (item.item_type === 'wordbook' && item.sections && item.sections.length > 0) {
-            // 1. 설정 오버라이드 확인
-            const overrideSettings = curriculum.setting_overrides || {};
-            const effectiveType = (overrideSettings.daily_amount_type as 'section' | 'count') || item.daily_amount_type || 'count';
+        // 1. 설정 오버라이드 확인 (공통 로직으로 상향 이동)
+        const overrideSettings = curriculum.setting_overrides || {};
+        const effectiveType = (overrideSettings.daily_amount_type as 'section' | 'count') || item.daily_amount_type || 'count';
 
-            let effectiveAmount = overrideSettings.daily_amount;
-            if (!effectiveAmount) {
-                if (effectiveType === 'section') {
-                    effectiveAmount = item.daily_amount || 1;
-                } else {
-                    effectiveAmount = item.daily_word_count || item.daily_amount || 20;
-                }
+        let effectiveAmount = overrideSettings.daily_amount;
+        if (!effectiveAmount) {
+            if (effectiveType === 'section') {
+                effectiveAmount = item.daily_amount || 1;
             } else {
-                // Safety check for legacy data anomalies
-                if (effectiveType === 'section' && effectiveAmount > 5) {
-                    effectiveAmount = 1;
-                }
+                effectiveAmount = item.daily_word_count || item.daily_amount || 20;
             }
+        } else {
+            if (effectiveType === 'section' && effectiveAmount > 5) {
+                effectiveAmount = 1;
+            }
+        }
 
+        if (item.item_type === 'wordbook' && item.sections && item.sections.length > 0) {
             // [CRITICAL FIX] Reset progress for each ITEM, because flashcard page fetches by item_id
             let currentItemWordProgress = 1;
 
@@ -258,27 +257,43 @@ export const getAllSectionsForCurriculum = (curriculum: StudentCurriculum): {
             }
         } else if (item.item_type === 'listening') {
             // Listening Item Logic
-            // Treat the whole test as one unit
-            const dummySection: Section = {
-                id: item.item_details?.id || 'listening-dummy',
-                major_unit: 'Listening',
-                minor_unit: 'Test',
-                unit_name: item.item_details?.title || 'Listening Test',
-                sequence: 1,
-                word_count: item.daily_word_count || 20 // Default or from settings
-            };
+            // Split into daily chunks based on question count
+            const listeningTest = item.item_details as any; // Cast to access listening properties
+            // Use question_count from DB or default to 20 if missing
+            const totalQuestions = listeningTest?.question_count || listeningTest?.questions?.length || 20;
 
-            scheduleItems.push({
-                section: dummySection,
-                item,
-                progressStart: 1,
-                progressEnd: 1,
-                title: dummySection.unit_name,
-                major: dummySection.major_unit,
-                minor: dummySection.minor_unit,
-                isMultiSection: false,
-                wordCount: dummySection.word_count
-            });
+            // Use effectiveAmount calculated above
+            const dailyQuestionCount = effectiveAmount || 20;
+
+            let currentQuestion = 1;
+
+            while (currentQuestion <= totalQuestions) {
+                const endQuestion = Math.min(currentQuestion + dailyQuestionCount - 1, totalQuestions);
+                const count = endQuestion - currentQuestion + 1;
+
+                const dummySection: Section = {
+                    id: item.item_details?.id || 'listening-dummy',
+                    major_unit: 'Listening',
+                    minor_unit: 'Test',
+                    unit_name: item.item_details?.title || 'Listening Test',
+                    sequence: 1,
+                    word_count: count
+                };
+
+                scheduleItems.push({
+                    section: dummySection,
+                    item,
+                    progressStart: currentQuestion,
+                    progressEnd: endQuestion,
+                    title: `${dummySection.unit_name}`,
+                    major: `${currentQuestion}~${endQuestion}`, // Show range in Major? Or elsewhere?
+                    minor: `${currentQuestion}~${endQuestion}번`, // Show range in Minor unit
+                    isMultiSection: false,
+                    wordCount: count
+                });
+
+                currentQuestion += count;
+            }
         }
     });
 

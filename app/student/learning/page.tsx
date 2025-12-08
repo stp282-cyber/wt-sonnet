@@ -575,7 +575,7 @@ export default function StudentLearningPage() {
                                                                             <button
                                                                                 onClick={() => {
                                                                                     if (schedule.itemType === 'listening') {
-                                                                                        router.push(`/test/listening?id=${schedule.item?.item_id}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                        router.push(`/test/listening?id=${schedule.item?.item_id}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}&start=${schedule.progressStart}&end=${schedule.progressEnd}`);
                                                                                     } else {
                                                                                         const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
                                                                                         if (itemId) {
