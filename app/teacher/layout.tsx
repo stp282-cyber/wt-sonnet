@@ -90,6 +90,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                         {/* 로고 영역 */}
                         <Box
                             onClick={() => router.push('/teacher/dashboard')}
+                            className="neo-logo-hover-teacher"
                             style={{
                                 background: 'var(--accent)', // Yellow
                                 border: '3px solid black',
@@ -200,6 +201,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                                         router.push(item.href);
                                         toggle();
                                     }}
+                                    className={!isActive ? "neo-nav-hover-teacher" : ""}
                                     style={{
                                         borderRadius: '0px',
                                         border: '3px solid black',

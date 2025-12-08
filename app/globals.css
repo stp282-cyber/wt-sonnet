@@ -249,3 +249,43 @@ body {
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
 }
+
+/* Teacher Layout Hover Effects */
+.neo-logo-hover-teacher {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+}
+
+.neo-logo-hover-teacher:hover {
+  transform: rotate(0deg) scale(1.05) !important;
+  box-shadow: 6px 6px 0px black !important;
+}
+
+.neo-nav-hover-teacher {
+  transition: all 0.2s ease;
+}
+
+.neo-nav-hover-teacher:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 6px 6px 0px 0px black !important;
+  background-color: #EFF6FF !important; /* blue-50 */
+}
+
+/* Student Layout Hover Effects */
+.neo-logo-hover-student {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+}
+
+.neo-logo-hover-student:hover {
+  transform: rotate(0deg) scale(1.05) !important;
+  box-shadow: 0 0 15px rgba(255, 217, 61, 0.8) !important;
+}
+
+.neo-nav-hover-student {
+  transition: all 0.2s ease;
+}
+
+.neo-nav-hover-student:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 6px 6px 0px 0px white !important;
+  background-color: #1E293B !important; /* slate-800 */
+}
