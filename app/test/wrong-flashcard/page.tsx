@@ -75,7 +75,8 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
                         right: '12px',
                         borderRadius: '0px',
                         fontWeight: 700,
-                        border: '1px solid black',
+                        border: '2px solid black',
+                        color: 'white'
                     }}
                 >
                     Wrong #{word.no}
@@ -256,7 +257,7 @@ function WrongFlashcardContent() {
             <Box
                 style={{
                     minHeight: '100%',
-                    background: '#ffffff',
+                    background: 'transparent',
                     padding: '40px 20px',
                     position: 'relative',
                 }}
@@ -325,6 +326,7 @@ function WrongFlashcardContent() {
                                         fontWeight: 900,
                                         letterSpacing: '-2px',
                                         lineHeight: 1,
+                                        color: 'white'
                                     }}
                                 >
                                     Wrong Answer<br />
@@ -333,8 +335,8 @@ function WrongFlashcardContent() {
                             </Box>
 
                             <Box ta="right">
-                                <Text fw={700} size="xl">{words.length} Words</Text>
-                                <Text c="dimmed" size="sm" fw={600}>Keep going until you master them!</Text>
+                                <Text fw={700} size="xl" c="white">{words.length} Words</Text>
+                                <Text c="dimmed" size="sm" fw={600} style={{ color: '#94a3b8' }}>Keep going until you master them!</Text>
                             </Box>
                         </Group>
 

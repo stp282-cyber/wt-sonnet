@@ -131,7 +131,7 @@ function TestResultContent() {
             <Box
                 style={{
                     minHeight: '100%',
-                    background: '#ffffff',
+                    background: 'transparent',
                     padding: '20px',
                     position: 'relative',
                 }}
@@ -141,13 +141,13 @@ function TestResultContent() {
                         {/* Header */}
                         <Group justify="center" mb={30}>
                             <Stack align="center" gap={4}>
-                                <Box p={6} bg="black" c="white" style={{ borderRadius: '0px' }}>
+                                <Box p={6} bg="#FFD93D" c="black" style={{ borderRadius: '0px', border: '2px solid black' }}>
                                     <IconTrophy size={24} stroke={2} />
                                 </Box>
                                 <Title
                                     order={1}
                                     style={{
-                                        color: 'black',
+                                        color: 'white',
                                         fontWeight: 900,
                                         fontSize: '2rem',
                                         letterSpacing: '-1px',
@@ -157,7 +157,7 @@ function TestResultContent() {
                                 >
                                     시험 결과
                                 </Title>
-                                <Text size="sm" c="dimmed" fw={700}>
+                                <Text size="sm" c="dimmed" fw={700} style={{ color: '#94a3b8' }}>
                                     {new Date(result.timestamp).toLocaleDateString()}
                                 </Text>
                             </Stack>

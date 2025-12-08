@@ -32,7 +32,7 @@ export async function GET(
                 .from('classes')
                 .select('id, name')
                 .eq('id', student.class_id)
-                .single();
+                .maybeSingle(); // Use maybeSingle to avoid 500 if class deleted
             studentClass = classData;
         }
 
@@ -110,7 +110,15 @@ export async function GET(
                                 .from('wordbooks')
                                 .select('id, title, word_count')
                                 .eq('id', item.item_id)
-                                .single();
+                                .maybeSingle(); // maybeSingle
+
+                            if (!wordbook) {
+                                return {
+                                    ...item,
+                                    item_details: null,
+                                    sections: [],
+                                };
+                            }
 
                             // 단어장의 소단원(sections) 정보 가져오기
                             const { data: sections } = await supabase
@@ -143,11 +151,11 @@ export async function GET(
                                 .from('listening_tests')
                                 .select('id, title')
                                 .eq('id', item.item_id)
-                                .single();
+                                .maybeSingle(); // maybeSingle
 
                             return {
                                 ...item,
-                                item_details: listening,
+                                item_details: listening || null,
                                 sections: [],
                             };
                         }
@@ -166,7 +174,8 @@ export async function GET(
             student: studentWithClass,
             curriculums: curriculumsWithItems,
         };
-        console.log('DEBUG_CURRICULUM_DATA:', JSON.stringify(responseData.curriculums, null, 2));
+        // Removed potential heavy logging
+        // console.log('DEBUG_CURRICULUM_DATA:', JSON.stringify(responseData.curriculums, null, 2));
 
         return NextResponse.json(responseData);
     } catch (error: any) {

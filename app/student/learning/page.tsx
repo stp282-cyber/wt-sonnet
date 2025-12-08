@@ -237,7 +237,8 @@ export default function StudentLearningPage() {
                             background: '#FFD93D',
                             fontWeight: 900,
                             fontSize: '1rem',
-                            height: '50px'
+                            height: '50px',
+                            color: 'black'
                         },
                         label: {
                             fontWeight: 900,
@@ -320,7 +321,7 @@ export default function StudentLearningPage() {
                                         border: '4px solid black',
                                         borderRadius: '0px',
                                         background: 'white',
-                                        boxShadow: '6px 6px 0px 0px #3B82F6', // Blue Shadow
+                                        boxShadow: '8px 8px 0px 0px #FFD93D', // Yellow Shadow for Pop
                                         overflowX: 'auto', // Enable horizontal scroll
                                     }}
                                 >
@@ -345,7 +346,7 @@ export default function StudentLearningPage() {
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 padding: '1rem',
-                                                borderRight: '2px solid black'
+                                                borderRight: '3px solid black'
                                             }}>
                                                 CURRICULUM
                                             </Box>
@@ -358,7 +359,9 @@ export default function StudentLearningPage() {
                                                         style={{
                                                             flex: 1,
                                                             padding: '1rem',
-                                                            borderRight: idx < 4 ? '2px solid black' : 'none',
+                                                            flex: 1,
+                                                            padding: '1rem',
+                                                            borderRight: idx < 4 ? '3px solid black' : 'none',
                                                             textAlign: 'center',
                                                             color: 'black',
                                                             fontWeight: 900
@@ -389,9 +392,9 @@ export default function StudentLearningPage() {
                                                     flexDirection: 'column',
                                                     justifyContent: 'center',
                                                     textAlign: 'center',
-                                                    borderRight: '2px solid black'
+                                                    borderRight: '3px solid black'
                                                 }}>
-                                                    <Text fw={900} size="lg" style={{ fontStyle: 'italic' }}>{curr.curriculums.name}</Text>
+                                                    <Text fw={900} size="lg" style={{ fontStyle: 'italic', color: 'white' }}>{curr.curriculums.name}</Text>
                                                     <Text size="xs" c="dimmed" mt={4}>
                                                         시작일: {curr.start_date}
                                                     </Text>
@@ -436,7 +439,7 @@ export default function StudentLearningPage() {
                                                                         ? '#D3F9D8' // Green
                                                                         : isMissed
                                                                             ? '#FFE3E3' // Red
-                                                                            : '#FFFFFF',
+                                                                            : '#FFFFFF', // White default
 
                                                                     // Dynamic Border (Override for status)
                                                                     boxShadow: isToday && !isCompleted

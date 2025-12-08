@@ -128,215 +128,154 @@ export default function StudentMessagesPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <Container size="md" py={40} style={{ display: 'flex', justifyContent: 'center' }}>
-                <Loader color="yellow" size="xl" />
-            </Container>
-        );
-    }
-
-    // 현재 선택된 선생님과의 대화만 필터링
-    const filteredMessages = messages.filter(m =>
-        (m.sender_id === currentUser?.id && m.recipient_id === selectedTeacherId) ||
-        (m.sender_id === selectedTeacherId && m.recipient_id === currentUser?.id)
-    );
+    const filteredMessages = messages;
 
     return (
-        <Container size="md" py={40}>
-            {/* Custom Animations Styles */}
-            <style jsx global>{`
-                @keyframes slideUp {
-                    from { transform: translateY(20px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                }
-                .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .neo-box {
-                    border: 3px solid black;
-                    border-radius: 0px;
-                    box-shadow: 6px 6px 0px black;
-                    background: white;
-                }
-            `}</style>
+        <Container size="md" py="xl">
+            <Group justify="space-between" mb="lg">
+                <Title order={2} style={{ color: 'white' }}>쪽지함</Title>
+            </Group>
 
-            <div className="animate-slide-up">
-                {/* Header Section - Matches Dashboard */}
-                <Group justify="space-between" align="flex-end" mb={50}>
-                    <Box>
-                        <Box
-                            style={{
-                                display: 'inline-block',
-                                background: '#000',
-                                padding: '0.5rem 2rem',
-                                marginBottom: '1rem',
-                                transform: 'skew(-10deg)',
-                                boxShadow: '8px 8px 0px #FFD43B'
-                            }}
-                        >
-                            <Title order={1} style={{
-                                fontWeight: 900,
-                                fontFamily: "'Montserrat', sans-serif",
-                                fontSize: '3rem',
-                                color: 'white',
-                                transform: 'skew(10deg)',
-                                lineHeight: 1
-                            }}>
-                                MESSAGES
-                            </Title>
-                        </Box>
-                        <Text size="xl" fw={800} style={{ letterSpacing: '-0.5px' }}>
-                            선생님과 대화하세요
-                        </Text>
-                    </Box>
-                </Group>
-
-                <Group align="flex-start" mb="md">
-                    <Select
-                        label="대화 상대 선택"
-                        placeholder="선생님을 선택하세요"
-                        data={teachers.map(t => ({ value: t.id, label: t.full_name }))}
-                        value={selectedTeacherId}
-                        onChange={setSelectedTeacherId}
-                        allowDeselect={false}
-                        styles={{
-                            input: { border: '2px solid black', borderRadius: '0px' }
-                        }}
-                    />
-                </Group>
-
-                {/* 메시지 영역 */}
-                <Paper
-                    p="xl"
+            {/* 메시지 영역 */}
+            <Paper
+                p="xl"
+                style={{
+                    border: '2px solid black',
+                    background: 'white',
+                    boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+                    height: '600px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: 0,
+                }}
+            >
+                {/* 대화 상대 정보 */}
+                <Box
+                    mb="md"
+                    pb="md"
                     style={{
-                        border: '2px solid black',
-                        background: 'white',
-                        boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                        height: '600px',
+                        borderBottom: '2px solid black',
                         display: 'flex',
-                        flexDirection: 'column',
-                        borderRadius: 0,
+                        alignItems: 'center',
+                        gap: '1rem'
                     }}
                 >
-                    {/* 대화 상대 정보 */}
                     <Box
-                        mb="md"
-                        pb="md"
                         style={{
-                            borderBottom: '2px solid black',
+                            width: '50px',
+                            height: '50px',
+                            background: 'black',
+                            border: '2px solid black',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '1rem'
+                            justifyContent: 'center',
+                            borderRadius: 0,
+                            color: 'white'
                         }}
                     >
-                        <Box
-                            style={{
-                                width: '50px',
-                                height: '50px',
-                                background: 'black',
-                                border: '2px solid black',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: 0,
-                                color: 'white'
-                            }}
-                        >
-                            <IconUser size={28} />
-                        </Box>
-                        <div>
-                            <Text fw={900} size="lg">
-                                {teachers.find(t => t.id === selectedTeacherId)?.full_name || '선생님'}
-                            </Text>
-                            <Text size="sm" c="dimmed">
-                                담당 선생님
-                            </Text>
-                        </div>
+                        <IconUser size={28} />
                     </Box>
+                    <div>
+                        <Select
+                            placeholder="선생님을 선택하세요"
+                            data={teachers.map(t => ({ value: t.id, label: t.full_name }))}
+                            value={selectedTeacherId}
+                            onChange={setSelectedTeacherId}
+                            allowDeselect={false}
+                            styles={{
+                                input: { border: '2px solid black', borderRadius: '0px', height: '40px' },
+                                wrapper: { marginBottom: '0px' }
+                            }}
+                        />
+                        <Text size="sm" c="dimmed">
+                            담당 선생님
+                        </Text>
+                    </div>
+                </Box >
 
-                    {/* 메시지 목록 */}
-                    <ScrollArea style={{ flex: 1 }} mb="md" viewportRef={scrollViewport}>
-                        <Stack gap="md">
-                            {filteredMessages.length === 0 ? (
-                                <Text c="dimmed" ta="center" py="xl">대화 내역이 없습니다.</Text>
-                            ) : (
-                                filteredMessages.map((message) => {
-                                    const isMe = message.sender_id === currentUser?.id;
-                                    return (
-                                        <Box
-                                            key={message.id}
+                {/* 메시지 목록 */}
+                < ScrollArea style={{ flex: 1 }} mb="md" viewportRef={scrollViewport} >
+                    <Stack gap="md">
+                        {filteredMessages.length === 0 ? (
+                            <Text c="dimmed" ta="center" py="xl">대화 내역이 없습니다.</Text>
+                        ) : (
+                            filteredMessages.map((message) => {
+                                const isMe = message.sender_id === currentUser?.id;
+                                return (
+                                    <Box
+                                        key={message.id}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: isMe ? 'flex-end' : 'flex-start',
+                                        }}
+                                    >
+                                        <Paper
+                                            p="md"
                                             style={{
-                                                display: 'flex',
-                                                justifyContent: isMe ? 'flex-end' : 'flex-start',
+                                                maxWidth: '70%',
+                                                border: '2px solid black',
+                                                background: isMe ? '#FFD93D' : '#F1F3F5',
+                                                borderRadius: 0,
+                                                boxShadow: '4px 4px 0px black',
                                             }}
                                         >
-                                            <Paper
-                                                p="md"
-                                                style={{
-                                                    maxWidth: '70%',
-                                                    border: '2px solid black',
-                                                    background: isMe ? '#FFD93D' : '#F1F3F5',
-                                                    borderRadius: 0,
-                                                    boxShadow: '4px 4px 0px black',
-                                                }}
-                                            >
-                                                <Text fw={600} c="black">{message.content}</Text>
-                                                <Text size="xs" c="dimmed" mt="xs" ta="right">
-                                                    {new Date(message.created_at).toLocaleString()}
-                                                </Text>
-                                            </Paper>
-                                        </Box>
-                                    );
-                                })
-                            )}
-                        </Stack>
-                    </ScrollArea>
+                                            <Text fw={600} c="black">{message.content}</Text>
+                                            <Text size="xs" c="dimmed" mt="xs" ta="right">
+                                                {new Date(message.created_at).toLocaleString()}
+                                            </Text>
+                                        </Paper>
+                                    </Box>
+                                );
+                            })
+                        )}
+                    </Stack>
+                </ScrollArea >
 
-                    {/* 메시지 입력 */}
-                    <Group gap="sm">
-                        <Textarea
-                            placeholder="메시지를 입력하세요..."
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSend();
-                                }
-                            }}
-                            styles={{
-                                input: {
-                                    border: '2px solid black',
-                                    borderRadius: '0px',
-                                    fontSize: '1rem',
-                                    padding: '1rem',
-                                },
-                            }}
-                            style={{ flex: 1 }}
-                            rows={2}
-                        />
-                        <button
-                            onClick={handleSend}
-                            style={{
-                                background: 'black',
-                                color: 'white',
+                {/* 메시지 입력 */}
+                < Group gap="sm" >
+                    <Textarea
+                        placeholder="메시지를 입력하세요..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
+                        styles={{
+                            input: {
                                 border: '2px solid black',
                                 borderRadius: '0px',
-                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                padding: '1rem 1.5rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                fontWeight: 700,
-                                height: '100%',
-                            }}
-                        >
-                            <IconSend size={20} />
-                            전송
-                        </button>
-                    </Group>
-                </Paper>
-            </div>
-        </Container>
+                                fontSize: '1rem',
+                                padding: '1rem',
+                            },
+                        }}
+                        style={{ flex: 1 }}
+                        rows={2}
+                    />
+                    <button
+                        onClick={handleSend}
+                        style={{
+                            background: 'black',
+                            color: 'white',
+                            border: '2px solid black',
+                            borderRadius: '0px',
+                            boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                            padding: '1rem 1.5rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontWeight: 700,
+                            height: '100%',
+                        }}
+                    >
+                        <IconSend size={20} />
+                        전송
+                    </button>
+                </Group >
+            </Paper >
+        </Container >
     );
 }

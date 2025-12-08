@@ -115,7 +115,7 @@ export default function ScrambleTestPage() {
         <Box
             style={{
                 minHeight: '100vh',
-                background: 'linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%)',
+                background: 'transparent',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

@@ -12,13 +12,10 @@ import {
   Stack,
   Loader,
   Center,
-  RingProgress,
-  SimpleGrid,
   Button
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconBrain } from '@tabler/icons-react';
-import StudentLayout from '../../student/layout';
 
 function MultipleChoiceContent() {
   const router = useRouter();
@@ -30,45 +27,41 @@ function MultipleChoiceContent() {
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
 
-  // Initial Fetch & Resume Logic
+  // Initial Fetch
   useEffect(() => {
     const initTest = async () => {
       const isResume = searchParams.get('resume') === 'true';
 
-      // Resume Logic
-      if (isResume) {
-        try {
-          const studentInfoStr = localStorage.getItem('user');
-          if (studentInfoStr) {
-            const studentInfo = JSON.parse(studentInfoStr);
-            const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.session && data.session.session_data.step === 'REVIEW_TEST') {
-                const sData = data.session.session_data;
-                setQuestions(sData.reviewQuestions || []);
-                setCurrentIndex(sData.currentIndex || 0);
-                setResults(sData.results || []);
-                setLoading(false);
-                return;
-              }
+      try {
+        const studentInfoStr = localStorage.getItem('user');
+        if (studentInfoStr) {
+          const studentInfo = JSON.parse(studentInfoStr);
+          const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            // Support Resume
+            if (isResume && data.session && data.session.session_data.step === 'REVIEW_TEST') {
+              const sData = data.session.session_data;
+              setQuestions(sData.reviewQuestions || []);
+              setCurrentIndex(sData.currentIndex || 0);
+              setResults(sData.results || []);
+              setLoading(false);
+              return;
             }
           }
-        } catch (e) {
-          console.error("Resume failed", e);
         }
+      } catch (e) {
+        console.error("Session check failed", e);
       }
 
-      // Fresh Start Logic (Called from TypingTest finish or WrongRetry finish)
-      // We need to fetch review words.
+      // Fresh Start - Fetch Review Words
       const curriculumItemId = searchParams.get('curriculumItemId');
-      const wordbookId = searchParams.get('itemId'); // TypingTest passes itemId as wordbookId
-      const endLimit = searchParams.get('end'); // Current test end
+      const wordbookId = searchParams.get('itemId');
+      const endLimit = searchParams.get('end');
 
       if (!curriculumItemId || !wordbookId) {
-        // If parameters are missing, redirect or show error
-        // notifications.show({ title: 'Error', message: 'Missing parameters', color: 'red' });
-        // We might be just debugging.
+        setLoading(false);
+        return;
       }
 
       try {
@@ -78,13 +71,10 @@ function MultipleChoiceContent() {
 
         if (data.questions && data.questions.length > 0) {
           setQuestions(data.questions);
-          // Save Initial Session State
           saveSessionState(data.questions, 0, []);
         } else {
-          // No review words -> Skip to Complete? Or just show notification?
-          // If no review words, we should probably mark as complete immediately.
-          // But for now let's just show empty state.
-          console.log("No review words found");
+          // No review words -> Finish immediately
+          finishTest([], true);
         }
       } catch (error) {
         console.error(error);
@@ -93,8 +83,7 @@ function MultipleChoiceContent() {
         setLoading(false);
       }
     };
-
-    if (loading) initTest();
+    initTest();
   }, [searchParams]);
 
   const saveSessionState = async (qs: any[], idx: number, res: boolean[]) => {
@@ -107,22 +96,25 @@ function MultipleChoiceContent() {
       reviewQuestions: qs,
       currentIndex: idx,
       results: res,
-      // Carry over params
       itemId: searchParams.get('itemId'),
       start: searchParams.get('start'),
       end: searchParams.get('end'),
       curriculumId: searchParams.get('curriculumId'),
       curriculumItemId: searchParams.get('curriculumItemId'),
-      scheduledDate: searchParams.get('scheduledDate') // Persist
+      scheduledDate: searchParams.get('scheduledDate')
     };
 
-    await fetch('/api/test/session', {
-      method: 'POST',
-      body: JSON.stringify({
-        studentId: studentInfo.id,
-        sessionData
-      })
-    });
+    try {
+      await fetch('/api/test/session', {
+        method: 'POST',
+        body: JSON.stringify({
+          studentId: studentInfo.id,
+          sessionData
+        })
+      });
+    } catch (e) {
+      console.error("Failed to save session", e);
+    }
   };
 
   const handleAnswer = (choice: string) => {
@@ -131,6 +123,7 @@ function MultipleChoiceContent() {
     setIsAnswered(true);
 
     const currentQ = questions[currentIndex];
+    // Ensure answer comparison is safe
     const isCorrect = choice === currentQ.answer;
     const newResults = [...results, isCorrect];
     setResults(newResults);
@@ -145,127 +138,190 @@ function MultipleChoiceContent() {
       } else {
         finishTest(newResults);
       }
-    }, 1500); // 1.5s delay
+    }, 1500);
   };
 
-  const finishTest = async (finalResults: boolean[]) => {
-    // Calculate Logic
-    const wrongIndices = finalResults.map((r, i) => r ? -1 : i).filter(i => i !== -1);
-    const wrongQuestions = wrongIndices.map(i => questions[i]);
-
+  const finishTest = async (finalResults: boolean[], forceEmpty = false) => {
     const studentInfoStr = localStorage.getItem('user');
     if (!studentInfoStr) return;
     const studentInfo = JSON.parse(studentInfoStr);
 
-    const nextStep = wrongQuestions.length > 0 ? 'REVIEW_WRONG_RETRY' : 'COMPLETED';
-    const sessionData = {
-      step: nextStep,
-      reviewWrongQuestions: wrongQuestions, // For Retry
-      // Need to persist original params to eventually save log
-      itemId: searchParams.get('itemId'),
-      start: searchParams.get('start'),
-      end: searchParams.get('end'),
-      curriculumId: searchParams.get('curriculumId'),
-      curriculumItemId: searchParams.get('curriculumItemId'),
-      scheduledDate: searchParams.get('scheduledDate')
-    };
+    try {
+      if (forceEmpty) {
+        // Just mark complete
+        await fetch('/api/study-logs', {
+          method: 'POST',
+          body: JSON.stringify({
+            student_id: studentInfo.id,
+            curriculum_id: searchParams.get('curriculumId'),
+            curriculum_item_id: searchParams.get('curriculumItemId'),
+            scheduled_date: searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
+            status: 'completed',
+            test_phase: 'review_test_skipped',
+            score: 100
+          })
+        });
+        await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+        router.push('/student/learning');
+        return;
+      }
 
-    // Save Session
-    await fetch('/api/test/session', {
-      method: 'POST',
-      body: JSON.stringify({ studentId: studentInfo.id, sessionData })
-    });
+      // Calculate Logic
+      const wrongQuestions = questions.filter((_, i) => !finalResults[i]);
 
-    if (nextStep === 'REVIEW_WRONG_RETRY') {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('mode', 'review_wrong');
-      router.push(`/test/wrong-retry?${params.toString()}`);
-    } else {
-      // Mark Complete!
-      // Logic: Update study_logs status to 'completed'.
-      await fetch('/api/study-logs', {
-        method: 'POST', // Or PUT to update? POST usually creates.
-        body: JSON.stringify({
-          student_id: studentInfo.id,
-          curriculum_id: searchParams.get('curriculumId'),
-          curriculum_item_id: searchParams.get('curriculumItemId'),
-          scheduled_date: searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
-          status: 'completed',
-          test_phase: 'review_test',
-        })
-      });
+      if (wrongQuestions.length > 0) {
+        // Go to Wrong Retry
+        // Reset Session for Retry
+        const sessionData = {
+          step: 'REVIEW_WRONG_RETRY',
+          reviewWrongQuestions: wrongQuestions,
+          itemId: searchParams.get('itemId'),
+          start: searchParams.get('start'),
+          end: searchParams.get('end'),
+          curriculumId: searchParams.get('curriculumId'),
+          curriculumItemId: searchParams.get('curriculumItemId'),
+          scheduledDate: searchParams.get('scheduledDate')
+        };
 
-      // Delete Session
-      await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+        await fetch('/api/test/session', {
+          method: 'POST',
+          body: JSON.stringify({ studentId: studentInfo.id, sessionData })
+        });
+
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('mode', 'review_wrong');
+        router.push(`/test/wrong-retry?${params.toString()}`);
+      } else {
+        // Complete!
+        await fetch('/api/study-logs', {
+          method: 'POST',
+          body: JSON.stringify({
+            student_id: studentInfo.id,
+            curriculum_id: searchParams.get('curriculumId'),
+            curriculum_item_id: searchParams.get('curriculumItemId'),
+            scheduled_date: searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
+            status: 'completed',
+            test_phase: 'review_completed',
+            score: 100
+          })
+        });
+        await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+        router.push('/student/learning');
+      }
+    } catch (e) {
+      console.error("Finish test processing failed", e);
+      // Fallback for demo/safety
       router.push('/student/learning');
     }
   };
 
-  // Auto-finish if no questions
-  useEffect(() => {
-    if (!loading && questions.length === 0) {
-      finishTest([]);
-    }
-  }, [loading, questions]);
+  if (loading) {
+    return <Center h="100vh"><Loader color="yellow" type="dots" /></Center>;
+  }
 
-  if (loading || questions.length === 0) {
-    return (
-      <StudentLayout>
-        <Center h="100vh">
-          <Loader color="black" type="dots" />
-        </Center>
-      </StudentLayout>
-    );
+  if (questions.length === 0) {
+    return <Center h="100vh"><Text c="white">No questions loaded.</Text></Center>;
   }
 
   const currentQ = questions[currentIndex];
 
   return (
-    <StudentLayout>
-      <Box p="xl" style={{ position: 'relative', minHeight: '100%' }}>
-        <Container size={800}>
+    <Box p="xl" style={{ position: 'relative', minHeight: '100%', background: 'transparent' }}>
+      <Container size={800}>
+        <div className="animate-fade-in">
           <Stack gap="xl">
             {/* Header */}
-            <Group justify="space-between">
+            <Group justify="space-between" align="flex-start">
               <Box>
-                <Group gap="xs">
-                  <Box bg="black" c="white" p={4}><IconBrain size={20} /></Box>
-                  <Text fw={700} tt="uppercase" c="dimmed">Review Test</Text>
-                </Group>
-                <Title order={1} style={{ fontSize: '2.5rem', fontWeight: 900 }}>Review Cycle</Title>
+                <Paper
+                  p="xs"
+                  style={{
+                    background: '#FFD93D',
+                    border: '3px solid black',
+                    display: 'inline-block',
+                    marginBottom: '10px',
+                    boxShadow: '4px 4px 0px black'
+                  }}
+                >
+                  <Group gap={8}>
+                    <IconBrain color="black" size={20} stroke={3} />
+                    <Text c="black" fw={900} tt="uppercase" size="sm">Review Cycle</Text>
+                  </Group>
+                </Paper>
+                <Title
+                  order={1}
+                  style={{
+                    fontSize: '2.5rem',
+                    fontWeight: 900,
+                    color: 'white',
+                    lineHeight: 1
+                  }}
+                >
+                  Cumulative<br />
+                  <span style={{ color: '#FFD93D' }}>Review Test</span>
+                </Title>
               </Box>
-              <RingProgress
-                size={60}
-                thickness={6}
-                roundCaps
-                sections={[{ value: ((currentIndex + 1) / questions.length) * 100, color: 'black' }]}
-                label={<Text ta="center" size="xs" fw={700}>{currentIndex + 1}/{questions.length}</Text>}
-              />
+
+              <Stack align="flex-end" gap="xs">
+                <Button
+                  onClick={() => {
+                    if (window.confirm('시험을 중단하고 학습 홈으로 돌아가시겠습니까?')) {
+                      router.push('/student/learning');
+                    }
+                  }}
+                  variant="subtle"
+                  color="gray"
+                  leftSection={<IconX size={18} />}
+                  size="xs"
+                  styles={{
+                    root: {
+                      color: '#94a3b8',
+                      '&:hover': { background: 'rgba(255,255,255,0.1)', color: 'white' }
+                    }
+                  }}
+                >
+                  나가기
+                </Button>
+                <Box ta="right">
+                  <Text fw={700} size="xl" c="white">{currentIndex + 1} / {questions.length}</Text>
+                  <Text c="dimmed" size="sm" fw={600} style={{ color: '#94a3b8' }}>Select the correct answer</Text>
+                </Box>
+              </Stack>
             </Group>
 
             {/* Question Card */}
-            <Paper p={50} style={{ border: '3px solid black', borderRadius: 0, boxShadow: '8px 8px 0px black', minHeight: 300 }}>
-              <Stack align="center" justify="center" h="100%">
-                <Text fw={900} size="3rem" ta="center">{currentQ.english}</Text>
-                <Text c="dimmed" fw={700}>Select the correct meaning</Text>
-              </Stack>
+            <Paper
+              p={50}
+              style={{
+                border: '3px solid black',
+                borderRadius: '0px',
+                background: 'white',
+                boxShadow: '8px 8px 0px black',
+                minHeight: '200px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Text size="3rem" fw={900} ta="center" style={{ color: 'black' }}>
+                {currentQ.english}
+              </Text>
             </Paper>
 
             {/* Choices */}
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              {currentQ.choices.map((choice: string, idx: number) => {
+            <Stack gap="md">
+              {currentQ.choices?.map((choice: string, idx: number) => {
                 const isSelected = selectedChoice === choice;
                 const isCorrect = choice === currentQ.answer;
+
                 let bg = 'white';
                 let borderColor = 'black';
 
                 if (isAnswered) {
                   if (isCorrect) {
-                    bg = '#D3F9D8'; // Green
-                    borderColor = '#2b8a3e';
+                    bg = '#D3F9D8'; borderColor = '#2b8a3e';
                   } else if (isSelected && !isCorrect) {
-                    bg = '#FFE3E3'; // Red
-                    borderColor = '#c92a2a';
+                    bg = '#FFE3E3'; borderColor = '#c92a2a';
                   }
                 }
 
@@ -273,47 +329,44 @@ function MultipleChoiceContent() {
                   <Button
                     key={idx}
                     onClick={() => handleAnswer(choice)}
-                    fullWidth
-                    size="xl"
                     disabled={isAnswered}
+                    fullWidth
                     styles={{
                       root: {
                         height: 'auto',
                         padding: '20px',
                         background: bg,
                         border: `3px solid ${borderColor}`,
-                        borderRadius: 0,
+                        borderRadius: '0px',
                         color: 'black',
-                        boxShadow: isSelected ? 'inset 4px 4px 0px rgba(0,0,0,0.1)' : '4px 4px 0px black',
+                        boxShadow: isSelected ? 'none' : '4px 4px 0px black',
                         transform: isSelected ? 'translate(2px, 2px)' : 'none',
-                        transition: 'all 0.1s',
+                        transition: 'all 0.1s'
                       },
                       inner: { justifyContent: 'flex-start' },
-                      label: { whiteSpace: 'normal', textAlign: 'left', fontSize: '1.2rem', fontWeight: 700 }
+                      label: { fontSize: '1.2rem', fontWeight: 700 }
                     }}
                   >
                     {choice}
-                    {isAnswered && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} />}
-                    {isAnswered && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} />}
+                    {isAnswered && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} color="#2b8a3e" />}
+                    {isAnswered && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} color="#c92a2a" />}
                   </Button>
-                )
+                );
               })}
-            </SimpleGrid>
+            </Stack>
           </Stack>
-        </Container>
-      </Box>
-    </StudentLayout>
+        </div>
+      </Container>
+    </Box>
   );
 }
 
-export default function MultipleChoiceTestPage() {
+export default function MultipleChoicePage() {
   return (
     <Suspense fallback={
-      <StudentLayout>
-        <Center h="100vh">
-          <Loader color="black" type="dots" />
-        </Center>
-      </StudentLayout>
+      <Center h="100vh">
+        <Loader color="yellow" type="dots" />
+      </Center>
     }>
       <MultipleChoiceContent />
     </Suspense>

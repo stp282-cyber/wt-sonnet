@@ -14,12 +14,10 @@ import {
     Loader,
     Center,
     Badge,
-    RingProgress,
     Button
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconClock, IconArrowRight, IconRefresh } from '@tabler/icons-react';
-import StudentLayout from '../../student/layout';
+import { IconCheck, IconX, IconRefresh } from '@tabler/icons-react';
 
 function WrongRetryContent() {
     const router = useRouter();
@@ -59,7 +57,6 @@ function WrongRetryContent() {
                         targetWords = sData.wrongWords || [];
                     } else if (sData.step === 'REVIEW_WRONG_RETRY' || (isResume && sData.step === 'REVIEW_WRONG_RETRY')) {
                         // Review Retry
-                        // Note: Review Questions stored in reviewWrongQuestions usually have { choices: string[], answer: string, ...word }
                         targetWords = sData.reviewWrongQuestions || [];
                         setMode('review_wrong'); // Force mode if derived from step
                     }
@@ -90,7 +87,6 @@ function WrongRetryContent() {
         if (!studentInfoStr) return;
         const studentInfo = JSON.parse(studentInfoStr);
 
-        // Fetch existing logic to merge properly (simplified for now)
         const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
         const d = await r.json();
         const existingData = d.session?.session_data || {};
@@ -114,10 +110,6 @@ function WrongRetryContent() {
 
         if (mode === 'review_wrong') {
             // MC Logic
-            // Question: English, Answer: Korean (in choices)
-            // But currentWord structure in Review is { ...word, choices: [], answer: Korean }?
-            // Check 'review-words' API: returns { ...word, choices, answer: word.korean }
-            // So Answer is indeed Korean.
             const userChoice = choice || selectedChoice;
             if (!userChoice) return;
 
@@ -126,7 +118,6 @@ function WrongRetryContent() {
             setSelectedChoice(userChoice);
         } else {
             // Typing Logic (Basic)
-            // Question: Korean, Answer: English
             const correct = currentWord.english.toLowerCase().trim();
             const answer = userAnswer.toLowerCase().trim();
             isCorrect = correct === answer;
@@ -222,135 +213,127 @@ function WrongRetryContent() {
             const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
             return () => clearTimeout(timer);
         } else if (timeLeft === 0 && !isAnswered) {
-            // For MC, if timeout, just submit empty/wrong
-            // For Typing, submit current text
             handleSubmit();
         }
     }, [timeLeft, isAnswered, loading]);
 
-    if (loading) return <StudentLayout><Center h="100vh"><Loader /></Center></StudentLayout>;
-    if (words.length === 0) return <StudentLayout><Center h="100vh"><Text>No words to retry.</Text></Center></StudentLayout>;
+    if (loading) return <Center h="100vh"><Loader color="yellow" /></Center>;
+    if (words.length === 0) return <Center h="100vh"><Text c="white">No words to retry.</Text></Center>;
 
     const currentWord = words[currentIndex];
     const isReview = mode === 'review_wrong';
-    // Review Mode: English Question, Korean Option
-    // Basic Mode: Korean Question, English Input
     const questionText = isReview ? currentWord.english : currentWord.korean;
     const answerText = isReview ? (currentWord.answer || currentWord.korean) : currentWord.english;
 
     return (
-        <StudentLayout>
-            <Box p="xl" style={{ position: 'relative', minHeight: '100%' }}>
-                <Container size={800}>
-                    <Stack gap="xl">
-                        {/* Header */}
-                        <Group justify="space-between">
-                            <Box>
-                                <Group gap="xs">
-                                    <Box bg="black" c="white" p={4}><IconRefresh size={20} /></Box>
-                                    <Text fw={700} tt="uppercase" c="dimmed">Wrong Answer Retry</Text>
-                                </Group>
-                                <Title order={1} style={{ fontSize: '2.5rem', fontWeight: 900 }}>Retry: {currentIndex + 1} / {words.length}</Title>
-                            </Box>
-                            <Badge size="xl" variant="outline" color="red" style={{ border: '2px solid red' }}>{timeLeft}s</Badge>
-                        </Group>
+        <Box p="xl" style={{ position: 'relative', minHeight: '100%', background: 'transparent' }}>
+            <Container size={800}>
+                <Stack gap="xl">
+                    {/* Header */}
+                    <Group justify="space-between">
+                        <Box>
+                            <Group gap="xs">
+                                <Box bg="black" c="white" p={4}><IconRefresh size={20} /></Box>
+                                <Text fw={700} tt="uppercase" c="dimmed">Wrong Answer Retry</Text>
+                            </Group>
+                            <Title order={1} style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white' }}>Retry: {currentIndex + 1} / {words.length}</Title>
+                        </Box>
+                        <Badge size="xl" variant="outline" color="red" style={{ border: '2px solid red' }}>{timeLeft}s</Badge>
+                    </Group>
 
-                        {/* Card */}
-                        <Paper
-                            p={50}
-                            style={{
-                                border: '3px solid black',
-                                borderRadius: '0px',
-                                background: isAnswered
-                                    ? (results[results.length - 1] ? '#D3F9D8' : '#FFE3E3')
-                                    : 'white',
-                                boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-                                minHeight: '400px'
-                            }}
-                        >
-                            <Stack align="center" gap="xl">
-                                <Text size="3.5rem" fw={900} ta="center">{questionText}</Text>
+                    {/* Card */}
+                    <Paper
+                        p={50}
+                        style={{
+                            border: '3px solid black',
+                            borderRadius: '0px',
+                            background: isAnswered
+                                ? (results[results.length - 1] ? '#D3F9D8' : '#FFE3E3')
+                                : 'white',
+                            boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+                            minHeight: '400px'
+                        }}
+                    >
+                        <Stack align="center" gap="xl">
+                            <Text size="3.5rem" fw={900} ta="center">{questionText}</Text>
 
-                                {isReview ? (
-                                    // Multiple Choice UI
-                                    <Stack style={{ width: '100%' }}>
-                                        {currentWord.choices?.map((choice: string, idx: number) => {
-                                            const isSelected = selectedChoice === choice;
-                                            const isCorrect = choice === answerText;
-                                            let bg = 'white';
-                                            let borderColor = 'black';
+                            {isReview ? (
+                                // Multiple Choice UI
+                                <Stack style={{ width: '100%' }}>
+                                    {currentWord.choices?.map((choice: string, idx: number) => {
+                                        const isSelected = selectedChoice === choice;
+                                        const isCorrect = choice === answerText;
+                                        let bg = 'white';
+                                        let borderColor = 'black';
 
-                                            if (isAnswered) {
-                                                if (isCorrect) {
-                                                    bg = '#D3F9D8'; borderColor = '#2b8a3e';
-                                                } else if (isSelected && !isCorrect) {
-                                                    bg = '#FFE3E3'; borderColor = '#c92a2a';
-                                                }
+                                        if (isAnswered) {
+                                            if (isCorrect) {
+                                                bg = '#D3F9D8'; borderColor = '#2b8a3e';
+                                            } else if (isSelected && !isCorrect) {
+                                                bg = '#FFE3E3'; borderColor = '#c92a2a';
                                             }
+                                        }
 
-                                            return (
-                                                <Button
-                                                    key={idx}
-                                                    onClick={() => handleSubmit(choice)}
-                                                    disabled={isAnswered}
-                                                    size="xl"
-                                                    styles={{
-                                                        root: {
-                                                            height: 'auto', padding: '20px',
-                                                            background: bg, border: `3px solid ${borderColor}`,
-                                                            borderRadius: 0, color: 'black',
-                                                            boxShadow: isSelected ? 'none' : '4px 4px 0px black',
-                                                            transform: isSelected ? 'translate(2px, 2px)' : 'none',
-                                                        },
-                                                        inner: { justifyContent: 'flex-start' },
-                                                        label: { fontSize: '1.5rem', fontWeight: 700 }
-                                                    }}
-                                                >
-                                                    {choice}
-                                                    {isAnswered && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} />}
-                                                    {isAnswered && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} />}
-                                                </Button>
-                                            )
-                                        })}
-                                    </Stack>
-                                ) : (
-                                    // Typing UI
-                                    <TextInput
-                                        ref={inputRef}
-                                        value={userAnswer}
-                                        onChange={(e) => setUserAnswer(e.target.value)}
-                                        onKeyPress={handleKeyPress}
-                                        disabled={isAnswered}
-                                        size="xl"
-                                        styles={{ input: { fontSize: '2rem', textAlign: 'center', border: '3px solid black' } }}
-                                        style={{ width: '100%' }}
-                                    />
-                                )}
+                                        return (
+                                            <Button
+                                                key={idx}
+                                                onClick={() => handleSubmit(choice)}
+                                                disabled={isAnswered}
+                                                size="xl"
+                                                styles={{
+                                                    root: {
+                                                        height: 'auto', padding: '20px',
+                                                        background: bg, border: `3px solid ${borderColor}`,
+                                                        borderRadius: 0, color: 'black',
+                                                        boxShadow: isSelected ? 'none' : '4px 4px 0px black',
+                                                        transform: isSelected ? 'translate(2px, 2px)' : 'none',
+                                                    },
+                                                    inner: { justifyContent: 'flex-start' },
+                                                    label: { fontSize: '1.5rem', fontWeight: 700 }
+                                                }}
+                                            >
+                                                {choice}
+                                                {isAnswered && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} />}
+                                                {isAnswered && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} />}
+                                            </Button>
+                                        )
+                                    })}
+                                </Stack>
+                            ) : (
+                                // Typing UI
+                                <TextInput
+                                    ref={inputRef}
+                                    value={userAnswer}
+                                    onChange={(e) => setUserAnswer(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    disabled={isAnswered}
+                                    size="xl"
+                                    styles={{ input: { fontSize: '2rem', textAlign: 'center', border: '3px solid black' } }}
+                                    style={{ width: '100%' }}
+                                />
+                            )}
 
-                                {isAnswered && !results[results.length - 1] && (
-                                    <Text c="red" fw={700} size="xl">Answer: {answerText}</Text>
-                                )}
+                            {isAnswered && !results[results.length - 1] && (
+                                <Text c="red" fw={700} size="xl">Answer: {answerText}</Text>
+                            )}
 
-                                {!isAnswered && !isReview && (
-                                    <Button onClick={() => handleSubmit()} color="black" size="lg" fullWidth>Submit</Button>
-                                )}
-                            </Stack>
-                        </Paper>
-                    </Stack>
-                </Container>
-            </Box>
-        </StudentLayout>
+                            {!isAnswered && !isReview && (
+                                <Button onClick={() => handleSubmit()} color="black" size="lg" fullWidth>Submit</Button>
+                            )}
+                        </Stack>
+                    </Paper>
+                </Stack>
+            </Container>
+        </Box>
     );
 }
 
 export default function WrongRetryPage() {
     return (
         <Suspense fallback={
-            <StudentLayout>
-                <Center h="100vh">
-                    <Loader />
-                </Center>
-            </StudentLayout>
+            <Center h="100vh">
+                <Loader color="yellow" />
+            </Center>
         }>
             <WrongRetryContent />
         </Suspense>

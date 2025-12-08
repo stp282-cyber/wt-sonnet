@@ -15,9 +15,7 @@ import {
     Stack,
     Badge,
 } from '@mantine/core';
-import { IconVolume, IconArrowRight, IconCards, IconBulb } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
-import StudentLayout from '../../student/layout';
+import { IconVolume, IconCards, IconBulb, IconClock, IconCheck, IconX, IconKeyboard, IconAlertTriangle, IconArrowRight } from '@tabler/icons-react';
 
 interface Word {
     no: number;
@@ -47,9 +45,33 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
                 transform: 'translateY(20px)',
             }}
         >
+            <style jsx global>{`
+                .flashcard-wrapper {
+                    perspective: 1000px;
+                }
+                .flashcard-item {
+                    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                    transform: translateY(0) scale(1);
+                    box-shadow: 6px 6px 0px black;
+                }
+                .flashcard-item:hover {
+                    transform: translateY(-8px) scale(1.02);
+                    box-shadow: 12px 12px 0px #FFD93D !important; /* Yellow shadow */
+                    border-color: black;
+                    z-index: 10;
+                }
+                .flashcard-clicking {
+                    animation: popRotate 0.4s ease forwards;
+                }
+                @keyframes popRotate {
+                    0% { transform: scale(1); }
+                    40% { transform: scale(1.05) rotate(2deg); box-shadow: 14px 14px 0px #FF6B6B !important; } /* Red accent on click */
+                    100% { transform: scale(1); }
+                }
+            `}</style>
             <Paper
                 p="xl"
-                className={isClicked ? "card-clicking" : "card-interactive"}
+                className={`flashcard-item ${isClicked ? "flashcard-clicking" : ""}`}
                 style={{
                     border: '3px solid black',
                     borderRadius: '0px',
@@ -60,7 +82,7 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
                     justifyContent: 'center',
                     cursor: 'pointer',
                     position: 'relative',
-                    // Shadow and Transform handled by CSS classes for interactions
+                    // Removed inline boxShadow to let CSS handle it
                 }}
                 onClick={handleClick}
             >
@@ -211,147 +233,80 @@ function FlashcardContent() {
         router.push(`/test/typing?${params.toString()}`);
     };
 
-    if (loading) {
-        return (
-            <StudentLayout>
-                <Center style={{ minHeight: '100vh', background: '#fff' }}>
-                    <Stack align="center" gap="md">
-                        <Loader size="xl" color="dark" type="dots" />
-                    </Stack>
-                </Center>
-            </StudentLayout>
-        );
-    }
-
-    if (words.length === 0) {
-        return (
-            <StudentLayout>
-                <Center style={{ minHeight: '100vh', background: '#fff' }}>
-                    <Stack align="center">
-                        <Text size="lg" fw={700}>학습 정보를 찾을 수 없거나 단어가 없습니다.</Text>
-                        <button onClick={() => router.back()} style={{
-                            padding: '0.8rem 2rem',
-                            background: 'black',
-                            color: 'white',
-                            fontWeight: 700,
-                            border: 'none',
-                            cursor: 'pointer',
-                        }}>
-                            돌아가기
-                        </button>
-                    </Stack>
-                </Center>
-            </StudentLayout>
-        );
-    }
-
     return (
-        <StudentLayout>
-            <Box
-                style={{
-                    minHeight: '100%',
-                    background: '#ffffff',
-                    padding: '40px 20px',
-                    position: 'relative',
-                }}
-            >
-                {/* CSS Animation Keyframes & Classes */}
-                <style jsx global>{`
-                    @keyframes fadeInUp {
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                    }
-                    @keyframes popRotate {
-                        0% { transform: scale(1) rotate(0deg); }
-                        40% { transform: scale(1.05) rotate(2deg); box-shadow: 12px 12px 0px rgba(0,0,0,0.8); }
-                        80% { transform: scale(0.98) rotate(-1deg); }
-                        100% { transform: scale(1) rotate(0deg); }
-                    }
-
-                    .card-interactive {
-                        transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-                        box-shadow: 6px 6px 0px black;
-                        transform: translate(0, 0);
-                    }
-                    .card-interactive:hover {
-                        transform: translate(-4px, -4px);
-                        box-shadow: 10px 10px 0px black;
-                    }
-                    .card-interactive:active {
-                        transform: translate(2px, 2px);
-                         box-shadow: 4px 4px 0px black;
-                    }
-
-                    .card-clicking {
-                        animation: popRotate 0.4s ease forwards;
-                        box-shadow: 10px 10px 0px black;
-                        z-index: 10; 
-                        border-color: #FFD93D; /* Optional highlight */
-                    }
-                `}</style>
-
-                <Container size={1200}>
-                    <div className="animate-fade-in">
-                        {/* 헤더 */}
-                        <Group justify="space-between" align="flex-end" mb={50}>
+        <Box
+            style={{
+                minHeight: '100%',
+                background: 'transparent',
+                padding: '40px 20px',
+                position: 'relative',
+            }}
+        >
+            <Container size={1200}>
+                <div className="animate-fade-in">
+                    <Stack gap="xl">
+                        {/* Header */}
+                        <Group justify="space-between" align="center" mb="lg">
                             <Box>
-                                <Group gap="sm" mb="xs">
-                                    <Box p={4} bg="black" c="white">
-                                        <IconCards size={20} stroke={2} />
-                                    </Box>
-                                    <Text fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '1px' }}>Vocabulary / Flashcards</Text>
-                                </Group>
+                                <Paper
+                                    p="xs"
+                                    style={{
+                                        background: '#FFD93D',
+                                        border: '3px solid black',
+                                        display: 'inline-block',
+                                        boxShadow: '4px 4px 0px black',
+                                        marginBottom: '10px'
+                                    }}
+                                >
+                                    <Group gap={8}>
+                                        <IconCards color="black" size={20} stroke={3} />
+                                        <Text c="black" fw={900} tt="uppercase" size="sm">Flashcard Mode</Text>
+                                    </Group>
+                                </Paper>
                                 <Title
                                     order={1}
                                     style={{
-                                        color: 'black',
-                                        fontWeight: 900,
                                         fontSize: '3rem',
-                                        letterSpacing: '-1px',
-                                        lineHeight: 1
+                                        fontWeight: 900,
+                                        letterSpacing: '-2px',
+                                        lineHeight: 1,
+                                        color: 'white'
                                     }}
                                 >
-                                    Word Study
+                                    Word<br />
+                                    <span style={{ color: '#FFD93D' }}>Practice</span>
                                 </Title>
                             </Box>
 
-                            <Box
-                                style={{
-                                    border: '2px solid black',
-                                    padding: '12px 24px',
-                                    background: '#FFD93D',
-                                    fontWeight: 800,
-                                    fontSize: '1.1rem',
-                                    boxShadow: '4px 4px 0px black'
-                                }}
-                            >
-                                Total {words.length} Words
+                            <Box ta="right">
+                                <Text fw={700} size="xl" c="white">{words.length} Words</Text>
+                                <Text c="dimmed" size="sm" fw={600} style={{ color: '#94a3b8' }}>Review carefully before testing!</Text>
                             </Box>
                         </Group>
 
-                        {/* 그리드 레이아웃 (4열) */}
-                        <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="xl" verticalSpacing="xl">
+                        {/* Grid */}
+                        <SimpleGrid
+                            cols={{ base: 1, sm: 2, md: 3, lg: 4 }}
+                            spacing="lg"
+                            verticalSpacing="lg"
+                        >
                             {words.map((word, index) => (
-                                <FlashcardItem key={word.no} word={word} index={index} onSpeak={speakWord} />
+                                <FlashcardItem
+                                    key={word.no}
+                                    word={word}
+                                    index={index}
+                                    onSpeak={speakWord}
+                                />
                             ))}
                         </SimpleGrid>
 
-                        {/* 하단 팁 및 버튼 */}
-                        <Stack align="center" mt={80} gap="xl">
-                            <Group justify="center" gap="sm" c="dimmed">
-                                <IconBulb size={18} />
-                                <Text size="sm" fw={600}>
-                                    Tip: Click on a card to hear the pronunciation.
-                                </Text>
-                            </Group>
-
+                        {/* Footer - Start Button */}
+                        <Center mt={40} mb={60}>
                             <button
                                 onClick={handleStartTest}
                                 style={{
-                                    background: 'black',
-                                    color: 'white',
+                                    background: '#FFD93D',
+                                    color: 'black',
                                     border: 'none',
                                     borderRadius: '0px',
                                     fontSize: '1.2rem',
@@ -362,7 +317,7 @@ function FlashcardContent() {
                                     alignItems: 'center',
                                     gap: '1rem',
                                     transition: 'all 0.2s ease',
-                                    boxShadow: '8px 8px 0px #FFD93D', // Yellow shadow
+                                    boxShadow: '8px 8px 0px #FFD93D',
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'translate(-2px, -2px)';
@@ -384,24 +339,22 @@ function FlashcardContent() {
                                 START TEST
                                 <IconArrowRight size={20} stroke={3} />
                             </button>
-                        </Stack>
-                    </div>
-                </Container>
-            </Box>
-        </StudentLayout>
+                        </Center>
+                    </Stack>
+                </div>
+            </Container>
+        </Box>
     );
 }
 
 export default function FlashcardPage() {
     return (
         <Suspense fallback={
-            <StudentLayout>
-                <Center style={{ minHeight: '100vh', background: '#fff' }}>
-                    <Stack align="center" gap="md">
-                        <Loader size="xl" color="dark" type="dots" />
-                    </Stack>
-                </Center>
-            </StudentLayout>
+            <Center style={{ minHeight: '100vh', background: 'transparent' }}>
+                <Stack align="center" gap="md">
+                    <Loader size="xl" color="yellow" type="dots" />
+                </Stack>
+            </Center>
         }>
             <FlashcardContent />
         </Suspense>

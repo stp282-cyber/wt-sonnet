@@ -359,7 +359,7 @@ function TypingTestContent() {
             <Box
                 style={{
                     minHeight: '100%',
-                    background: '#ffffff',
+                    background: 'transparent',
                     padding: '40px 20px',
                     position: 'relative',
                 }}
@@ -370,21 +370,22 @@ function TypingTestContent() {
                         <Group justify="space-between" align="flex-end" mb={50}>
                             <Box>
                                 <Group gap="sm" mb="xs">
-                                    <Box p={4} bg="black" c="white">
+                                    <Box p={4} bg="#FFD93D" c="black" style={{ border: '2px solid black' }}>
                                         <IconKeyboard size={20} stroke={2} />
                                     </Box>
-                                    <Text fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '1px' }}>Typing Test</Text>
+                                    <Text fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '1px', color: '#94a3b8' }}>Typing Test</Text>
                                 </Group>
                                 <Title
                                     order={1}
                                     style={{
-                                        color: 'black',
+                                        color: 'white',
                                         fontWeight: 900,
                                         fontSize: '3rem',
                                         letterSpacing: '-1px',
                                         lineHeight: 1
                                     }}
                                 >
+
                                     Spelling Check
                                 </Title>
                             </Box>
@@ -398,9 +399,9 @@ function TypingTestContent() {
                                     size={60}
                                     thickness={6}
                                     roundCaps
-                                    sections={[{ value: ((currentIndex + 1) / words.length) * 100, color: 'black' }]}
+                                    sections={[{ value: ((currentIndex + 1) / words.length) * 100, color: '#FFD93D' }]}
                                     label={
-                                        <Text c="black" fw={700} ta="center" size="xs">
+                                        <Text c="white" fw={700} ta="center" size="xs">
                                             {Math.round(((currentIndex + 1) / words.length) * 100)}%
                                         </Text>
                                     }
