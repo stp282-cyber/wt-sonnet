@@ -1,7 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/client';
-import { getScheduleForDate } from '@/lib/curriculumUtils';
-import { StudentCurriculum } from '@/types/curriculum';
+import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// --- Helpers from Teacher API ---
+
+function normalizeStudyDays(studyDays: any): string[] {
+    if (!studyDays) return [];
+    if (Array.isArray(studyDays)) {
+        return studyDays.map(s => String(s).toLowerCase().trim());
+    }
+    if (typeof studyDays === 'string') {
+        return studyDays.toLowerCase().split(',').map(s => s.trim());
+    }
+    return [];
+}
+
+function isStudyDay(date: dayjs.Dayjs, studyDays: any): boolean {
+    const dayName = date.format('ddd').toLowerCase();
+    const studies = normalizeStudyDays(studyDays);
+    return studies.some(s => s.startsWith(dayName));
+}
+
+function calculateSchedule(curriculum: any, targetDateStr: string) {
+    const start = dayjs(curriculum.start_date).tz('Asia/Seoul').startOf('day');
+    const target = dayjs(targetDateStr).tz('Asia/Seoul').startOf('day');
+
+    if (target.isBefore(start)) return null;
+
+    if (!curriculum.study_days || !isStudyDay(target, curriculum.study_days)) {
+        return null; // Not a study day
+    }
+
+    // Calculate how many study days have passed including today
+    let studyDayCount = 0;
+    let current = start.clone();
+    const studies = normalizeStudyDays(curriculum.study_days);
+
+    while (current.isBefore(target) || current.isSame(target, 'day')) {
+        const dName = current.format('ddd').toLowerCase();
+
+        if (studies.some(s => s.startsWith(dName))) {
+            studyDayCount++;
+        }
+        current = current.add(1, 'day');
+    }
+
+    const items = curriculum.curriculums?.curriculum_items || [];
+    // Sort items by sequence
+    items.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
+
+    // Get the item for this study day (1-based index turned to 0-based)
+    if (studyDayCount > 0 && studyDayCount <= items.length) {
+        return items[studyDayCount - 1];
+    }
+
+    return null;
+}
 
 export async function GET(request: NextRequest) {
     try {
@@ -13,9 +72,11 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'user_id is required' }, { status: 400 });
         }
 
-        const today = new Date().toISOString().split('T')[0];
+        // Use dayjs for consistency with calculation logic
+        const now = dayjs().tz('Asia/Seoul');
+        const todayStr = now.format('YYYY-MM-DD');
 
-        // 1. Fetch Today's Completed Logs (to show "Done" items and prevent duplicate "To Do")
+        // 1. Fetch Today's Completed Logs (to show "Done" items)
         const { data: completedLogs, error: logError } = await supabase
             .from('study_logs')
             .select(`
@@ -35,8 +96,8 @@ export async function GET(request: NextRequest) {
             `)
             .eq('student_id', userId)
             .eq('status', 'completed')
-            .gte('completed_at', `${today}T00:00:00`) // Completed Today
-            .lte('completed_at', `${today}T23:59:59`);
+            .gte('completed_at', `${todayStr}T00:00:00`)
+            .lte('completed_at', `${todayStr}T23:59:59`);
 
         if (logError) throw logError;
 
@@ -45,11 +106,14 @@ export async function GET(request: NextRequest) {
             .from('student_curriculums')
             .select(`
                 *,
-                curriculums ( name ),
-                curriculum_items (
-                    *,
-                    item_details:curriculum_item_details(*),
-                    sections (*)
+                curriculums ( 
+                    name,
+                    curriculum_items (
+                        id,
+                        title,
+                        item_type,
+                        sequence
+                    )
                 )
             `)
             .eq('student_id', userId)
@@ -57,59 +121,37 @@ export async function GET(request: NextRequest) {
 
         if (currError) throw currError;
 
-        // Sort sub-arrays for consistent scheduling
-        const curriculums = (curriculumsData || []).map((curr: any) => {
-            if (curr.curriculum_items) {
-                curr.curriculum_items.sort((a: any, b: any) => a.sequence - b.sequence);
-                curr.curriculum_items.forEach((item: any) => {
-                    if (item.sections) {
-                        // Sort sections by major/minor unit or id if needed. 
-                        // Usually sections are inserted in order. 
-                        // Let's assume ID order or sequence if available. 
-                        // Our logic mainly iterates array order.
-                        item.sections.sort((s1: any, s2: any) => (s1.sequence || s1.id) - (s2.sequence || s2.id));
-                    }
-                });
-            }
-            return curr;
-        });
-
-        // 3. Generate "Pending" (To Do) Items using Dynamic Schedule
+        // 3. Generate "Pending" (To Do) Items using Teacher's Logic
         const pendingItems: any[] = [];
-        const completedCurriculumIds = new Set(completedLogs?.map((l: any) => l.curriculum_id));
 
-        curriculums.forEach((curr: StudentCurriculum) => {
-            // If already completed today, skip generating a "To Do" item (One chunk per day policy)
-            if (completedCurriculumIds.has(curr.id)) return;
+        for (const curr of (curriculumsData || [])) {
+            // Calculate schedule for TODAY using the Teacher Logic
+            const scheduledItem = calculateSchedule(curr, todayStr);
 
-            // Calculate schedule for TODAY
-            // Note: getScheduleForDate uses 'today' as the check date.
-            // If current_progress matches today's slot, it returns it.
-            const todaySchedule = getScheduleForDate(curr, today);
+            if (scheduledItem) {
+                // Check if there is a completed log for this specific curriculum item
+                const isCompleted = completedLogs?.some(
+                    (log: any) => log.curriculum_item?.id === scheduledItem.id
+                );
 
-            if (todaySchedule && todaySchedule.status !== 'completed') { // status 'completed' from utils means "date is in past". But here we pass today.
-                // Construct LearningItem
-                pendingItems.push({
-                    id: curr.id, // Use curriculum ID as key for pending tasks
-                    curriculum_name: curr.curriculums?.name || 'Unknown Curriculum',
-                    type: todaySchedule.itemType,
-                    title: todaySchedule.itemTitle,
-                    subInfo: `${todaySchedule.unitName} (${todaySchedule.wordCount} words)`,
-                    status: 'pending', // It shows in dashboard as "To Do"
-                    date: today,
-                    // Extra data for navigation if needed
-                    curriculum_id: curr.id
-                });
+                if (!isCompleted) {
+                    pendingItems.push({
+                        id: curr.id,
+                        curriculum_name: curr.curriculums?.name || 'Unknown Curriculum',
+                        type: scheduledItem.item_type || 'wordbook',
+                        title: scheduledItem.title || 'Untitled Mission',
+                        subInfo: `${scheduledItem.item_type === 'wordbook' ? 'Voca' : 'Listening'} Mission`,
+                        status: 'pending',
+                        date: todayStr,
+                        curriculum_id: curr.id
+                    });
+                }
             }
-        });
+        }
 
         // 4. Process Completed Logs into LearningItems
-        // We need titles. Study Logs join curriculum_item, but we need the REAL title (Wordbook Title or Listening Title)
-        // Similar to previous code, fetch titles.
-
         let completedItems: any[] = [];
         if (completedLogs && completedLogs.length > 0) {
-            // Collect IDs
             const wordbookIds = completedLogs
                 .filter((l: any) => l.curriculum_item?.item_type === 'wordbook')
                 .map((l: any) => l.curriculum_item.item_id);
@@ -151,28 +193,20 @@ export async function GET(request: NextRequest) {
                     title: title,
                     subInfo: subInfo,
                     status: 'completed',
-                    date: log.completed_at?.split('T')[0] || today
+                    date: log.completed_at?.split('T')[0] || todayStr
                 };
             });
         }
 
-        // 5. Combine Learning Data
-        // Show Pending First, then Completed
         const learningData = [...pendingItems, ...completedItems];
 
-
-        // 6. Fetch Weekly Stats
-        // (Keep existing logic)
-        const now = new Date();
-        const oneWeekAgo = new Date(now);
-        oneWeekAgo.setDate(now.getDate() - 7);
-        const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
-
+        // 5. Weekly Stats
+        const oneWeekAgo = now.subtract(7, 'day').format('YYYY-MM-DD');
         const { data: statsLogs, error: statsError } = await supabase
             .from('study_logs')
             .select('status, score, completed_at')
             .eq('student_id', userId)
-            .gte('completed_at', oneWeekAgoStr);
+            .gte('completed_at', oneWeekAgo);
 
         if (statsError) throw statsError;
 
@@ -191,6 +225,6 @@ export async function GET(request: NextRequest) {
 
     } catch (error: any) {
         console.error('Dashboard API Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: error.message, stack: error.stack, details: JSON.stringify(error) }, { status: 500 });
     }
 }
