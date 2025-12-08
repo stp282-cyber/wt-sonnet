@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Button } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconClock, IconCheck, IconX, IconPlayerPlay, IconPlayerPause, IconVolume } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
 
@@ -16,30 +17,49 @@ interface ListeningQuestion {
 
 export default function ListeningTestPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const listeningId = searchParams.get('id');
+    const curriculumId = searchParams.get('curriculumId');
+    const curriculumItemId = searchParams.get('curriculumItemId');
+    const scheduledDate = searchParams.get('scheduledDate');
 
-    const [questions] = useState<ListeningQuestion[]>([
-        {
-            question_no: 1,
-            question_text: 'What is the man doing?',
-            choices: ['Reading a book', 'Watching TV', 'Cooking dinner', 'Playing games'],
-            correct_answer: 2,
-            script: 'The man is cooking dinner in the kitchen.',
-        },
-        {
-            question_no: 2,
-            question_text: 'Where are they going?',
-            choices: ['To the park', 'To the library', 'To the mall', 'To the school'],
-            correct_answer: 0,
-            script: 'They are going to the park to play soccer.',
-        },
-        {
-            question_no: 3,
-            question_text: 'What time does the movie start?',
-            choices: ['At 3:00', 'At 4:00', 'At 5:00', 'At 6:00'],
-            correct_answer: 1,
-            script: 'The movie starts at 4:00 in the afternoon.',
-        },
-    ]);
+    const [questions, setQuestions] = useState<ListeningQuestion[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [title, setTitle] = useState('');
+
+    useEffect(() => {
+        const fetchQuestions = async () => {
+            if (!listeningId) {
+                // Fallback for demo/testing if no ID
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/listening/${listeningId}`);
+                if (!res.ok) throw new Error('Failed to fetch test');
+                const data = await res.json();
+
+                if (data.listeningTest) {
+                    setTitle(data.listeningTest.title);
+                    if (data.listeningTest.questions && Array.isArray(data.listeningTest.questions)) {
+                        setQuestions(data.listeningTest.questions);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching questions:', error);
+                notifications.show({
+                    title: '오류',
+                    message: '문제를 불러오는데 실패했습니다.',
+                    color: 'red'
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchQuestions();
+    }, [listeningId]);
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedChoice, setSelectedChoice] = useState<number | null>(null);

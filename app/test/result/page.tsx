@@ -19,8 +19,10 @@ interface TestResult {
     wrongCount: number;
     score: number;
     passed: boolean;
-    wrongWords: Word[];
+    wrongWords?: Word[];
+    wrongQuestions?: any[];
     timestamp: string;
+    testType?: string;
 }
 
 function TestResultContent() {
@@ -50,7 +52,15 @@ function TestResultContent() {
     }
 
     const handleReviewWrongWords = () => {
-        localStorage.setItem('wrongWords', JSON.stringify(result.wrongWords));
+        if (result.testType === 'listening') {
+            router.push('/test/listening-fill');
+            return;
+        }
+
+        if (result.wrongWords) {
+            localStorage.setItem('wrongWords', JSON.stringify(result.wrongWords));
+        }
+
         const mode = searchParams.get('mode') || 'basic';
         const nextAction = searchParams.get('nextAction');
 
@@ -252,8 +262,8 @@ function TestResultContent() {
                             </Stack>
                         </Group>
 
-                        {/* Wrong Words List */}
-                        {result.wrongCount > 0 && (
+                        {/* Wrong Words List - Only for Word Tests */}
+                        {result.wrongCount > 0 && result.testType !== 'listening' && result.wrongWords && (
                             <Box mb={20}>
                                 <Paper
                                     p="lg"
