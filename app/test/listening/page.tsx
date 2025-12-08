@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Button } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -15,7 +15,7 @@ interface ListeningQuestion {
     script: string;
 }
 
-export default function ListeningTestPage() {
+function ListeningContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const listeningId = searchParams.get('id');
@@ -73,7 +73,7 @@ export default function ListeningTestPage() {
         };
 
         fetchQuestions();
-    }, [listeningId]);
+    }, [listeningId, searchParams]); // Added searchParams dependency
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
@@ -342,5 +342,17 @@ export default function ListeningTestPage() {
                 </Box>
             </Container>
         </StudentLayout>
+    );
+}
+
+export default function ListeningTestPage() {
+    return (
+        <Suspense fallback={
+            <Container size="sm" py={40}>
+                <Text>로딩 중...</Text>
+            </Container>
+        }>
+            <ListeningContent />
+        </Suspense>
     );
 }
