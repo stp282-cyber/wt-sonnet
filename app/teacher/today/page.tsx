@@ -20,6 +20,8 @@ import { notifications } from '@mantine/notifications';
 
 interface TodayLearning {
     id: string;
+    student_id: string; // [NEW] Needed for API
+    curriculum_item_id: string; // [NEW] Needed for API
     student_name: string;
     class_name: string;
     curriculum_name: string;
@@ -88,13 +90,43 @@ export default function TodayManagementPage() {
         }
     };
 
-    const handleMarkAsCompleted = async (id: string) => {
-        // Needs API integration to actually mark as completed, but for now just UI update or show notification
-        notifications.show({
-            title: '알림',
-            message: '실제 완료 처리는 학생이 학습을 수행해야 합니다.',
-            color: 'blue',
-        });
+    const handleMarkAsCompleted = async (id: string, studentId: string, itemId: string) => {
+        if (!confirm('정말로 이 학습을 완료 처리하시겠습니까? 점수는 100점으로 기록됩니다.')) return;
+
+        try {
+            const res = await fetch('/api/teacher/today-assignments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    curriculum_item_id: itemId
+                }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Failed to complete assignment');
+            }
+
+            notifications.show({
+                title: '성공',
+                message: '학습이 완료 처리되었습니다.',
+                color: 'green',
+            });
+
+            // Refresh list
+            fetchTodayLearnings();
+
+        } catch (error: any) {
+            console.error('Force complete error:', error);
+            notifications.show({
+                title: '오류',
+                message: error.message || '완료 처리에 실패했습니다.',
+                color: 'red',
+            });
+        }
     };
 
     const handleDelete = (id: string) => {
@@ -282,7 +314,7 @@ export default function TodayManagementPage() {
                                             <Button
                                                 size="xs"
                                                 color="green"
-                                                onClick={() => handleMarkAsCompleted(learning.id)}
+                                                onClick={() => handleMarkAsCompleted(learning.id, learning.student_id, learning.curriculum_item_id)}
                                                 style={{ border: '2px solid black', borderRadius: '0px' }}
                                             >
                                                 완료 처리

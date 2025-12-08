@@ -23,6 +23,7 @@ import {
     IconLogout,
     IconDashboard,
     IconHeadphones,
+    IconClipboardCheck,
 } from '@tabler/icons-react';
 
 export default function TeacherLayout({ children }: { children: ReactNode }) {
@@ -49,6 +50,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
     const menuItems = [
         { icon: IconDashboard, label: '대시보드', href: '/teacher/dashboard' },
         { icon: IconList, label: '수업 일지', href: '/teacher/class-log' },
+        { icon: IconClipboardCheck, label: '학습 현황', href: '/teacher/learning-status' },
         { icon: IconList, label: '당일 관리', href: '/teacher/today' },
         { icon: IconUsers, label: '학생 관리', href: '/teacher/students' },
         { icon: IconBook, label: '단어장 관리', href: '/teacher/wordbooks' },
@@ -90,7 +92,6 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                         {/* 로고 영역 */}
                         <Box
                             onClick={() => router.push('/teacher/dashboard')}
-                            className="neo-logo-hover-teacher"
                             style={{
                                 background: 'var(--accent)', // Yellow
                                 border: '3px solid black',
@@ -154,37 +155,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
 
             <AppShell.Navbar p="md" style={{ borderRight: '3px solid black', backgroundColor: '#FACC15' }}>
                 <Box>
-                    {/* 프로필 카드 */}
-                    <Paper
-                        p="md"
-                        mb="xl"
-                        style={{
-                            background: 'white',
-                            border: '3px solid black',
-                            borderRadius: '0px',
-                            boxShadow: '4px 4px 0px black',
-                        }}
-                    >
-                        <Group>
-                            <Box
-                                style={{
-                                    width: '40px',
-                                    height: '40px',
-                                    background: '#2563EB',
-                                    borderRadius: '50%',
-                                    border: '2px solid black'
-                                }}
-                            />
-                            <Box>
-                                <Text size="sm" c="dimmed" fw={700} style={{ textTransform: 'uppercase' }}>
-                                    Create User
-                                </Text>
-                                <Text size="lg" fw={900} style={{ fontFamily: 'Pretendard' }}>
-                                    선생님
-                                </Text>
-                            </Box>
-                        </Group>
-                    </Paper>
+
 
                     <Stack gap="xs">
                         {menuItems.map((item) => {
@@ -201,7 +172,6 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                                         router.push(item.href);
                                         toggle();
                                     }}
-                                    className={!isActive ? "neo-nav-hover-teacher" : ""}
                                     style={{
                                         borderRadius: '0px',
                                         border: '3px solid black',

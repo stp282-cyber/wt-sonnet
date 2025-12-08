@@ -101,7 +101,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             {/* 로고 영역 */}
                             <Box
                                 onClick={() => router.push('/student/dashboard')}
-                                className="neo-logo-hover-student"
                                 style={{
                                     background: '#FFD93D', // Yellow Accent remains
                                     border: '2px solid white',
@@ -204,7 +203,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                             router.push(item.href);
                                             toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
                                         }}
-                                        className={!isActive ? "neo-nav-hover-student" : ""}
                                         style={{
                                             borderRadius: '0px',
                                             border: '2px solid white',
@@ -216,6 +214,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                             boxShadow: isActive ? '4px 4px 0px white' : 'none',
                                             transform: isActive ? 'translate(-2px, -2px)' : 'none',
                                             transition: 'all 0.1s',
+                                        }}
+                                        classNames={{
+                                            root: 'hover:bg-slate-800'
                                         }}
                                     />
                                 );
