@@ -74,7 +74,7 @@ export default function StudentDashboardPage() {
         return (
             <Container size="xl" py={40} h="100vh">
                 <Center h="100%">
-                    <Loader size="xl" color="dark" type="dots" />
+                    <Loader size="xl" color="yellow" type="dots" />
                 </Center>
             </Container>
         );
@@ -149,18 +149,18 @@ export default function StudentDashboardPage() {
                             DASHBOARD
                         </Title>
                     </Box>
-                    <Text size="xl" fw={800} style={{ letterSpacing: '-0.5px' }}>
-                        READY TO LEARN, <span style={{ background: '#FFD43B', padding: '2px 8px', border: '2px solid black' }}>{user?.full_name}</span>? 🚀
+                    <Text size="xl" fw={800} style={{ letterSpacing: '-0.5px', color: 'white' }}> {/* Updated Color to White */}
+                        READY TO LEARN, <span style={{ background: '#FFD43B', padding: '2px 8px', border: '2px solid white', color: 'black' }}>{user?.full_name}</span>? 🚀
                     </Text>
                 </Box>
                 <Paper
                     p="md"
                     className="animate-pop-in"
                     style={{
-                        border: '3px solid black',
+                        border: '3px solid black', // Keep black border on white paper
                         borderRadius: 0,
                         background: 'white',
-                        boxShadow: '4px 4px 0px black',
+                        boxShadow: '4px 4px 0px #3B82F6', // Blue shadow for cool factor
                         animationDelay: '100ms'
                     }}
                 >
@@ -179,7 +179,7 @@ export default function StudentDashboardPage() {
                     <Paper
                         p={30}
                         className="neo-box animate-slide-up"
-                        style={{ minHeight: '500px', animationDelay: '200ms' }}
+                        style={{ minHeight: '500px', animationDelay: '200ms', boxShadow: '8px 8px 0px #A855F7' }} // Purple Shadow
                     >
                         <Group mb={30} justify="space-between" align="center">
                             <Group>
@@ -302,7 +302,7 @@ export default function StudentDashboardPage() {
                         <Paper
                             p={30}
                             className="neo-box"
-                            style={{ background: '#74C0FC' }} // Bright Blue
+                            style={{ background: '#74C0FC', boxShadow: '5px 5px 0px white' }} // Bright Blue + White Shadow for contrast on dark
                         >
                             <Group mb="xl" justify="space-between">
                                 <Group gap="xs">
@@ -350,7 +350,7 @@ export default function StudentDashboardPage() {
                         <Paper
                             p={30}
                             className="neo-box"
-                            style={{ position: 'relative' }}
+                            style={{ position: 'relative', boxShadow: '5px 5px 0px white' }} // White shadow for contrast
                         >
                             <Box style={{
                                 position: 'absolute',
@@ -419,3 +419,4 @@ export default function StudentDashboardPage() {
         </Container>
     );
 }
+

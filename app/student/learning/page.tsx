@@ -207,7 +207,7 @@ export default function StudentLearningPage() {
                             MY LEARNING
                         </Title>
                     </Box>
-                    <Text size="lg" fw={800} style={{ letterSpacing: '-0.5px' }}>
+                    <Text size="lg" fw={800} style={{ letterSpacing: '-0.5px', color: 'white' }}>
                         주간 학습 일정 및 진도 현황
                     </Text>
                 </Box>
@@ -242,6 +242,7 @@ export default function StudentLearningPage() {
                         label: {
                             fontWeight: 900,
                             marginBottom: '0.2rem',
+                            color: 'white' // Updated Label Color
                         }
                     }}
                     style={{ width: 220 }}
@@ -309,7 +310,7 @@ export default function StudentLearningPage() {
 
                         return (
                             <Box key={weekOffset}>
-                                <Title order={3} mb="md" style={{ fontWeight: 800 }}>
+                                <Title order={3} mb="md" style={{ fontWeight: 800, color: 'white' }}>
                                     {weekLabel} 일정
                                 </Title>
 
@@ -319,7 +320,7 @@ export default function StudentLearningPage() {
                                         border: '4px solid black',
                                         borderRadius: '0px',
                                         background: 'white',
-                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                                        boxShadow: '6px 6px 0px 0px #3B82F6', // Blue Shadow
                                         overflowX: 'auto', // Enable horizontal scroll
                                     }}
                                 >

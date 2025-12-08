@@ -12,6 +12,7 @@ import {
     IconLogout,
 
 } from '@tabler/icons-react';
+import { SpotlightEffect } from '@/components/ui/SpotlightEffect';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -63,161 +64,177 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     ];
 
     return (
-        <AppShell
-            header={{ height: 80 }}
-            navbar={{
-                width: 300,
-                breakpoint: 'sm',
-                collapsed: { mobile: !opened },
-            }}
-            padding="md"
+        <Box
             style={{
-                '--app-shell-header-height': '80px',
+                minHeight: '100vh',
+                backgroundColor: '#0F172A', // Base Dark Background
+                position: 'relative',
             }}
         >
-            {/* 헤더 */}
-            <AppShell.Header
+            <SpotlightEffect spotlightColor="rgba(139, 92, 246, 0.25)" size={500} />
+
+            <AppShell
+                header={{ height: 80 }}
+                navbar={{
+                    width: 300,
+                    breakpoint: 'sm',
+                    collapsed: { mobile: !opened },
+                }}
+                padding="md"
                 style={{
-                    borderBottom: '2px solid black',
-                    backgroundColor: 'white',
-                    zIndex: 101
+                    '--app-shell-header-height': '80px',
+                    background: 'transparent', // Important for visibility
                 }}
             >
-                <Group h="100%" px="md" justify="space-between">
-                    <Group>
-                        <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+                {/* 헤더 */}
+                <AppShell.Header
+                    style={{
+                        borderBottom: '2px solid white', // Dark mode border
+                        backgroundColor: '#0F172A', // Dark Header
+                        zIndex: 101
+                    }}
+                >
+                    <Group h="100%" px="md" justify="space-between">
+                        <Group>
+                            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" color="white" />
 
-                        {/* 로고 영역 */}
-                        <Box
-                            onClick={() => router.push('/student/dashboard')}
-                            style={{
-                                background: '#FFD93D', // Yellow
-                                border: '2px solid black',
-                                padding: '0.4rem 1rem',
-                                boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)',
-                                transform: 'rotate(2deg)',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            <Text
-                                size="xl"
-                                fw={900}
+                            {/* 로고 영역 */}
+                            <Box
+                                onClick={() => router.push('/student/dashboard')}
                                 style={{
-                                    color: 'black',
-                                    textShadow: 'none',
-                                    fontFamily: "'Montserrat', sans-serif",
-                                    letterSpacing: '-1px'
+                                    background: '#FFD93D', // Yellow Accent remains
+                                    border: '2px solid white',
+                                    padding: '0.4rem 1rem',
+                                    boxShadow: '0 0 10px rgba(255, 217, 61, 0.5)', // Glow instead of hard shadow? Or keep hard shadow? 
+                                    // Hard shadow on dark: black shadow visible? No. White shadow? No.
+                                    // Let's use Black shadow for the yellow box, it works well.
+                                    transform: 'rotate(2deg)',
+                                    cursor: 'pointer',
                                 }}
                             >
-                                WORDTEST
-                                <span style={{ fontSize: '0.8em', marginLeft: '5px', fontWeight: 500, color: 'black' }}>
-                                    STUDENT
-                                </span>
-                            </Text>
-                        </Box>
-                    </Group>
-
-
-
-                    <button
-                        onClick={handleLogout}
-                        style={{
-                            background: 'white',
-                            color: 'black',
-                            border: '2px solid black',
-                            fontSize: '0.8rem',
-                            fontWeight: 800,
-                            padding: '0.4rem 0.8rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            marginTop: '2px', // Alignment fix
-                            transition: 'all 0.1s',
-                        }}
-                        className="neo-button"
-                    >
-                        <IconLogout size={16} stroke={2} />
-                    </button>
-                </Group>
-            </AppShell.Header>
-
-            {/* 사이드바 */}
-            <AppShell.Navbar p="md" style={{ borderRight: '3px solid black', backgroundColor: '#FACC15' }}>
-                <Box>
-                    <Paper
-                        p="md"
-                        mb="xl"
-                        style={{
-                            background: 'white',
-                            border: '3px solid black',
-                            boxShadow: '4px 4px 0px black',
-                            borderRadius: 0,
-                        }}
-                    >
-                        <Text size="sm" c="dimmed" mb="xs" fw={700}>
-                            WELCOME BACK!
-                        </Text>
-                        <Text size="xl" fw={900} style={{ fontFamily: 'Pretendard' }}>
-                            {studentName}님
-                        </Text>
-                        <Text size="sm" fw={600} c="black">
-                            오늘도 파이팅!
-                        </Text>
-                    </Paper>
-
-                    <Stack gap="xs">
-                        {navItems.map((item) => {
-                            const isActive = pathname === item.href;
-                            return (
-                                <NavLink
-                                    key={item.href}
-                                    label={item.label}
-                                    leftSection={<item.icon size={24} stroke={2} />}
-                                    rightSection={
-                                        item.badge ? (
-                                            <Badge
-                                                size="sm"
-                                                variant="filled"
-                                                color="dark"
-                                                radius={0}
-                                                style={{ border: '1px solid black', fontWeight: 900 }}
-                                            >
-                                                {item.badge}
-                                            </Badge>
-                                        ) : null
-                                    }
-                                    onClick={() => {
-                                        router.push(item.href);
-                                        toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
-                                    }}
+                                <Text
+                                    size="xl"
+                                    fw={900}
                                     style={{
-                                        borderRadius: '0px',
-                                        border: '3px solid black',
-                                        backgroundColor: isActive ? '#2563EB' : 'white',
-                                        color: isActive ? 'white' : 'black',
-                                        fontWeight: isActive ? 900 : 700,
-                                        padding: '1rem',
-                                        fontSize: '1rem',
-                                        boxShadow: '4px 4px 0px black',
-                                        transform: isActive ? 'translate(-2px, -2px)' : 'none',
-                                        transition: 'all 0.1s',
+                                        color: 'black',
+                                        textShadow: 'none',
+                                        fontFamily: "'Montserrat', sans-serif",
+                                        letterSpacing: '-1px'
                                     }}
-                                />
-                            );
-                        })}
-                    </Stack>
-                </Box>
-            </AppShell.Navbar>
+                                >
+                                    WORDTEST
+                                    <span style={{ fontSize: '0.8em', marginLeft: '5px', fontWeight: 500, color: 'black' }}>
+                                        STUDENT
+                                    </span>
+                                </Text>
+                            </Box>
+                        </Group>
 
-            {/* 메인 콘텐츠 */}
-            <AppShell.Main
-                style={{
-                    background: 'white',
-                    minHeight: '100vh',
-                }}
-            >
-                {children}
-            </AppShell.Main>
-        </AppShell >
+
+
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                background: 'transparent',
+                                color: 'white',
+                                border: '2px solid white',
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                padding: '0.4rem 0.8rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                marginTop: '2px', // Alignment fix
+                                transition: 'all 0.1s',
+                            }}
+                            className="neo-button hover:bg-white hover:text-black"
+                        >
+                            <IconLogout size={16} stroke={2} />
+                        </button>
+                    </Group>
+                </AppShell.Header>
+
+                {/* 사이드바 */}
+                <AppShell.Navbar p="md" style={{ borderRight: '3px solid white', backgroundColor: '#0F172A' }}>
+                    <Box>
+                        <Paper
+                            p="md"
+                            mb="xl"
+                            style={{
+                                background: '#1E293B', // Slightly lighter dark
+                                border: '2px solid white',
+                                boxShadow: '4px 4px 0px white', // White shadow pop
+                                borderRadius: 0,
+                            }}
+                        >
+                            <Text size="sm" c="dimmed" mb="xs" fw={700}>
+                                WELCOME BACK!
+                            </Text>
+                            <Text size="xl" fw={900} style={{ fontFamily: 'Pretendard', color: 'white' }}>
+                                {studentName}님
+                            </Text>
+                            <Text size="sm" fw={600} c="gray.3">
+                                오늘도 파이팅!
+                            </Text>
+                        </Paper>
+
+                        <Stack gap="xs">
+                            {navItems.map((item) => {
+                                const isActive = pathname === item.href;
+                                return (
+                                    <NavLink
+                                        key={item.href}
+                                        label={item.label}
+                                        leftSection={<item.icon size={24} stroke={2} />}
+                                        rightSection={
+                                            item.badge ? (
+                                                <Badge
+                                                    size="sm"
+                                                    variant="filled"
+                                                    color="yellow"
+                                                    radius={0}
+                                                    style={{ border: '1px solid black', fontWeight: 900, color: 'black' }}
+                                                >
+                                                    {item.badge}
+                                                </Badge>
+                                            ) : null
+                                        }
+                                        onClick={() => {
+                                            router.push(item.href);
+                                            toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
+                                        }}
+                                        style={{
+                                            borderRadius: '0px',
+                                            border: '2px solid white',
+                                            backgroundColor: isActive ? '#3B82F6' : 'transparent', // Blue active, Transparent inactive
+                                            color: isActive ? 'white' : 'white',
+                                            fontWeight: isActive ? 900 : 700,
+                                            padding: '1rem',
+                                            fontSize: '1rem',
+                                            boxShadow: isActive ? '4px 4px 0px white' : 'none',
+                                            transform: isActive ? 'translate(-2px, -2px)' : 'none',
+                                            transition: 'all 0.1s',
+                                        }}
+                                        classNames={{
+                                            root: 'hover:bg-slate-800'
+                                        }}
+                                    />
+                                );
+                            })}
+                        </Stack>
+                    </Box>
+                </AppShell.Navbar>
+
+                {/* 메인 콘텐츠 */}
+                <AppShell.Main
+                    style={{
+                        background: 'transparent',
+                        minHeight: '100vh',
+                    }}
+                >
+                    {children}
+                </AppShell.Main>
+            </AppShell >
+        </Box>
     );
 }

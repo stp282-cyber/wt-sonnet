@@ -6,6 +6,7 @@ import { Title, Text, Box, Stack, TextInput, PasswordInput } from '@mantine/core
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { motion } from 'framer-motion';
+import { SpotlightEffect } from '@/components/ui/SpotlightEffect';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -71,18 +72,21 @@ export default function LoginPage() {
     <Box
       style={{
         minHeight: '100vh',
-        background: '#F3F4F6',
+        background: '#0F172A', // Slate 900 - Dark Background
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundImage: 'radial-gradient(#CBD5E1 1.5px, transparent 1.5px)',
+        // Removed the dot pattern for a cleaner spotlight canvas, or make it very subtle
+        backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
       }}
     >
-      {/* Decorative Geometric Shapes (Absolute Positioned) */}
+      {/* Spotlight Effect - Purple/Blue Glow */}
+      <SpotlightEffect spotlightColor="rgba(139, 92, 246, 0.25)" size={500} />
 
+      {/* Decorative Geometric Shapes (Absolute Positioned) */}
       {/* Top Left Circle - Yellow */}
       <motion.div
         animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
@@ -95,9 +99,9 @@ export default function LoginPage() {
           height: '120px',
           borderRadius: '50%',
           background: '#FACC15', // Mustard Yellow
-          border: '4px solid black',
-          boxShadow: '8px 8px 0px 0px black',
-          zIndex: 0,
+          border: '4px solid white', // Changed border to white for dark mode contrast
+          boxShadow: '0 0 20px rgba(250, 204, 21, 0.4)', // Changed shadow to glow
+          zIndex: 1,
         }}
       />
 
@@ -112,9 +116,9 @@ export default function LoginPage() {
           width: '140px',
           height: '140px',
           background: '#A855F7', // Vivid Purple
-          border: '4px solid black',
-          boxShadow: '8px 8px 0px 0px black',
-          zIndex: 0,
+          border: '4px solid white',
+          boxShadow: '0 0 20px rgba(168, 85, 247, 0.4)',
+          zIndex: 1,
         }}
       />
 
@@ -130,14 +134,14 @@ export default function LoginPage() {
           height: '200px',
           borderRadius: '50%',
           background: '#F9A8D4', // Pink
-          border: '4px solid black',
+          border: '4px solid white',
           opacity: 0.8,
-          zIndex: 0,
+          zIndex: 1,
         }}
       />
 
       {/* Main Content Container */}
-      <Box style={{ zIndex: 1, width: '100%', maxWidth: '460px', padding: '20px' }}>
+      <Box style={{ zIndex: 10, width: '100%', maxWidth: '460px', padding: '20px' }}>
 
         {/* Brand Header */}
         <Box style={{ textAlign: 'center', marginBottom: '3rem' }}>
@@ -153,19 +157,19 @@ export default function LoginPage() {
                 fontWeight: 900,
                 fontSize: '3.5rem',
                 letterSpacing: '-2px',
-                color: '#2563EB', // Blue
+                color: 'white', // Changed to white
                 lineHeight: 0.9,
-                textShadow: '4px 4px 0px black',
+                textShadow: '0 0 10px rgba(255,255,255,0.5)',
                 marginBottom: '0.5rem',
                 fontStyle: 'italic',
               }}
             >
-              WORD<span style={{ color: 'white', textShadow: '4px 4px 0px black, -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black' }}>TEST</span>
+              WORD<span style={{ color: '#60A5FA' }}>TEST</span>
             </Title>
             <Box
               style={{
-                background: 'black',
-                color: 'white',
+                background: 'white',
+                color: 'black',
                 display: 'inline-block',
                 padding: '0.25rem 1rem',
                 transform: 'rotate(-2deg)',
@@ -187,15 +191,20 @@ export default function LoginPage() {
             className="neo-card"
             style={{
               padding: '2.5rem',
-              backgroundColor: 'white',
-              border: '3px solid black',
-              boxShadow: '8px 8px 0px 0px black',
-              borderRadius: '0px', // Square corners like reference
+              backgroundColor: 'white', // Keep card white for contrast
+              border: '4px solid white', // White border matching the theme
+              // Removed the hard shadow for a more "glowy" feel or keep precise brutalist shadow? 
+              // Let's keep the brutalist shadow but maybe color it differently or keep black?
+              // On dark bg, black shadow might be lost. Let's make it a colored shadow or kept black if visible.
+              // Actually, black shadow on #0F172A is visible but subtle.
+              // Let's try a vibrant shadow to pop.
+              boxShadow: '8px 8px 0px 0px #3B82F6', // Blue shadow
+              borderRadius: '0px',
             }}
           >
             <Stack gap="xl">
               <Box style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                <Title order={2} style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 900, fontSize: '1.8rem' }}>
+                <Title order={2} style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 900, fontSize: '1.8rem', color: 'black' }}>
                   환영합니다!
                 </Title>
                 <Text c="dimmed" fw={600} size="sm">
@@ -224,7 +233,7 @@ export default function LoginPage() {
                           transform: 'translate(-2px, -2px)',
                         }
                       },
-                      label: { fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }
+                      label: { fontWeight: 800, fontFamily: "'Montserrat', sans-serif", color: 'black' }
                     }}
                   />
 
@@ -247,7 +256,7 @@ export default function LoginPage() {
                           transform: 'translate(-2px, -2px)',
                         }
                       },
-                      label: { fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }
+                      label: { fontWeight: 800, fontFamily: "'Montserrat', sans-serif", color: 'black' }
                     }}
                   />
 
@@ -298,7 +307,8 @@ export default function LoginPage() {
           opacity: 0.5,
           fontWeight: 700,
           fontFamily: 'monospace',
-          fontSize: '0.8rem'
+          fontSize: '0.8rem',
+          color: 'white', // White text for footer
         }}
       >
         © 2025 WordTest Academy.
