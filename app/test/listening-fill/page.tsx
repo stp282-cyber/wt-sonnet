@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Progress, Badge, TextInput, Button } from '@mantine/core';
 import { IconCheck, IconX, IconPlayerPlay, IconVolume } from '@tabler/icons-react';
+import StudentLayout from '../../student/layout';
 
 interface ListeningQuestion {
     question_no: number;
@@ -18,7 +19,7 @@ interface BlankWord {
     index: number;
 }
 
-export default function ListeningFillPage() {
+export function ListeningFillPage() {
     const router = useRouter();
     const [wrongQuestions, setWrongQuestions] = useState<ListeningQuestion[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -361,5 +362,13 @@ export default function ListeningFillPage() {
                 </div>
             </Container>
         </Box>
+    );
+}
+
+export default function ListeningFillPageWithLayout() {
+    return (
+        <StudentLayout>
+            <ListeningFillPage />
+        </StudentLayout>
     );
 }

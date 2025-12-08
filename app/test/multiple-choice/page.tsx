@@ -16,6 +16,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconBrain } from '@tabler/icons-react';
+import StudentLayout from '../../student/layout';
 
 function MultipleChoiceContent() {
   const router = useRouter();
@@ -368,7 +369,9 @@ export default function MultipleChoicePage() {
         <Loader color="yellow" type="dots" />
       </Center>
     }>
-      <MultipleChoiceContent />
+      <StudentLayout>
+        <MultipleChoiceContent />
+      </StudentLayout>
     </Suspense>
   );
 }

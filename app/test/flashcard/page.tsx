@@ -16,6 +16,8 @@ import {
     Badge,
 } from '@mantine/core';
 import { IconVolume, IconCards, IconBulb, IconClock, IconCheck, IconX, IconKeyboard, IconAlertTriangle, IconArrowRight } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import StudentLayout from '@/app/student/layout';
 
 interface Word {
     no: number;
@@ -356,7 +358,9 @@ export default function FlashcardPage() {
                 </Stack>
             </Center>
         }>
-            <FlashcardContent />
+            <StudentLayout>
+                <FlashcardContent />
+            </StudentLayout>
         </Suspense>
     );
 }

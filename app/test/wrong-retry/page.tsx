@@ -18,6 +18,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconRefresh } from '@tabler/icons-react';
+import StudentLayout from '../../student/layout';
 
 function WrongRetryContent() {
     const router = useRouter();
@@ -335,7 +336,9 @@ export default function WrongRetryPage() {
                 <Loader color="yellow" />
             </Center>
         }>
-            <WrongRetryContent />
+            <StudentLayout>
+                <WrongRetryContent />
+            </StudentLayout>
         </Suspense>
     );
 }

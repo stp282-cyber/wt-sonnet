@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Stack } from '@mantine/core';
 import { IconClock, IconCheck, IconX, IconGripVertical } from '@tabler/icons-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import StudentLayout from '../../student/layout';
 
 interface Word {
     no: number;
@@ -112,250 +113,447 @@ export default function ScrambleTestPage() {
     const currentWord = words[currentIndex];
 
     return (
-        <Box
-            style={{
-                minHeight: '100vh',
-                background: 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px',
-            }}
-        >
-            <Container size={700}>
-                <div className="animate-fade-in">
-                    {/* 헤더 */}
-                    <Box mb={30} style={{ textAlign: 'center' }}>
-                        <Title
-                            order={1}
-                            style={{
-                                color: 'white',
-                                fontWeight: 900,
-                                fontSize: '2.5rem',
-                                textShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
-                                marginBottom: '1rem',
-                            }}
-                        >
-                            🔀 문장 섞기 시험
-                        </Title>
-                        <Text
-                            size="xl"
-                            style={{
-                                color: 'white',
-                                fontWeight: 600,
-                                textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)',
-                            }}
-                        >
-                            단어를 드래그하여 올바른 순서로 배열하세요!
-                        </Text>
-                    </Box>
-
-                    {/* 상태 바 */}
-                    <Group mb={20} justify="space-between">
-                        <Paper
-                            p="md"
-                            style={{
-                                border: '4px solid black',
-                                borderRadius: '12px',
-                                background: 'white',
-                                flex: 1,
-                            }}
-                        >
-                            <Group gap="xs">
-                                <IconClock size={24} color="#7950f2" />
-                                <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'violet'}>
-                                    {timeLeft}초
-                                </Text>
-                            </Group>
-                        </Paper>
-
-                        <Paper
-                            p="md"
-                            style={{
-                                border: '4px solid black',
-                                borderRadius: '12px',
-                                background: 'white',
-                            }}
-                        >
-                            <Group gap="md">
-                                <Group gap="xs">
-                                    <IconCheck size={20} color="green" />
-                                    <Text fw={700} c="green">
-                                        {correctCount}
-                                    </Text>
-                                </Group>
-                                <Group gap="xs">
-                                    <IconX size={20} color="red" />
-                                    <Text fw={700} c="red">
-                                        {wrongCount}
-                                    </Text>
-                                </Group>
-                            </Group>
-                        </Paper>
-                    </Group>
-
-                    {/* 진행률 */}
-                    <Paper
-                        p="md"
-                        mb={20}
-                        style={{
-                            border: '4px solid black',
-                            borderRadius: '12px',
-                            background: 'white',
-                        }}
-                    >
-                        <Group justify="space-between" mb={10}>
-                            <Text fw={700} size="lg">
-                                진행률
-                            </Text>
-                            <Text fw={900} size="lg" c="violet">
-                                {currentIndex + 1} / {words.length}
-                            </Text>
-                        </Group>
-                        <Progress
-                            value={progress}
-                            size="xl"
-                            radius="xl"
-                            styles={{
-                                root: { border: '3px solid black' },
-                                section: { background: 'linear-gradient(90deg, #FA8BFF 0%, #2BD2FF 100%)' },
-                            }}
-                        />
-                    </Paper>
-
-                    {/* 한글 문장 */}
-                    <Paper
-                        p="xl"
-                        mb={20}
-                        style={{
-                            border: '6px solid black',
-                            borderRadius: '20px',
-                            background: 'white',
-                            boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-                            textAlign: 'center',
-                        }}
-                    >
-                        <Badge
-                            size="xl"
-                            variant="filled"
-                            color="violet"
-                            style={{
-                                border: '3px solid black',
-                                fontSize: '1.2rem',
-                                padding: '1rem 2rem',
-                                marginBottom: '1rem',
-                            }}
-                        >
-                            문제 {currentWord.no}
-                        </Badge>
-
-                        <Text
-                            size="3rem"
-                            fw={900}
-                            style={{
-                                color: '#7950f2',
-                            }}
-                        >
-                            {currentWord.korean}
-                        </Text>
-                    </Paper>
-
-                    {/* 드래그 앤 드롭 영역 */}
-                    <Paper
-                        p="xl"
-                        style={{
-                            border: '6px solid black',
-                            borderRadius: '20px',
-                            background: isAnswered
-                                ? results[results.length - 1]
-                                    ? '#d3f9d8'
-                                    : '#ffe3e3'
-                                : 'white',
-                            boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-                            minHeight: '200px',
-                        }}
-                    >
-                        <DragDropContext onDragEnd={handleDragEnd}>
-                            <Droppable droppableId="words">
-                                {(provided) => (
-                                    <Stack
-                                        {...provided.droppableProps}
-                                        ref={provided.innerRef}
-                                        gap="sm"
-                                    >
-                                        {scrambledWords.map((word, index) => (
-                                            <Draggable
-                                                key={`${word}-${index}`}
-                                                draggableId={`${word}-${index}`}
-                                                index={index}
-                                                isDragDisabled={isAnswered}
-                                            >
-                                                {(provided, snapshot) => (
-                                                    <Paper
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                        p="md"
-                                                        style={{
-                                                            ...provided.draggableProps.style,
-                                                            border: '4px solid black',
-                                                            background: snapshot.isDragging ? '#FFD93D' : 'white',
-                                                            cursor: isAnswered ? 'not-allowed' : 'grab',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '1rem',
-                                                        }}
-                                                    >
-                                                        <IconGripVertical size={24} />
-                                                        <Text size="xl" fw={700}>
-                                                            {word}
-                                                        </Text>
-                                                    </Paper>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </Stack>
-                                )}
-                            </Droppable>
-                        </DragDropContext>
-
-                        {isAnswered && (
-                            <Box mt="xl" style={{ textAlign: 'center' }}>
-                                <Text fw={900} size="xl" c={results[results.length - 1] ? 'green' : 'red'}>
-                                    {results[results.length - 1] ? '✅ 정답!' : '❌ 오답!'}
-                                </Text>
-                                {!results[results.length - 1] && (
-                                    <Text fw={700} size="lg" mt="xs">
-                                        정답: {currentWord.english}
-                                    </Text>
-                                )}
-                            </Box>
-                        )}
-
-                        {!isAnswered && (
-                            <button
-                                onClick={() => handleSubmit(false)}
+        <StudentLayout>
+            <Box
+                style={{
+                    minHeight: '100%',
+                    background: 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px',
+                }}
+            >
+                <Container size={700}>
+                    <div className="animate-fade-in">
+                        {/* 헤더 */}
+                        <Box mb={30} style={{ textAlign: 'center' }}>
+                            <Title
+                                order={1}
                                 style={{
-                                    background: '#7950f2',
                                     color: 'white',
-                                    border: '4px solid black',
-                                    borderRadius: '12px',
-                                    boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                    fontSize: '1.2rem',
                                     fontWeight: 900,
-                                    padding: '1rem 2rem',
-                                    cursor: 'pointer',
-                                    width: '100%',
-                                    marginTop: '1rem',
+                                    fontSize: '2.5rem',
+                                    textShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
+                                    marginBottom: '1rem',
                                 }}
                             >
-                                제출하기
-                            </button>
-                        )}
-                    </Paper>
-                </div>
-            </Container>
-        </Box>
+                                🔀 문장 섞기 시험
+                            </Title>
+                            <Text
+                                size="xl"
+                                style={{
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)',
+                                }}
+                            >
+                                단어를 드래그하여 올바른 순서로 배열하세요!
+                            </Text>
+                        </Box>
+
+                        {/* 상태 바 */}
+                        <Group mb={20} justify="space-between">
+                            <Paper
+                                p="md"
+                                style={{
+                                    border: '4px solid black',
+                                    borderRadius: '12px',
+                                    background: 'white',
+                                    flex: 1,
+                                }}
+                            >
+                                <Group gap="xs">
+                                    <IconClock size={24} color="#7950f2" />
+                                    <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'violet'}>
+                                        {timeLeft}초
+                                    </Text>
+                                </Group>
+                            </Paper>
+
+                            <Paper
+                                p="md"
+                                style={{
+                                    border: '4px solid black',
+                                    borderRadius: '12px',
+                                    background: 'white',
+                                }}
+                            >
+                                <Group gap="md">
+                                    <Group gap="xs">
+                                        <IconCheck size={20} color="green" />
+                                        <Text fw={700} c="green">
+                                            {correctCount}
+                                        </Text>
+                                    </Group>
+                                    <Group gap="xs">
+                                        <IconX size={20} color="red" />
+                                        <Text fw={700} c="red">
+                                            {wrongCount}
+                                        </Text>
+                                    </Group>
+                                </Group>
+                            </Paper>
+                        </Group>
+
+                        {/* 진행률 */}
+                        <Paper
+                            p="md"
+                            mb={20}
+                            style={{
+                                border: '4px solid black',
+                                borderRadius: '12px',
+                                background: 'white',
+                            }}
+                        >
+                            <Group justify="space-between" mb={10}>
+                                <Text fw={700} size="lg">
+                                    진행률
+                                </Text>
+                                <Text fw={900} size="lg" c="violet">
+                                    {currentIndex + 1} / {words.length}
+                                </Text>
+                            </Group>
+                            <Progress
+                                value={progress}
+                                size="xl"
+                                radius="xl"
+                                styles={{
+                                    root: { border: '3px solid black' },
+                                    section: { background: 'linear-gradient(90deg, #FA8BFF 0%, #2BD2FF 100%)' },
+                                }}
+                            />
+                        </Paper>
+
+                        {/* 한글 문장 */}
+                        <Paper
+                            p="xl"
+                            mb={20}
+                            style={{
+                                border: '6px solid black',
+                                borderRadius: '20px',
+                                background: 'white',
+                                boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
+                                textAlign: 'center',
+                            }}
+                        >
+                            <Badge
+                                size="xl"
+                                variant="filled"
+                                color="violet"
+                                style={{
+                                    border: '3px solid black',
+                                    fontSize: '1.2rem',
+                                    padding: '1rem 2rem',
+                                    marginBottom: '1rem',
+                                }}
+                            >
+                                문제 {currentWord.no}
+                            </Badge>
+
+                            <Text
+                                size="3rem"
+                                fw={900}
+                                style={{
+                                    color: '#7950f2',
+                                }}
+                            >
+                                {currentWord.korean}
+                            </Text>
+                        </Paper>
+
+                        {/* 드래그 앤 드롭 영역 */}
+                        <Paper
+                            p="xl"
+                            style={{
+                                border: '6px solid black',
+                                borderRadius: '20px',
+                                background: isAnswered
+                                    ? results[results.length - 1]
+                                        ? '#d3f9d8'
+                                        : '#ffe3e3'
+                                    : 'white',
+                                boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
+                                minHeight: '200px',
+                            }}
+                        >
+                            <DragDropContext onDragEnd={handleDragEnd}>
+                                <Droppable droppableId="words">
+                                    {(provided) => (
+                                        <Stack
+                                            {...provided.droppableProps}
+                                            ref={provided.innerRef}
+                                            gap="sm"
+                                        >
+                                            {scrambledWords.map((word, index) => (
+                                                <Draggable
+                                                    key={`${word}-${index}`}
+                                                    draggableId={`${word}-${index}`}
+                                                    index={index}
+                                                    isDragDisabled={isAnswered}
+                                                >
+                                                    {(provided, snapshot) => (
+                                                        <Paper
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            {...provided.dragHandleProps}
+                                                            p="md"
+                                                            style={{
+                                                                ...provided.draggableProps.style,
+                                                                border: '4px solid black',
+                                                                background: snapshot.isDragging ? '#FFD93D' : 'white',
+                                                                cursor: isAnswered ? 'not-allowed' : 'grab',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '1rem',
+                                                            }}
+                                                        >
+                                                            <IconGripVertical size={24} />
+                                                            <Text size="xl" fw={700}>
+                                                                {word}
+                                                            </Text>
+                                                        </Paper>
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
+                                        </Stack>
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
+
+                            {isAnswered && (
+                                <Box mt="xl" style={{ textAlign: 'center' }}>
+                                    <Text fw={900} size="xl" c={results[results.length - 1] ? 'green' : 'red'}>
+                                        {results[results.length - 1] ? '✅ 정답!' : '❌ 오답!'}
+                                    </Text>
+                                    {!results[results.length - 1] && (
+                                        <Text fw={700} size="lg" mt="xs">
+                                            정답: {currentWord.english}
+                                        </Text>
+                                    )}
+                                </Box>
+                            )}
+
+                            {!isAnswered && (
+                                <button
+                                    onClick={() => handleSubmit(false)}
+                                    style={{
+                                        background: '#7950f2',
+                                        color: 'white',
+                                        border: '4px solid black',
+                                        borderRadius: '12px',
+                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                                        fontSize: '1.2rem',
+                                        fontWeight: 900,
+                                        padding: '1rem 2rem',
+                                        cursor: 'pointer',
+                                        width: '100%',
+                                        marginTop: '1rem',
+                                    }}
+                                >
+                                    제출하기
+                                    borderRadius: '12px',
+                                    background: 'white',
+                                    flex: 1,
+                                }}
+                            >
+                                <Group gap="xs">
+                                    <IconClock size={24} color="#7950f2" />
+                                    <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'violet'}>
+                                        {timeLeft}초
+                                    </Text>
+                                </Group>
+                            </Paper>
+
+                            <Paper
+                                p="md"
+                                style={{
+                                    border: '4px solid black',
+                                    borderRadius: '12px',
+                                    background: 'white',
+                                }}
+                            >
+                                <Group gap="md">
+                                    <Group gap="xs">
+                                        <IconCheck size={20} color="green" />
+                                        <Text fw={700} c="green">
+                                            {correctCount}
+                                        </Text>
+                                    </Group>
+                                    <Group gap="xs">
+                                        <IconX size={20} color="red" />
+                                        <Text fw={700} c="red">
+                                            {wrongCount}
+                                        </Text>
+                                    </Group>
+                                </Group>
+                            </Paper>
+                        </Group>
+
+                        {/* 진행률 */}
+                        <Paper
+                            p="md"
+                            mb={20}
+                            style={{
+                                border: '4px solid black',
+                                borderRadius: '12px',
+                                background: 'white',
+                            }}
+                        >
+                            <Group justify="space-between" mb={10}>
+                                <Text fw={700} size="lg">
+                                    진행률
+                                </Text>
+                                <Text fw={900} size="lg" c="violet">
+                                    {currentIndex + 1} / {words.length}
+                                </Text>
+                            </Group>
+                            <Progress
+                                value={progress}
+                                size="xl"
+                                radius="xl"
+                                styles={{
+                                    root: { border: '3px solid black' },
+                                    section: { background: 'linear-gradient(90deg, #FA8BFF 0%, #2BD2FF 100%)' },
+                                }}
+                            />
+                        </Paper>
+
+                        {/* 한글 문장 */}
+                        <Paper
+                            p="xl"
+                            mb={20}
+                            style={{
+                                border: '6px solid black',
+                                borderRadius: '20px',
+                                background: 'white',
+                                boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
+                                textAlign: 'center',
+                            }}
+                        >
+                            <Badge
+                                size="xl"
+                                variant="filled"
+                                color="violet"
+                                style={{
+                                    border: '3px solid black',
+                                    fontSize: '1.2rem',
+                                    padding: '1rem 2rem',
+                                    marginBottom: '1rem',
+                                }}
+                            >
+                                문제 {currentWord.no}
+                            </Badge>
+
+                            <Text
+                                size="3rem"
+                                fw={900}
+                                style={{
+                                    color: '#7950f2',
+                                }}
+                            >
+                                {currentWord.korean}
+                            </Text>
+                        </Paper>
+
+                        {/* 드래그 앤 드롭 영역 */}
+                        <Paper
+                            p="xl"
+                            style={{
+                                border: '6px solid black',
+                                borderRadius: '20px',
+                                background: isAnswered
+                                    ? results[results.length - 1]
+                                        ? '#d3f9d8'
+                                        : '#ffe3e3'
+                                    : 'white',
+                                boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
+                                minHeight: '200px',
+                            }}
+                        >
+                            <DragDropContext onDragEnd={handleDragEnd}>
+                                <Droppable droppableId="words">
+                                    {(provided) => (
+                                        <Stack
+                                            {...provided.droppableProps}
+                                            ref={provided.innerRef}
+                                            gap="sm"
+                                        >
+                                            {scrambledWords.map((word, index) => (
+                                                <Draggable
+                                                    key={`${word}-${index}`}
+                                                    draggableId={`${word}-${index}`}
+                                                    index={index}
+                                                    isDragDisabled={isAnswered}
+                                                >
+                                                    {(provided, snapshot) => (
+                                                        <Paper
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            {...provided.dragHandleProps}
+                                                            p="md"
+                                                            style={{
+                                                                ...provided.draggableProps.style,
+                                                                border: '4px solid black',
+                                                                background: snapshot.isDragging ? '#FFD93D' : 'white',
+                                                                cursor: isAnswered ? 'not-allowed' : 'grab',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '1rem',
+                                                            }}
+                                                        >
+                                                            <IconGripVertical size={24} />
+                                                            <Text size="xl" fw={700}>
+                                                                {word}
+                                                            </Text>
+                                                        </Paper>
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
+                                        </Stack>
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
+
+                            {isAnswered && (
+                                <Box mt="xl" style={{ textAlign: 'center' }}>
+                                    <Text fw={900} size="xl" c={results[results.length - 1] ? 'green' : 'red'}>
+                                        {results[results.length - 1] ? '✅ 정답!' : '❌ 오답!'}
+                                    </Text>
+                                    {!results[results.length - 1] && (
+                                        <Text fw={700} size="lg" mt="xs">
+                                            정답: {currentWord.english}
+                                        </Text>
+                                    )}
+                                </Box>
+                            )}
+
+                            {!isAnswered && (
+                                <button
+                                    onClick={() => handleSubmit(false)}
+                                    style={{
+                                        background: '#7950f2',
+                                        color: 'white',
+                                        border: '4px solid black',
+                                        borderRadius: '12px',
+                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                                        fontSize: '1.2rem',
+                                        fontWeight: 900,
+                                        padding: '1rem 2rem',
+                                        cursor: 'pointer',
+                                        width: '100%',
+                                        marginTop: '1rem',
+                                    }}
+                                >
+                                    제출하기
+                                </button>
+                            )}
+                        </Paper>
+                    </div>
+                </Container>
+            </Box>
+        </StudentLayout >
     );
 }

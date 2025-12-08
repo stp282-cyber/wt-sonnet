@@ -393,7 +393,7 @@ function TypingTestContent() {
                             <Group gap="xl">
                                 <Box style={{ textAlign: 'right' }}>
                                     <Text size="xs" fw={700} c="dimmed" tt="uppercase">Progress</Text>
-                                    <Text size="xl" fw={900}>{currentIndex + 1} / {words.length}</Text>
+                                    <Text size="xl" fw={900} c="white">{currentIndex + 1} / {words.length}</Text>
                                 </Box>
                                 <RingProgress
                                     size={60}
@@ -591,8 +591,8 @@ function TypingTestContent() {
 
                         {/* 경고 문구 */}
                         <Group justify="center" gap="xs" mt={40} style={{ opacity: 0.5 }}>
-                            <IconAlertTriangle size={16} />
-                            <Text size="xs" fw={600}>Copying and Pasting is disabled during the test.</Text>
+                            <IconAlertTriangle size={16} color="white" />
+                            <Text size="xs" fw={600} c="white">Copying and Pasting is disabled during the test.</Text>
                         </Group>
 
                     </div>
