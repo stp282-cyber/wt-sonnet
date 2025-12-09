@@ -9,9 +9,11 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 
 // Service Role 클라이언트 (관리자 권한, 모든 RLS 우회)
 // 주의: 서버 사이드 코드에서만 사용해야 합니다.
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-});
+export const supabaseAdmin = (supabaseUrl && supabaseServiceRoleKey)
+    ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    })
+    : null;

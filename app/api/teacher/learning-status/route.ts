@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/client';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
@@ -21,51 +21,14 @@ function normalizeStudyDays(studyDays: any): string[] {
     return [];
 }
 
-function isStudyDay(date: dayjs.Dayjs, studyDays: any): boolean {
-    const dayName = date.format('ddd').toLowerCase();
-    const studies = normalizeStudyDays(studyDays);
-    return studies.some(s => s.startsWith(dayName));
-}
-
-function calculateSchedule(curriculum: any, targetDateStr: string) {
-    const start = dayjs(curriculum.start_date).tz('Asia/Seoul').startOf('day');
-    const target = dayjs(targetDateStr).tz('Asia/Seoul').startOf('day');
-
-    if (target.isBefore(start)) return null;
-
-    if (!curriculum.study_days || !isStudyDay(target, curriculum.study_days)) {
-        return null; // Not a study day
-    }
-
-    // Calculate how many study days have passed including today
-    let studyDayCount = 0;
-    let current = start.clone();
-    const studies = normalizeStudyDays(curriculum.study_days);
-
-    while (current.isBefore(target) || current.isSame(target, 'day')) {
-        const dName = current.format('ddd').toLowerCase();
-
-        if (studies.some(s => s.startsWith(dName))) {
-            studyDayCount++;
-        }
-        current = current.add(1, 'day');
-    }
-
-    const items = curriculum.curriculums?.curriculum_items || [];
-    // Sort items by sequence (assuming sequence is reliable, otherwise id or created_at)
-    items.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
-
-    // Get the item for this study day (1-based index turned to 0-based)
-    if (studyDayCount > 0 && studyDayCount <= items.length) {
-        return items[studyDayCount - 1];
-    }
-
-    return null;
-}
-
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createClient();
+        const supabase = supabaseAdmin;
+
+        if (!supabase) {
+            return NextResponse.json({ error: 'Server misconfiguration: Missing Service Role Key' }, { status: 500 });
+        }
+
         const { searchParams } = new URL(request.url);
 
         // Date handling
@@ -90,12 +53,11 @@ export async function GET(request: NextRequest) {
                     student_id: student.id,
                     student_name: student.full_name || student.username,
                     class_name: student.classes?.name || '미배정',
-                    assignments: [] as any[]
+                    assignments: [] as any[],
                 };
 
                 // Fetch Curriculums
                 // We need to be careful about what fields we select.
-                // Assuming `study_days` exists on `student_curriculums`
                 const { data: currics } = await supabase
                     .from('student_curriculums')
                     .select(`
@@ -111,36 +73,90 @@ export async function GET(request: NextRequest) {
                             )
                         )
                     `)
-                    .eq('student_id', student.id)
-                    .eq('status', 'active');
+                    .eq('student_id', student.id);
+                // .eq('status', 'active'); 
 
                 if (currics) {
+                    // Fetch all relevant study logs for this student involved in these curriculums
+                    const curriculumIds = currics.map(c => c.curriculum_id);
+                    const { data: allLogs } = await supabase
+                        .from('study_logs')
+                        .select('curriculum_item_id, status, score, scheduled_date, curriculum_id')
+                        .eq('student_id', student.id)
+                        .in('curriculum_id', curriculumIds);
+
+                    const logMap = new Map();
+                    if (allLogs) {
+                        allLogs.forEach(log => {
+                            if (log.scheduled_date) {
+                                const d = dayjs(log.scheduled_date).tz('Asia/Seoul').format('YYYY-MM-DD');
+                                const key = `${log.curriculum_item_id}-${d}`;
+                                logMap.set(key, log);
+                            }
+                        });
+                    }
+
                     for (const sc of currics) {
                         if (!sc.curriculums) continue;
 
-                        // Calculate Schedule
-                        const item = calculateSchedule(sc, dateStr);
+                        const start = dayjs(sc.start_date).tz('Asia/Seoul').startOf('day');
+                        const target = dayjs(dateStr).tz('Asia/Seoul').startOf('day');
 
-                        if (item) {
-                            // Check Status
-                            const { data: log } = await supabase
-                                .from('study_logs')
-                                .select('status, score')
-                                .eq('student_id', student.id)
-                                .eq('curriculum_item_id', item.id)
-                                .gte('created_at', today.startOf('day').toISOString())
-                                .lte('created_at', today.endOf('day').toISOString())
-                                .maybeSingle();
 
-                            studentResults.assignments.push({
-                                id: `${student.id}-${sc.curriculum_id}-${item.id}`, // Unique key for list
-                                curriculum_name: sc.curriculums.name,
-                                item_id: item.id,
-                                item_title: item.title,
-                                status: log ? (log.status || 'completed') : 'pending',
-                                score: log?.score,
-                                curriculum_item_id: item.id // Needed for force complete
-                            });
+
+                        // If start date is after target, nothing to show
+                        if (target.isBefore(start)) {
+                            continue;
+                        }
+
+                        const items = sc.curriculums.curriculum_items || [];
+                        // Sort items by sequence
+                        items.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
+
+                        const studies = normalizeStudyDays(sc.study_days);
+
+                        let current = start.clone();
+                        let itemIndex = 0;
+
+                        // Iterate from start date to target date
+                        while (current.isBefore(target) || current.isSame(target, 'day')) {
+                            const currentStr = current.format('YYYY-MM-DD');
+                            const dName = current.format('ddd').toLowerCase();
+
+                            // Check if this date is a study day
+                            if (studies.some(s => s.startsWith(dName))) {
+                                if (itemIndex < items.length) {
+                                    const item = items[itemIndex];
+                                    const isTargetDate = current.isSame(target, 'day');
+
+                                    // Check if log exists for this specific schedule
+                                    const logKey = `${item.id}-${currentStr}`;
+                                    const log = logMap.get(logKey);
+                                    const isCompleted = log && log.status === 'completed';
+
+
+
+                                    // Add to assignments if:
+                                    // 1. It is the target date (show status regardless)
+                                    // 2. It is a past date AND not completed (Past Uncompleted)
+                                    if (isTargetDate || !isCompleted) {
+                                        studentResults.assignments.push({
+                                            id: `${student.id}-${sc.curriculum_id}-${item.id}-${currentStr}`,
+                                            curriculum_name: sc.curriculums.name,
+                                            item_id: item.id,
+                                            item_title: item.title,
+                                            status: isCompleted ? 'completed' : 'pending',
+                                            score: log?.score,
+                                            curriculum_item_id: item.id,
+                                            scheduled_date: currentStr,
+                                            is_past_due: !isTargetDate && !isCompleted
+                                        });
+                                    }
+
+                                    itemIndex++;
+                                }
+                            }
+                            current = current.add(1, 'day');
                         }
                     }
                 }

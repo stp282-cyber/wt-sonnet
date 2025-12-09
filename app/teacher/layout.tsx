@@ -75,7 +75,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                 position: 'relative',
             }}
         >
-            <SpotlightEffect spotlightColor="rgba(250, 204, 21, 0.2)" size={500} /> {/* Yellow spotlight for teacher */}
+            <SpotlightEffect spotlightColor="rgba(139, 92, 246, 0.25)" size={500} /> {/* Purple spotlight to match student */}
 
             <AppShell
                 header={{ height: 80 }}

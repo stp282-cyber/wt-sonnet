@@ -15,6 +15,8 @@ interface Assignment {
     status: 'completed' | 'pending';
     score?: number;
     curriculum_item_id: string; // For API calls
+    scheduled_date?: string;
+    is_past_due?: boolean;
 }
 
 interface StudentStatus {
@@ -141,12 +143,28 @@ export default function LearningStatusPage() {
                                         <Text c="dimmed" fs="italic" size="sm">No assignments for today</Text>
                                     ) : (
                                         student.assignments.map((assignment) => (
-                                            <Card key={assignment.id} withBorder padding="sm" radius="sm">
+                                            <Card
+                                                key={assignment.id}
+                                                withBorder
+                                                padding="sm"
+                                                radius="sm"
+                                                style={{
+                                                    borderColor: assignment.is_past_due ? '#FF6B6B' : undefined,
+                                                    background: assignment.is_past_due ? 'rgba(255, 107, 107, 0.05)' : undefined
+                                                }}
+                                            >
                                                 <Group justify="space-between" align="start" wrap="nowrap">
                                                     <Stack gap={2} style={{ flex: 1 }}>
-                                                        <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                                                            {assignment.curriculum_name}
-                                                        </Text>
+                                                        <Group gap={5}>
+                                                            <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                                                                {assignment.curriculum_name}
+                                                            </Text>
+                                                            {assignment.is_past_due && (
+                                                                <Badge color="red" size="xs" variant="filled">
+                                                                    Past Due: {assignment.scheduled_date}
+                                                                </Badge>
+                                                            )}
+                                                        </Group>
                                                         <Text size="sm" lineClamp={2}>
                                                             {assignment.item_title}
                                                         </Text>
