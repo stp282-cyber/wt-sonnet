@@ -174,243 +174,121 @@ export default function StudentDashboardPage() {
             </Group>
 
             <Grid gutter={30}>
-                {/* PRIMARY COLUMN: Today's Learning (Left, Wider) */}
-                <Grid.Col span={{ base: 12, md: 8 }}>
+                {/* WEEKLY STATS - Left Column */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper
                         p={30}
                         className="neo-box animate-slide-up"
-                        style={{ minHeight: '500px', animationDelay: '200ms', boxShadow: '8px 8px 0px #A855F7' }} // Purple Shadow
+                        style={{ background: '#74C0FC', boxShadow: '5px 5px 0px white', animationDelay: '200ms', minHeight: '400px' }}
                     >
-                        <Group mb={30} justify="space-between" align="center">
-                            <Group>
-                                <Box style={{ background: '#FFD43B', padding: '12px', border: '2px solid black' }}>
-                                    <IconBook size={32} color="black" stroke={2} />
-                                </Box>
-                                <Box>
-                                    <Title order={2} fw={900} style={{ textTransform: 'uppercase' }}>Today's Mission</Title>
-                                    <Text size="sm" fw={600} c="dimmed">오늘 완료해야 할 학습들입니다.</Text>
-                                </Box>
+                        <Group mb="xl" justify="space-between">
+                            <Group gap="xs">
+                                <IconTrophy size={28} stroke={2.5} color="black" />
+                                <Title order={3} fw={900}>WEEKLY STATS</Title>
                             </Group>
-                            <Badge
-                                size="xl"
-                                color="dark"
-                                variant="filled"
-                                radius={0}
-                                style={{ border: '2px solid black', height: '40px', fontSize: '1.2rem' }}
-                            >
-                                {learning.length} TASKS
-                            </Badge>
                         </Group>
 
-                        <Stack gap="lg">
-                            {learning.length === 0 ? (
-                                <Box py={80} style={{ textAlign: 'center', opacity: 0.6 }}>
-                                    <Box style={{ animation: 'float 3s ease-in-out infinite' }}>
-                                        <IconCheck size={80} stroke={1.5} style={{ margin: '0 auto', marginBottom: '1.5rem' }} />
-                                    </Box>
-                                    <Title order={3} fw={800} mb="xs">ALL CLEARED!</Title>
-                                    <Text size="lg" fw={600}>오늘의 학습을 모두 마쳤습니다. 완벽해요! 😎</Text>
-                                </Box>
-                            ) : (
-                                learning.map((item, index) => {
-                                    const status = getStatusInfo(item.status);
-                                    return (
-                                        <Box
-                                            key={item.id}
-                                            className="hover-lift animate-slide-up"
-                                            onClick={() => router.push('/student/learning')}
-                                            style={{
-                                                border: '3px solid black',
-                                                background: 'white',
-                                                padding: '20px',
-                                                cursor: 'pointer',
-                                                animationDelay: `${300 + (index * 100)}ms`,
-                                                position: 'relative'
-                                            }}
-                                        >
-                                            {/* Status Indicator Stripe */}
-                                            <Box style={{
-                                                position: 'absolute',
-                                                left: 0,
-                                                top: 0,
-                                                bottom: 0,
-                                                width: '8px',
-                                                background: status.color === 'green' ? '#40C057' : (status.color === 'blue' ? '#339AF0' : '#CED4DA'),
-                                                borderRight: '2px solid black'
-                                            }} />
+                        <Group grow mb="xl">
+                            <Box style={{
+                                background: 'white',
+                                padding: '15px',
+                                border: '2px solid black',
+                                textAlign: 'center',
+                                boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+                            }}>
+                                <Text size="xs" fw={800} c="dimmed" mb={5} tt="uppercase">Completed</Text>
+                                <Text size="2.5rem" fw={900} style={{ lineHeight: 1 }}>{stats.completedThisWeek}</Text>
+                            </Box>
+                            <Box style={{
+                                background: 'white',
+                                padding: '15px',
+                                border: '2px solid black',
+                                textAlign: 'center',
+                                boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+                            }}>
+                                <Text size="xs" fw={800} c="dimmed" mb={5} tt="uppercase">Avg Score</Text>
+                                <Text size="2.5rem" fw={900} style={{ lineHeight: 1, color: stats.averageScore >= 80 ? '#20C20E' : 'black' }}>
+                                    {stats.averageScore}
+                                </Text>
+                            </Box>
+                        </Group>
 
-                                            <Group justify="space-between" wrap="nowrap" pl="md">
-                                                <Group wrap="nowrap" align="center" gap="lg">
-                                                    <Box style={{ textAlign: 'center', minWidth: '60px' }}>
-                                                        <Text fw={900} size="xs" style={{ letterSpacing: '1px' }}>TYPE</Text>
-                                                        <Badge
-                                                            color={item.type === 'wordbook' ? 'grape' : 'orange'}
-                                                            variant="filled"
-                                                            radius={0}
-                                                            size="lg"
-                                                            style={{ border: '2px solid black' }}
-                                                        >
-                                                            {item.type === 'wordbook' ? '단어' : '듣기'}
-                                                        </Badge>
-                                                    </Box>
-
-                                                    <Box>
-                                                        <Group gap="xs" mb={4}>
-                                                            <Text fw={900} size="lg" style={{ textTransform: 'uppercase' }}>
-                                                                {item.curriculum_name}
-                                                            </Text>
-                                                            {item.status === 'in_progress' && (
-                                                                <Badge color="blue" variant="outline" radius={0} style={{ border: '1px solid black' }}>진행중</Badge>
-                                                            )}
-                                                        </Group>
-                                                        <Text fw={700} size="xl" lineClamp={1} style={{ fontFamily: 'Pretendard' }}>
-                                                            {item.title}
-                                                        </Text>
-                                                        <Text size="sm" fw={600} c="dimmed" mt={4}>
-                                                            {item.subInfo}
-                                                        </Text>
-                                                    </Box>
-                                                </Group>
-
-                                                <Button
-                                                    size="lg"
-                                                    color="black"
-                                                    radius={0}
-                                                    rightSection={<IconArrowRight size={20} />}
-                                                    style={{
-                                                        border: '2px solid black',
-                                                        boxShadow: '4px 4px 0px #CED4DA', // Subtle shadow
-                                                        transition: 'all 0.2s',
-                                                    }}
-                                                    className="neo-button"
-                                                >
-                                                    START
-                                                </Button>
-                                            </Group>
-                                        </Box>
-                                    );
-                                })
-                            )}
-                        </Stack>
+                        <Progress
+                            value={stats.averageScore}
+                            size="xl"
+                            radius={0}
+                            color="dark"
+                            style={{ border: '2px solid black', height: '20px' }}
+                        />
+                        <Text size="xs" ta="right" mt={5} fw={700}>GOAL: 100</Text>
                     </Paper>
                 </Grid.Col>
 
-                {/* SECONDARY COLUMN: Stats & Notices */}
-                <Grid.Col span={{ base: 12, md: 4 }}>
-                    <Stack gap={30} className="animate-slide-up" style={{ animationDelay: '400ms' }}>
-                        {/* Weekly Stats Card */}
-                        <Paper
-                            p={30}
-                            className="neo-box"
-                            style={{ background: '#74C0FC', boxShadow: '5px 5px 0px white' }} // Bright Blue + White Shadow for contrast on dark
+                {/* LATEST NEWS - Right Column (Expanded) */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Paper
+                        p={30}
+                        className="neo-box animate-slide-up"
+                        style={{ position: 'relative', boxShadow: '5px 5px 0px white', animationDelay: '300ms', minHeight: '400px' }}
+                    >
+                        <Group mb="xl" justify="space-between" align="center">
+                            <Group gap="xs">
+                                <IconBell size={28} stroke={2.5} />
+                                <Title order={3} fw={900}>LATEST NEWS</Title>
+                            </Group>
+                            <Badge color="red" size="lg" radius={0} variant="filled" style={{ border: '2px solid black' }}>
+                                NOTICE
+                            </Badge>
+                        </Group>
+
+                        <Stack gap="md">
+                            {notices.length === 0 ? (
+                                <Text size="sm" c="dimmed" ta="center" py="lg">새로운 공지가 없습니다.</Text>
+                            ) : (
+                                notices.map((notice, index) => (
+                                    <Box
+                                        key={index}
+                                        onClick={() => router.push('/student/notices')}
+                                        className="hover-lift"
+                                        style={{
+                                            cursor: 'pointer',
+                                            padding: '16px',
+                                            border: '2px solid black',
+                                            background: 'white',
+                                            boxShadow: '3px 3px 0px #dee2e6'
+                                        }}
+                                    >
+                                        <Group justify="space-between" align="start" wrap="nowrap" mb={4}>
+                                            <Text fw={800} size="md" lineClamp={1} style={{ flex: 1 }}>{notice.title}</Text>
+                                            {notice.priority === 'high' && (
+                                                <Badge size="xs" color="red" variant="dot">!</Badge>
+                                            )}
+                                        </Group>
+                                        <Text size="xs" fw={600} c="dimmed">{new Date(notice.created_at).toLocaleDateString()}</Text>
+                                    </Box>
+                                ))
+                            )}
+                        </Stack>
+
+                        <Button
+                            fullWidth
+                            mt="lg"
+                            radius={0}
+                            size="lg"
+                            color="black"
+                            variant="filled"
+                            style={{
+                                border: '2px solid black',
+                                boxShadow: '4px 4px 0px #CED4DA',
+                                transition: 'all 0.2s',
+                                height: '50px'
+                            }}
+                            className="neo-button"
+                            onClick={() => router.push('/student/notices')}
                         >
-                            <Group mb="xl" justify="space-between">
-                                <Group gap="xs">
-                                    <IconTrophy size={28} stroke={2.5} color="black" />
-                                    <Title order={3} fw={900}>WEEKLY STATS</Title>
-                                </Group>
-                            </Group>
-
-                            <Group grow mb="xl">
-                                <Box style={{
-                                    background: 'white',
-                                    padding: '15px',
-                                    border: '2px solid black',
-                                    textAlign: 'center',
-                                    boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
-                                }}>
-                                    <Text size="xs" fw={800} c="dimmed" mb={5} tt="uppercase">Completed</Text>
-                                    <Text size="2.5rem" fw={900} style={{ lineHeight: 1 }}>{stats.completedThisWeek}</Text>
-                                </Box>
-                                <Box style={{
-                                    background: 'white',
-                                    padding: '15px',
-                                    border: '2px solid black',
-                                    textAlign: 'center',
-                                    boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
-                                }}>
-                                    <Text size="xs" fw={800} c="dimmed" mb={5} tt="uppercase">Avg Score</Text>
-                                    <Text size="2.5rem" fw={900} style={{ lineHeight: 1, color: stats.averageScore >= 80 ? '#20C20E' : 'black' }}>
-                                        {stats.averageScore}
-                                    </Text>
-                                </Box>
-                            </Group>
-
-                            <Progress
-                                value={stats.averageScore}
-                                size="xl"
-                                radius={0}
-                                color="dark"
-                                style={{ border: '2px solid black', height: '20px' }}
-                            />
-                            <Text size="xs" ta="right" mt={5} fw={700}>GOAL: 100</Text>
-                        </Paper>
-
-                        {/* Notices Card */}
-                        <Paper
-                            p={30}
-                            className="neo-box"
-                            style={{ position: 'relative', boxShadow: '5px 5px 0px white' }}
-                        >
-                            <Group mb="xl" justify="space-between" align="center">
-                                <Group gap="xs">
-                                    <IconBell size={28} stroke={2.5} />
-                                    <Title order={3} fw={900}>LATEST NEWS</Title>
-                                </Group>
-                                <Badge color="red" size="lg" radius={0} variant="filled" style={{ border: '2px solid black' }}>
-                                    NOTICE
-                                </Badge>
-                            </Group>
-
-                            <Stack gap="md">
-                                {notices.length === 0 ? (
-                                    <Text size="sm" c="dimmed" ta="center" py="lg">새로운 공지가 없습니다.</Text>
-                                ) : (
-                                    notices.map((notice, index) => (
-                                        <Box
-                                            key={index}
-                                            onClick={() => router.push('/student/notices')}
-                                            className="hover-lift"
-                                            style={{
-                                                cursor: 'pointer',
-                                                padding: '16px',
-                                                border: '2px solid black',
-                                                background: 'white',
-                                                boxShadow: '3px 3px 0px #dee2e6'
-                                            }}
-                                        >
-                                            <Group justify="space-between" align="start" wrap="nowrap" mb={4}>
-                                                <Text fw={800} size="md" lineClamp={1} style={{ flex: 1 }}>{notice.title}</Text>
-                                                {notice.priority === 'high' && (
-                                                    <Badge size="xs" color="red" variant="dot">!</Badge>
-                                                )}
-                                            </Group>
-                                            <Text size="xs" fw={600} c="dimmed">{new Date(notice.created_at).toLocaleDateString()}</Text>
-                                        </Box>
-                                    ))
-                                )}
-                            </Stack>
-
-                            <Button
-                                fullWidth
-                                mt="lg"
-                                radius={0}
-                                size="lg" // Increased size
-                                color="black"
-                                variant="filled"
-                                style={{
-                                    border: '2px solid black',
-                                    boxShadow: '4px 4px 0px #CED4DA',
-                                    transition: 'all 0.2s',
-                                    height: '50px' // Explicit height
-                                }}
-                                className="neo-button"
-                                onClick={() => router.push('/student/notices')}
-                            >
-                                VIEW ALL
-                            </Button>
-                        </Paper>
-                    </Stack>
+                            VIEW ALL
+                        </Button>
+                    </Paper>
                 </Grid.Col>
             </Grid>
         </Container >
