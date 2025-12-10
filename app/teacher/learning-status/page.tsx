@@ -39,18 +39,40 @@ export default function LearningStatusPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
+            console.log('[Learning Status Page] Fetching data for date:', date);
             const res = await fetch(`/api/teacher/learning-status?date=${date}`);
             const json = await res.json();
+
+            console.log('[Learning Status Page] API Response:', json);
+
+            if (json.error) {
+                console.error('[Learning Status Page] API Error:', json.error, json.details);
+                notifications.show({
+                    title: 'API Error',
+                    message: json.details || json.error,
+                    color: 'red',
+                    autoClose: false,
+                });
+                setData([]);
+                return;
+            }
+
             if (json.data) {
+                console.log(`[Learning Status Page] Loaded ${json.data.length} students`);
                 setData(json.data);
+            } else {
+                console.warn('[Learning Status Page] No data in response');
+                setData([]);
             }
         } catch (error) {
-            console.error('Error fetching status:', error);
+            console.error('[Learning Status Page] Fetch error:', error);
             notifications.show({
                 title: 'Error',
-                message: 'Failed to load learning status',
+                message: 'Failed to load learning status: ' + (error as Error).message,
                 color: 'red',
+                autoClose: false,
             });
+            setData([]);
         } finally {
             setLoading(false);
         }

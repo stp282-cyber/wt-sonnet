@@ -23,10 +23,20 @@ function normalizeStudyDays(studyDays: any): string[] {
 
 export async function GET(request: NextRequest) {
     try {
+        console.log('[Learning Status API] Request received');
+        console.log('[Learning Status API] Environment check:', {
+            hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+        });
+
         const supabase = supabaseAdmin;
 
         if (!supabase) {
-            return NextResponse.json({ error: 'Server misconfiguration: Missing Service Role Key' }, { status: 500 });
+            console.error('[Learning Status API] Supabase admin client is null');
+            return NextResponse.json({
+                error: 'Server misconfiguration: Missing Supabase credentials',
+                details: 'SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL not set'
+            }, { status: 500 });
         }
 
         const { searchParams } = new URL(request.url);
@@ -42,7 +52,12 @@ export async function GET(request: NextRequest) {
             .select('*, classes(name)')
             .eq('role', 'student');
 
-        if (studentError) throw studentError;
+        if (studentError) {
+            console.error('[Learning Status API] Student fetch error:', studentError);
+            throw studentError;
+        }
+
+        console.log(`[Learning Status API] Found ${students?.length || 0} students`);
 
         const resultsPromises = [];
 
@@ -166,6 +181,9 @@ export async function GET(request: NextRequest) {
         }
 
         const resolved = await Promise.all(resultsPromises);
+
+        console.log(`[Learning Status API] Returning ${resolved.length} student records`);
+        console.log(`[Learning Status API] Total assignments: ${resolved.reduce((sum, r) => sum + r.assignments.length, 0)}`);
 
         return NextResponse.json({
             date: dateStr,
