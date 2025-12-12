@@ -164,13 +164,13 @@ export async function GET(request: NextRequest) {
                             const isCompleted = log && log.status === 'completed';
 
                             studentResults.assignments.push({
-                                id: `${student.id}-${sc.id}-${todaySchedule.item.item_id}-${dateStr}`,
+                                id: `${student.id}-${sc.id}-${todaySchedule.item.id}-${dateStr}`,
                                 curriculum_name: sc.curriculums.name,
-                                item_id: todaySchedule.item.item_id,
+                                item_id: todaySchedule.item.item_id, // Content ID (for display/linking)
                                 item_title: todaySchedule.itemTitle,
                                 status: isCompleted ? 'completed' : 'pending',
                                 score: log?.score,
-                                curriculum_item_id: todaySchedule.item.item_id,
+                                curriculum_item_id: todaySchedule.item.id, // Row ID (for FK) - FIXED
                                 scheduled_date: dateStr,
                                 is_past_due: false // Today's assignment
                             });
@@ -192,13 +192,13 @@ export async function GET(request: NextRequest) {
 
                                 if (!isCompleted) {
                                     studentResults.assignments.push({
-                                        id: `${student.id}-${sc.id}-${pastSchedule.item.item_id}-${currentStr}`,
+                                        id: `${student.id}-${sc.id}-${pastSchedule.item.id}-${currentStr}`,
                                         curriculum_name: sc.curriculums.name,
                                         item_id: pastSchedule.item.item_id,
                                         item_title: pastSchedule.itemTitle,
                                         status: 'pending',
                                         score: log?.score,
-                                        curriculum_item_id: pastSchedule.item.item_id,
+                                        curriculum_item_id: pastSchedule.item.id, // Row ID (for FK) - FIXED
                                         scheduled_date: currentStr,
                                         is_past_due: true
                                     });

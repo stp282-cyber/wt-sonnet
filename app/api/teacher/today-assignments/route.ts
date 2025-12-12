@@ -159,23 +159,38 @@ export async function POST(request: NextRequest) {
     try {
         const supabase = createClient();
         const body = await request.json();
-        const { student_id, curriculum_item_id } = body;
+        const { student_id, curriculum_item_id, date, scheduled_date } = body;
 
         if (!student_id || !curriculum_item_id) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const today = dayjs().tz('Asia/Seoul').format('YYYY-MM-DD');
+        // Use provided date (from frontend) or fallback to today (KST)
+        // Frontend should pass the assignment's scheduled_date to ensure it marks the correct day as done
+        const targetDate = date || scheduled_date || dayjs().tz('Asia/Seoul').format('YYYY-MM-DD');
+
+        // Fetch curriculum_id from the item to ensure data integrity
+        const { data: itemData, error: itemError } = await supabase
+            .from('curriculum_items')
+            .select('curriculum_id')
+            .eq('id', curriculum_item_id) // curriculum_item_id is the Row ID
+            .single();
+
+        if (itemError || !itemData) {
+            console.error('Error fetching curriculum item:', itemError);
+            return NextResponse.json({ error: 'Invalid curriculum item ID' }, { status: 400 });
+        }
 
         const { data, error } = await supabase
             .from('study_logs')
             .upsert({
                 student_id,
                 curriculum_item_id,
+                curriculum_id: itemData.curriculum_id, // Include curriculum_id
                 status: 'completed',
                 score: 100,
                 completed_at: new Date().toISOString(),
-                study_date: today,
+                scheduled_date: targetDate, // Fixed: study_date -> scheduled_date
             })
             .select()
             .single();

@@ -82,7 +82,7 @@ export default function LearningStatusPage() {
         fetchData();
     }, [date]);
 
-    const handleForceComplete = async (studentId: string, itemId: string) => {
+    const handleForceComplete = async (studentId: string, itemId: string, scheduledDate: string) => {
         if (!confirm('Mark as completed?')) return;
 
         try {
@@ -91,11 +91,16 @@ export default function LearningStatusPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     student_id: studentId,
-                    curriculum_item_id: itemId
+                    curriculum_item_id: itemId,
+                    scheduled_date: scheduledDate // Correctly pass the assignment date
                 })
             });
 
-            if (!res.ok) throw new Error('Failed');
+            if (!res.ok) {
+                const errorData = await res.json();
+                console.error('[Force Complete] Server Error:', errorData);
+                throw new Error(errorData.error || 'Failed');
+            }
 
             notifications.show({
                 title: 'Success',
@@ -106,6 +111,7 @@ export default function LearningStatusPage() {
             fetchData(); // Refresh
 
         } catch (error) {
+            console.error('[Force Complete] Error:', error);
             notifications.show({
                 title: 'Error',
                 message: 'Failed to update status',
@@ -200,7 +206,11 @@ export default function LearningStatusPage() {
                                                                 <ActionIcon
                                                                     color="gray"
                                                                     variant="light"
-                                                                    onClick={() => handleForceComplete(student.student_id, assignment.curriculum_item_id)}
+                                                                    onClick={() => handleForceComplete(
+                                                                        student.student_id,
+                                                                        assignment.curriculum_item_id,
+                                                                        assignment.scheduled_date || date // Pass specific assignment date or current view date
+                                                                    )}
                                                                 >
                                                                     <IconCheck size={16} />
                                                                 </ActionIcon>
