@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Container,
     Title,
@@ -16,15 +16,11 @@ import {
     ActionIcon,
     Text,
     Badge,
-    Loader,
-    Tabs,
-    Box,
-    ScrollArea,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconEdit, IconTrash, IconBell, IconMessage, IconUser, IconSend } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
 
 // --- Types ---
 interface Notice {
@@ -39,34 +35,15 @@ interface Notice {
     created_at: string;
 }
 
-interface Message {
-    id: string;
-    sender_id: string;
-    recipient_id: string;
-    content: string;
-    is_read: boolean;
-    created_at: string;
-    sender: {
-        id: string;
-        username: string;
-        full_name: string;
-    };
-    recipient: {
-        id: string;
-        username: string;
-        full_name: string;
-    };
-}
-
 interface User {
     id: string;
     username: string;
     full_name: string;
     role: string;
+    academy_id: string;
 }
 
 export default function NoticesPage() {
-    const [activeTab, setActiveTab] = useState<string | null>('notices');
     const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     // --- Notices State ---
@@ -74,14 +51,6 @@ export default function NoticesPage() {
     const [loadingNotices, setLoadingNotices] = useState(false);
     const [modalOpened, setModalOpened] = useState(false);
     const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
-
-    // --- Messages State ---
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [loadingMessages, setLoadingMessages] = useState(false);
-    const [students, setStudents] = useState<User[]>([]);
-    const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-    const [newMessage, setNewMessage] = useState('');
-    const scrollViewport = useRef<HTMLDivElement>(null);
 
     // --- Form for Notices ---
     const noticeForm = useForm({
@@ -103,26 +72,8 @@ export default function NoticesPage() {
             const user = JSON.parse(userStr);
             setCurrentUser(user);
             fetchNotices(user.academy_id);
-            fetchStudents();
         }
     }, []);
-
-    // --- Messages Polling ---
-    useEffect(() => {
-        if (activeTab === 'messages' && currentUser) {
-            fetchMessages();
-            const interval = setInterval(fetchMessages, 10000);
-            return () => clearInterval(interval);
-        }
-    }, [activeTab, currentUser]);
-
-    // --- Scroll to bottom for messages ---
-    useEffect(() => {
-        if (scrollViewport.current && activeTab === 'messages') {
-            scrollViewport.current.scrollTo({ top: scrollViewport.current.scrollHeight, behavior: 'smooth' });
-        }
-    }, [messages, activeTab]);
-
 
     // ==========================================
     // Notices Functions
@@ -152,7 +103,7 @@ export default function NoticesPage() {
                 start_date: values.start_date.toISOString().split('T')[0],
                 end_date: values.end_date?.toISOString().split('T')[0],
                 is_permanent: !values.end_date,
-                academy_id: typeof currentUser === 'object' && 'academy_id' in currentUser ? (currentUser as any).academy_id : null,
+                academy_id: currentUser.academy_id,
             };
 
             const url = editingNotice ? `/api/notices/${editingNotice.id}` : '/api/notices';
@@ -175,8 +126,8 @@ export default function NoticesPage() {
             setModalOpened(false);
             noticeForm.reset();
             setEditingNotice(null);
-            if (currentUser && 'academy_id' in currentUser) {
-                fetchNotices((currentUser as any).academy_id);
+            if (currentUser) {
+                fetchNotices(currentUser.academy_id);
             }
         } catch (error: any) {
             notifications.show({ title: '오류', message: error.message, color: 'red' });
@@ -203,8 +154,8 @@ export default function NoticesPage() {
             const response = await fetch(`/api/notices/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Failed to delete');
             notifications.show({ title: '삭제 완료', message: '공지사항이 삭제되었습니다.', color: 'red' });
-            if (currentUser && 'academy_id' in currentUser) {
-                fetchNotices((currentUser as any).academy_id);
+            if (currentUser) {
+                fetchNotices(currentUser.academy_id);
             }
         } catch (error: any) {
             notifications.show({ title: '오류', message: error.message, color: 'red' });
@@ -229,292 +180,94 @@ export default function NoticesPage() {
         }
     };
 
-    // ==========================================
-    // Messages Functions
-    // ==========================================
-    const fetchStudents = async () => {
-        try {
-            // /api/students를 사용하여 학생 관리 페이지와 동일한 목록을 불러옴 (academy_id 누락 문제 해결)
-            const response = await fetch(`/api/students`);
-            if (response.ok) {
-                const data = await response.json();
-                setStudents(data.students || []);
-            }
-        } catch (error) {
-            console.error('Failed to fetch students:', error);
-        }
-    };
-
-    const fetchMessages = async () => {
-        if (!currentUser) return;
-        try {
-            const response = await fetch(`/api/messages?user_id=${currentUser.id}`);
-            if (!response.ok) throw new Error('Failed to fetch messages');
-            const data = await response.json();
-            const sortedMessages = (data.messages || []).sort((a: Message, b: Message) =>
-                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-            );
-            setMessages(sortedMessages);
-        } catch (error) {
-            console.error('Error fetching messages:', error);
-        }
-    };
-
-    const handleSendMessage = async () => {
-        if (!newMessage.trim() || !currentUser || !selectedStudentId) return;
-        try {
-            const response = await fetch('/api/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sender_id: currentUser.id,
-                    recipient_id: selectedStudentId,
-                    content: newMessage,
-                }),
-            });
-            if (!response.ok) throw new Error('Failed to send');
-            setNewMessage('');
-            fetchMessages();
-        } catch (error: any) {
-            notifications.show({ title: '전송 실패', message: error.message, color: 'red' });
-        }
-    };
-
-    const filteredMessages = messages.filter(m =>
-        (m.sender_id === currentUser?.id && m.recipient_id === selectedStudentId) ||
-        (m.sender_id === selectedStudentId && m.recipient_id === currentUser?.id)
-    );
-
-
     return (
         <Container size="xl" py={40}>
             <Title order={1} style={{ fontWeight: 900, marginBottom: '2rem', color: 'white' }}>
-                공지/쪽지 관리
+                공지사항 관리
             </Title>
 
-            <Tabs value={activeTab} onChange={setActiveTab} variant="pills" radius={0}
-                styles={{
-                    tab: {
-                        border: '2px solid black',
-                        fontWeight: 700,
-                        marginRight: '0.5rem',
-                        backgroundColor: 'white',
+            <Group justify="space-between" mb="md">
+                <Text c="gray.3">학생들에게 공지사항을 전달하세요</Text>
+                <Button
+                    leftSection={<IconPlus size={20} />}
+                    onClick={() => {
+                        setEditingNotice(null);
+                        noticeForm.reset();
+                        setModalOpened(true);
+                    }}
+                    style={{
+                        background: '#FFD93D',
                         color: 'black',
-                    }
-                }}
-                classNames={{
-                    tab: "data-[active]:bg-black data-[active]:text-white"
+                        border: '3px solid black',
+                        boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+                        fontWeight: 700,
+                        borderRadius: '0px',
+                    }}
+                >
+                    새 공지 작성
+                </Button>
+            </Group>
+
+            <Paper
+                p="xl"
+                style={{
+                    border: '4px solid black',
+                    background: 'white',
+                    boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                    borderRadius: '0px',
                 }}
             >
-                <Tabs.List mb="xl">
-                    <Tabs.Tab value="notices" leftSection={<IconBell size={18} />}>
-                        공지사항
-                    </Tabs.Tab>
-                    <Tabs.Tab value="messages" leftSection={<IconMessage size={18} />}>
-                        쪽지
-                    </Tabs.Tab>
-                </Tabs.List>
-
-                {/* --- NOTICES PANEL --- */}
-                <Tabs.Panel value="notices">
-                    <Group justify="space-between" mb="md">
-                        <Text c="gray.3">학생들에게 공지사항을 전달하세요</Text>
-                        <Button
-                            leftSection={<IconPlus size={20} />}
-                            onClick={() => {
-                                setEditingNotice(null);
-                                noticeForm.reset();
-                                setModalOpened(true);
-                            }}
-                            style={{
-                                background: '#FFD93D',
-                                color: 'black',
-                                border: '3px solid black',
-                                boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                fontWeight: 700,
-                                borderRadius: '0px',
-                            }}
-                        >
-                            새 공지 작성
-                        </Button>
-                    </Group>
-
-                    <Paper
-                        p="xl"
-                        style={{
-                            border: '4px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                            borderRadius: '0px',
-                        }}
-                    >
-                        <Table>
-                            <Table.Thead>
-                                <Table.Tr style={{ borderBottom: '3px solid black' }}>
-                                    <Table.Th>중요도</Table.Th>
-                                    <Table.Th>제목</Table.Th>
-                                    <Table.Th>대상</Table.Th>
-                                    <Table.Th>게시 기간</Table.Th>
-                                    <Table.Th>작성일</Table.Th>
-                                    <Table.Th>액션</Table.Th>
-                                </Table.Tr>
-                            </Table.Thead>
-                            <Table.Tbody>
-                                {notices.length === 0 ? (
-                                    <Table.Tr>
-                                        <Table.Td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
-                                            등록된 공지사항이 없습니다.
-                                        </Table.Td>
-                                    </Table.Tr>
-                                ) : notices.map((notice) => (
-                                    <Table.Tr key={notice.id}>
-                                        <Table.Td>
-                                            <Badge color={getPriorityColor(notice.priority)} variant="filled" radius="xs" style={{ border: '2px solid black', color: 'black' }}>
-                                                {getPriorityText(notice.priority)}
-                                            </Badge>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <Text fw={700}>{notice.title}</Text>
-                                            <Text size="sm" c="dimmed">{notice.content.substring(0, 50)}...</Text>
-                                        </Table.Td>
-                                        <Table.Td>{notice.target_type === 'all' ? '전체' : notice.target_class}</Table.Td>
-                                        <Table.Td>
-                                            <Text size="sm">{notice.start_date}{notice.end_date && ` ~ ${notice.end_date}`}</Text>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <Text size="sm">{new Date(notice.created_at).toLocaleDateString('ko-KR')}</Text>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <Group gap="xs">
-                                                <ActionIcon variant="filled" color="blue" onClick={() => handleEditNotice(notice)} style={{ border: '2px solid black', borderRadius: '0px' }}>
-                                                    <IconEdit size={18} />
-                                                </ActionIcon>
-                                                <ActionIcon variant="filled" color="red" onClick={() => handleDeleteNotice(notice.id)} style={{ border: '2px solid black', borderRadius: '0px' }}>
-                                                    <IconTrash size={18} />
-                                                </ActionIcon>
-                                            </Group>
-                                        </Table.Td>
-                                    </Table.Tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
-                    </Paper>
-                </Tabs.Panel>
-
-                {/* --- MESSAGES PANEL --- */}
-                <Tabs.Panel value="messages">
-                    <Text c="dimmed" mb="md">학생들과 1:1 대화를 나눠보세요</Text>
-                    <Group align="flex-start" mb="md">
-                        <Select
-                            label="대화할 학생 선택"
-                            placeholder="학생을 선택하세요"
-                            data={students.map(s => ({ value: s.id, label: s.full_name || s.username }))}
-                            value={selectedStudentId}
-                            onChange={(value) => setSelectedStudentId(value)}
-                            searchable
-                            nothingFoundMessage="검색 결과가 없습니다."
-                            allowDeselect={false}
-                            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
-                            styles={{
-                                input: { border: '2px solid black', borderRadius: '0px', width: '300px' }
-                            }}
-                        />
-                    </Group>
-
-                    <Paper
-                        p="xl"
-                        style={{
-                            border: '4px solid black',
-                            background: 'white',
-                            boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                            height: '600px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            borderRadius: '0px',
-                        }}
-                    >
-                        {selectedStudentId ? (
-                            <>
-                                {/* Chat Header */}
-                                <Box mb="md" pb="md" style={{ borderBottom: '2px solid black', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <Box style={{ width: '40px', height: '40px', background: 'black', border: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                                        <IconUser size={24} />
-                                    </Box>
-                                    <Text fw={900} size="lg">
-                                        {students.find(s => s.id === selectedStudentId)?.full_name} 학생
-                                    </Text>
-                                </Box>
-
-                                {/* Messages List */}
-                                <ScrollArea style={{ flex: 1 }} mb="md" viewportRef={scrollViewport}>
-                                    <Stack gap="md">
-                                        {filteredMessages.length === 0 ? (
-                                            <Text c="dimmed" ta="center" py="xl">대화 내역이 없습니다. 메시지를 보내보세요!</Text>
-                                        ) : (
-                                            filteredMessages.map((message) => {
-                                                const isMe = message.sender_id === currentUser?.id;
-                                                return (
-                                                    <Box key={message.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                                                        <Paper p="md" style={{ maxWidth: '70%', border: '2px solid black', background: isMe ? '#FFD93D' : '#F1F3F5', borderRadius: 0, boxShadow: '4px 4px 0px black' }}>
-                                                            <Text fw={600} c="black">{message.content}</Text>
-                                                            <Text size="xs" c="dimmed" mt="xs" ta="right">
-                                                                {new Date(message.created_at).toLocaleString()}
-                                                            </Text>
-                                                        </Paper>
-                                                    </Box>
-                                                );
-                                            })
-                                        )}
-                                    </Stack>
-                                </ScrollArea>
-
-                                {/* Input Area */}
-                                <Group gap="sm">
-                                    <Textarea
-                                        placeholder="메시지를 입력하세요..."
-                                        value={newMessage}
-                                        onChange={(e) => setNewMessage(e.target.value)}
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleSendMessage();
-                                            }
-                                        }}
-                                        styles={{ input: { border: '2px solid black', borderRadius: '0px', fontSize: '1rem', padding: '1rem' } }}
-                                        style={{ flex: 1 }}
-                                        rows={2}
-                                    />
-                                    <button
-                                        onClick={handleSendMessage}
-                                        style={{
-                                            background: 'black',
-                                            color: 'white',
-                                            border: '2px solid black',
-                                            borderRadius: '0px',
-                                            boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                                            padding: '1rem 1.5rem',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            fontWeight: 700,
-                                            height: '100%',
-                                        }}
-                                    >
-                                        <IconSend size={20} />
-                                        전송
-                                    </button>
-                                </Group>
-                            </>
-                        ) : (
-                            <Box style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', color: '#868e96' }}>
-                                <IconMessage size={48} />
-                                <Text size="lg" fw={700}>대화할 학생을 선택해주세요</Text>
-                            </Box>
-                        )}
-                    </Paper>
-                </Tabs.Panel>
-            </Tabs>
+                <Table>
+                    <Table.Thead>
+                        <Table.Tr style={{ borderBottom: '3px solid black' }}>
+                            <Table.Th>중요도</Table.Th>
+                            <Table.Th>제목</Table.Th>
+                            <Table.Th>대상</Table.Th>
+                            <Table.Th>게시 기간</Table.Th>
+                            <Table.Th>작성일</Table.Th>
+                            <Table.Th>액션</Table.Th>
+                        </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {notices.length === 0 ? (
+                            <Table.Tr>
+                                <Table.Td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                                    등록된 공지사항이 없습니다.
+                                </Table.Td>
+                            </Table.Tr>
+                        ) : notices.map((notice) => (
+                            <Table.Tr key={notice.id}>
+                                <Table.Td>
+                                    <Badge color={getPriorityColor(notice.priority)} variant="filled" radius="xs" style={{ border: '2px solid black', color: 'black' }}>
+                                        {getPriorityText(notice.priority)}
+                                    </Badge>
+                                </Table.Td>
+                                <Table.Td>
+                                    <Text fw={700}>{notice.title}</Text>
+                                    <Text size="sm" c="dimmed">{notice.content.substring(0, 50)}...</Text>
+                                </Table.Td>
+                                <Table.Td>{notice.target_type === 'all' ? '전체' : notice.target_class}</Table.Td>
+                                <Table.Td>
+                                    <Text size="sm">{notice.start_date}{notice.end_date && ` ~ ${notice.end_date}`}</Text>
+                                </Table.Td>
+                                <Table.Td>
+                                    <Text size="sm">{new Date(notice.created_at).toLocaleDateString('ko-KR')}</Text>
+                                </Table.Td>
+                                <Table.Td>
+                                    <Group gap="xs">
+                                        <ActionIcon variant="filled" color="blue" onClick={() => handleEditNotice(notice)} style={{ border: '2px solid black', borderRadius: '0px' }}>
+                                            <IconEdit size={18} />
+                                        </ActionIcon>
+                                        <ActionIcon variant="filled" color="red" onClick={() => handleDeleteNotice(notice.id)} style={{ border: '2px solid black', borderRadius: '0px' }}>
+                                            <IconTrash size={18} />
+                                        </ActionIcon>
+                                    </Group>
+                                </Table.Td>
+                            </Table.Tr>
+                        ))}
+                    </Table.Tbody>
+                </Table>
+            </Paper>
 
             {/* Modal for Notices */}
             <Modal

@@ -55,7 +55,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
         { icon: IconBook, label: '단어장 관리', href: '/teacher/wordbooks' },
         { icon: IconList, label: '커리큘럼 관리', href: '/teacher/curriculums' },
         { icon: IconHeadphones, label: '듣기 문제 관리', href: '/teacher/listening' },
-        { icon: IconBell, label: '공지/쪽지', href: '/teacher/notices' },
+        { icon: IconBell, label: '공지사항', href: '/teacher/notices' },
         { icon: IconSettings, label: '설정', href: '/teacher/settings' },
     ];
 

@@ -2,16 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AppShell, Burger, Group, Text, NavLink, Box, Badge, Paper, Stack } from '@mantine/core';
+import { AppShell, Burger, Group, Text, NavLink, Box, Paper, Stack } from '@mantine/core'; // Removed Badge
 import { useDisclosure } from '@mantine/hooks';
 import {
     IconHome,
     IconBook,
-    IconMail,
     IconSettings,
     IconLogout,
-
-} from '@tabler/icons-react';
+} from '@tabler/icons-react'; // Removed IconMail
 import { SpotlightEffect } from '@/components/ui/SpotlightEffect';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
@@ -21,8 +19,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
     // 학생 정보 상태
     const [studentName, setStudentName] = useState('학생');
-    const [unreadCount, setUnreadCount] = useState(0);
-
+    // Removed unreadCount state
 
     // localStorage에서 사용자 정보 가져오기 및 보안 체크
     useEffect(() => {
@@ -43,30 +40,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 }
 
                 setStudentName(user.full_name || user.name || '학생');
-                fetchUnreadMessages(user.id);
+                // Removed fetchUnreadMessages call
             } catch (error) {
                 console.error('Failed to parse user data:', error);
                 router.replace('/');
             }
         }
     }, [router, pathname]);
-
-    const fetchUnreadMessages = async (userId: string) => {
-        try {
-            const res = await fetch(`/api/messages?user_id=${userId}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.messages) {
-                    const count = data.messages.filter((m: any) =>
-                        m.recipient_id === userId && !m.is_read
-                    ).length;
-                    setUnreadCount(count);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch messages:', error);
-        }
-    };
 
     const handleLogout = () => {
         if (typeof window !== 'undefined') {
@@ -78,12 +58,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     const navItems = [
         { icon: IconHome, label: '대시보드', href: '/student/dashboard' },
         { icon: IconBook, label: '나의 학습', href: '/student/learning' },
-        {
-            icon: IconMail,
-            label: '쪽지함',
-            href: '/student/messages',
-            badge: unreadCount > 0 ? unreadCount : undefined
-        },
+        // Removed Messages nav item
         { icon: IconSettings, label: '설정', href: '/student/settings' },
     ];
 
@@ -129,9 +104,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                     background: '#FFD93D', // Yellow Accent remains
                                     border: '2px solid white',
                                     padding: '0.4rem 1rem',
-                                    boxShadow: '0 0 10px rgba(255, 217, 61, 0.5)', // Glow instead of hard shadow? Or keep hard shadow? 
-                                    // Hard shadow on dark: black shadow visible? No. White shadow? No.
-                                    // Let's use Black shadow for the yellow box, it works well.
+                                    boxShadow: '0 0 10px rgba(255, 217, 61, 0.5)',
                                     transform: 'rotate(2deg)',
                                     cursor: 'pointer',
                                 }}
@@ -153,8 +126,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                 </Text>
                             </Box>
                         </Group>
-
-
 
                         <button
                             onClick={handleLogout}
@@ -210,19 +181,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                         key={item.href}
                                         label={item.label}
                                         leftSection={<item.icon size={24} stroke={2} />}
-                                        rightSection={
-                                            item.badge ? (
-                                                <Badge
-                                                    size="sm"
-                                                    variant="filled"
-                                                    color="yellow"
-                                                    radius={0}
-                                                    style={{ border: '1px solid black', fontWeight: 900, color: 'black' }}
-                                                >
-                                                    {item.badge}
-                                                </Badge>
-                                            ) : null
-                                        }
                                         onClick={() => {
                                             router.push(item.href);
                                             toggle(); // 모바일에서 메뉴 선택 시 사이드바 닫기
