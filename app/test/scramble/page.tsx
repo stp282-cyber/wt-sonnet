@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Stack } from '@mantine/core';
+import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Stack, Center, Loader } from '@mantine/core'; // Added Center, Loader
 import { IconClock, IconCheck, IconX, IconGripVertical } from '@tabler/icons-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import StudentLayout from '../../student/layout';
@@ -13,7 +13,7 @@ interface Word {
     korean: string;
 }
 
-export default function ScrambleTestPage() {
+function ScrambleContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -483,5 +483,19 @@ export default function ScrambleTestPage() {
                 </Container>
             </Box>
         </StudentLayout>
+    );
+}
+
+export default function ScrambleTestPage() {
+    return (
+        <Suspense fallback={
+            <StudentLayout>
+                <Center style={{ minHeight: '100vh', background: '#fff' }}>
+                    <Loader size="xl" color="violet" type="dots" />
+                </Center>
+            </StudentLayout>
+        }>
+            <ScrambleContent />
+        </Suspense>
     );
 }
