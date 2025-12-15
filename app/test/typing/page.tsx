@@ -56,7 +56,7 @@ function TypingTestContent() {
             // Check for Resume first
             if (isResume) {
                 try {
-                    const studentInfoStr = localStorage.getItem('studentInfo');
+                    const studentInfoStr = localStorage.getItem('user');
                     if (studentInfoStr) {
                         const studentInfo = JSON.parse(studentInfoStr);
                         const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
@@ -120,7 +120,7 @@ function TypingTestContent() {
     // Save Session Helper
     const saveProgress = async (idx: number, currentResults: boolean[]) => {
         try {
-            const studentInfoStr = localStorage.getItem('studentInfo');
+            const studentInfoStr = localStorage.getItem('user');
             if (!studentInfoStr) return;
             const studentInfo = JSON.parse(studentInfoStr);
 
