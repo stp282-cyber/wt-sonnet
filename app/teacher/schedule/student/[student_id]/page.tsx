@@ -52,6 +52,7 @@ export default function StudentSchedulePage() {
         if (day === 6) d.setDate(d.getDate() + 2); // 토 -> 월
         return d;
     });
+    const [studyLogs, setStudyLogs] = useState<any[]>([]);
 
     // Modals State
     const [activeModal, setActiveModal] = useState<'settings' | 'progress' | 'schedule' | 'delete' | null>(null);
@@ -83,12 +84,22 @@ export default function StudentSchedulePage() {
     const fetchStudentData = async () => {
         if (!params.student_id) return;
         try {
-            const response = await fetch(`/api/student-curriculums/student/${params.student_id}`);
-            if (!response.ok) throw new Error('Failed to fetch data');
+            // Parallel fetch for better performance
+            const [curriculumRes, logsRes] = await Promise.all([
+                fetch(`/api/student-curriculums/student/${params.student_id}`),
+                fetch(`/api/study-logs?student_id=${params.student_id}`)
+            ]);
 
-            const data = await response.json();
+            if (!curriculumRes.ok) throw new Error('Failed to fetch data');
+
+            const data = await curriculumRes.json();
             setStudent(data.student);
             setCurriculums(data.curriculums || []);
+
+            if (logsRes.ok) {
+                const logsData = await logsRes.json();
+                setStudyLogs(logsData.logs || []);
+            }
         } catch (error) {
             console.error(error);
             notifications.show({
@@ -475,6 +486,17 @@ export default function StudentSchedulePage() {
                                             {weekDays.map((day, idx) => {
                                                 const schedule = getScheduleForDate(curr, day.date);
 
+                                                // Check completion against logs
+                                                const isCompleted = studyLogs.some(log => {
+                                                    const logDate = log.scheduled_date.split('T')[0];
+                                                    return log.curriculum_id === curr.curriculums.id &&
+                                                        log.curriculum_item_id === schedule?.item?.id &&
+                                                        logDate === day.date &&
+                                                        log.status === 'completed';
+                                                });
+
+                                                const isToday = schedule?.status === 'today';
+
                                                 return (
                                                     <Box
                                                         key={idx}
@@ -482,7 +504,8 @@ export default function StudentSchedulePage() {
                                                         style={{
                                                             flex: 1,
                                                             minWidth: 0,
-                                                            borderBottom: idx < 4 ? '2px solid black' : 'none'
+                                                            borderBottom: idx < 4 ? '2px solid black' : 'none',
+                                                            background: isCompleted ? '#D3F9D8' : (schedule?.status === 'today' ? '#fff9db' : 'white') // Green if completed
                                                         }}
                                                     >
                                                         {/* Mobile Day Header */}
@@ -497,7 +520,8 @@ export default function StudentSchedulePage() {
                                                         <Box style={{
                                                             padding: '10px',
                                                             flex: 1,
-                                                            background: schedule?.status === 'today' ? '#fff9db' : 'white'
+                                                            // Background handled in parent Box for full cell coverage
+                                                            background: 'transparent'
                                                         }}>
                                                             {schedule ? (
                                                                 <Stack gap={4}>
@@ -521,7 +545,7 @@ export default function StudentSchedulePage() {
                                                                     </Group>
 
                                                                     <Box style={{
-                                                                        background: '#FFF9DB',
+                                                                        background: isCompleted ? 'rgba(255,255,255,0.5)' : '#FFF9DB',
                                                                         padding: '6px',
                                                                         marginTop: '4px',
                                                                         border: '1px solid #FFD93D',
@@ -531,7 +555,14 @@ export default function StudentSchedulePage() {
                                                                         <Text size="xs" ta="center">{schedule.progressRange}</Text>
                                                                     </Box>
 
-                                                                    <Group justify="space-between" mt={4} visibleFrom="md"> {/* Mobile hides duplicate date */}
+                                                                    {/* Completed Badge */}
+                                                                    {isCompleted && (
+                                                                        <Badge color="green" variant="filled" size="md" radius="xs" style={{ border: '1px solid black', marginTop: '4px' }} fullWidth>
+                                                                            학습 완료 (PASSED)
+                                                                        </Badge>
+                                                                    )}
+
+                                                                    <Group justify="space-between" mt={4} visibleFrom="md">
                                                                         <Text size="xs" c="dimmed">{day.date}</Text>
                                                                         <Badge size="sm" color="yellow" variant="filled" radius="xs" style={{ border: '1px solid black', color: 'black' }}>
                                                                             {schedule.wordCount}개
