@@ -24,7 +24,6 @@ import {
     IconLogout,
     IconDashboard,
     IconHeadphones,
-    IconClipboardCheck,
 } from '@tabler/icons-react';
 import { SpotlightEffect } from '@/components/ui/SpotlightEffect';
 
@@ -52,8 +51,6 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
     const menuItems = [
         { icon: IconDashboard, label: '대시보드', href: '/teacher/dashboard' },
         { icon: IconList, label: '수업 일지', href: '/teacher/class-log' },
-        { icon: IconClipboardCheck, label: '학습 현황', href: '/teacher/learning-status' },
-        { icon: IconList, label: '당일 관리', href: '/teacher/today' },
         { icon: IconUsers, label: '학생 관리', href: '/teacher/students' },
         { icon: IconBook, label: '단어장 관리', href: '/teacher/wordbooks' },
         { icon: IconList, label: '커리큘럼 관리', href: '/teacher/curriculums' },

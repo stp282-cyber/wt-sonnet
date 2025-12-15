@@ -103,7 +103,7 @@ export default function NoticesPage() {
             const user = JSON.parse(userStr);
             setCurrentUser(user);
             fetchNotices(user.academy_id);
-            fetchStudents(user.academy_id);
+            fetchStudents();
         }
     }, []);
 
@@ -232,12 +232,13 @@ export default function NoticesPage() {
     // ==========================================
     // Messages Functions
     // ==========================================
-    const fetchStudents = async (academyId: string) => {
+    const fetchStudents = async () => {
         try {
-            const response = await fetch(`/api/users?role=student&academy_id=${academyId}`);
+            // /api/students를 사용하여 학생 관리 페이지와 동일한 목록을 불러옴 (academy_id 누락 문제 해결)
+            const response = await fetch(`/api/students`);
             if (response.ok) {
                 const data = await response.json();
-                setStudents(data.users || []);
+                setStudents(data.students || []);
             }
         } catch (error) {
             console.error('Failed to fetch students:', error);
@@ -407,10 +408,13 @@ export default function NoticesPage() {
                         <Select
                             label="대화할 학생 선택"
                             placeholder="학생을 선택하세요"
-                            data={students.map(s => ({ value: s.id, label: s.full_name }))}
+                            data={students.map(s => ({ value: s.id, label: s.full_name || s.username }))}
                             value={selectedStudentId}
-                            onChange={setSelectedStudentId}
+                            onChange={(value) => setSelectedStudentId(value)}
                             searchable
+                            nothingFoundMessage="검색 결과가 없습니다."
+                            allowDeselect={false}
+                            comboboxProps={{ withinPortal: true, zIndex: 1000 }}
                             styles={{
                                 input: { border: '2px solid black', borderRadius: '0px', width: '300px' }
                             }}

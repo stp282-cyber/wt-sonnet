@@ -21,6 +21,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
     // 학생 정보 상태
     const [studentName, setStudentName] = useState('학생');
+    const [unreadCount, setUnreadCount] = useState(0);
 
 
     // localStorage에서 사용자 정보 가져오기 및 보안 체크
@@ -42,12 +43,30 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 }
 
                 setStudentName(user.full_name || user.name || '학생');
+                fetchUnreadMessages(user.id);
             } catch (error) {
                 console.error('Failed to parse user data:', error);
                 router.replace('/');
             }
         }
     }, [router, pathname]);
+
+    const fetchUnreadMessages = async (userId: string) => {
+        try {
+            const res = await fetch(`/api/messages?user_id=${userId}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.messages) {
+                    const count = data.messages.filter((m: any) =>
+                        m.recipient_id === userId && !m.is_read
+                    ).length;
+                    setUnreadCount(count);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch messages:', error);
+        }
+    };
 
     const handleLogout = () => {
         if (typeof window !== 'undefined') {
@@ -59,7 +78,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     const navItems = [
         { icon: IconHome, label: '대시보드', href: '/student/dashboard' },
         { icon: IconBook, label: '나의 학습', href: '/student/learning' },
-        { icon: IconMail, label: '쪽지함', href: '/student/messages', badge: 3 },
+        {
+            icon: IconMail,
+            label: '쪽지함',
+            href: '/student/messages',
+            badge: unreadCount > 0 ? unreadCount : undefined
+        },
         { icon: IconSettings, label: '설정', href: '/student/settings' },
     ];
 
