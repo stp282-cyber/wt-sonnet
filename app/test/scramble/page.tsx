@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Stack } from '@mantine/core';
 import { IconClock, IconCheck, IconX, IconGripVertical } from '@tabler/icons-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -15,28 +15,73 @@ interface Word {
 
 export default function ScrambleTestPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
-    const [words] = useState<Word[]>([
-        { no: 1, english: 'I love learning English', korean: '나는 영어 배우는 것을 좋아한다' },
-        { no: 2, english: 'She goes to school every day', korean: '그녀는 매일 학교에 간다' },
-        { no: 3, english: 'We are studying together', korean: '우리는 함께 공부하고 있다' },
-        { no: 4, english: 'He likes playing soccer', korean: '그는 축구하는 것을 좋아한다' },
-        { no: 5, english: 'They will visit the museum', korean: '그들은 박물관을 방문할 것이다' },
-    ]);
-
+    const [words, setWords] = useState<Word[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [scrambledWords, setScrambledWords] = useState<string[]>([]);
     const [isAnswered, setIsAnswered] = useState(false);
     const [results, setResults] = useState<boolean[]>([]);
     const [timeLeft, setTimeLeft] = useState(30);
+    const [loading, setLoading] = useState(true);
 
     const correctCount = results.filter((r) => r).length;
     const wrongCount = results.filter((r) => !r).length;
     const progress = words.length > 0 ? ((currentIndex + 1) / words.length) * 100 : 0;
 
+    // Hardcoded Fallback Words
+    const defaultWords: Word[] = [
+        { no: 1, english: 'I love learning English', korean: '나는 영어 배우는 것을 좋아한다' },
+        { no: 2, english: 'She goes to school every day', korean: '그녀는 매일 학교에 간다' },
+        { no: 3, english: 'We are studying together', korean: '우리는 함께 공부하고 있다' },
+        { no: 4, english: 'He likes playing soccer', korean: '그는 축구하는 것을 좋아한다' },
+        { no: 5, english: 'They will visit the museum', korean: '그들은 박물관을 방문할 것이다' },
+    ];
+
+    // Initialization
+    useEffect(() => {
+        const init = async () => {
+            const mode = searchParams.get('mode');
+            const isResume = searchParams.get('resume') === 'true';
+
+            let targetWords = defaultWords;
+
+            try {
+                const studentInfoStr = localStorage.getItem('user');
+                if (studentInfoStr) {
+                    const studentInfo = JSON.parse(studentInfoStr);
+                    const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.session) {
+                            const sData = data.session.session_data;
+
+                            // If Retrying Scramble
+                            if (mode === 'retry' && sData.wrongWords) {
+                                targetWords = sData.wrongWords;
+                            }
+                            // If Resuming Scramble (General)
+                            else if (sData.type === 'scramble' && isResume) {
+                                targetWords = sData.words || defaultWords;
+                                setCurrentIndex(sData.currentIndex || 0);
+                                setResults(sData.results || []);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Session load error", e);
+            }
+
+            setWords(targetWords);
+            setLoading(false);
+        };
+        init();
+    }, [searchParams]);
+
     // 문장을 단어로 섞기
     useEffect(() => {
-        if (words.length > 0) {
+        if (words.length > 0 && words[currentIndex]) {
             const sentence = words[currentIndex].english;
             const wordsArray = sentence.split(' ');
             const shuffled = [...wordsArray].sort(() => Math.random() - 0.5);
@@ -46,13 +91,13 @@ export default function ScrambleTestPage() {
 
     // 타이머
     useEffect(() => {
-        if (timeLeft > 0 && !isAnswered && words.length > 0) {
+        if (!loading && timeLeft > 0 && !isAnswered && words.length > 0) {
             const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
             return () => clearTimeout(timer);
         } else if (timeLeft === 0 && !isAnswered) {
             handleSubmit(true);
         }
-    }, [timeLeft, isAnswered, words]);
+    }, [timeLeft, isAnswered, words, loading]);
 
     const handleDragEnd = (result: any) => {
         if (!result.destination || isAnswered) return;
@@ -64,13 +109,45 @@ export default function ScrambleTestPage() {
         setScrambledWords(items);
     };
 
+    const saveSession = async (idx: number, currentResults: boolean[]) => {
+        try {
+            const studentInfoStr = localStorage.getItem('user');
+            if (!studentInfoStr) return;
+            const studentInfo = JSON.parse(studentInfoStr);
+
+            await fetch('/api/test/session', {
+                method: 'POST',
+                body: JSON.stringify({
+                    studentId: studentInfo.id,
+                    sessionData: {
+                        type: 'scramble',
+                        words,
+                        currentIndex: idx,
+                        results: currentResults,
+                        // Preserve context
+                        itemId: searchParams.get('itemId'),
+                        curriculumId: searchParams.get('curriculumId'),
+                        scheduledDate: searchParams.get('scheduledDate')
+                    }
+                })
+            });
+        } catch (e) {
+            console.error("Save session failed", e);
+        }
+    };
+
     const handleSubmit = (timeout: boolean) => {
+        if (!words[currentIndex]) return;
+
         const userAnswer = scrambledWords.join(' ');
         const correctAnswer = words[currentIndex].english;
         const isCorrect = userAnswer === correctAnswer;
 
-        setResults([...results, isCorrect]);
+        const newResults = [...results, isCorrect];
+        setResults(newResults);
         setIsAnswered(true);
+
+        saveSession(currentIndex + 1, newResults);
 
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
@@ -78,29 +155,75 @@ export default function ScrambleTestPage() {
                 setTimeLeft(30);
                 setIsAnswered(false);
             } else {
-                // 시험 완료
-                const finalResults = [...results, isCorrect];
-                const finalCorrectCount = finalResults.filter(r => r).length;
-                const score = Math.round((finalCorrectCount / words.length) * 100);
-
-                const testResult = {
-                    totalQuestions: words.length,
-                    correctCount: finalCorrectCount,
-                    wrongCount: words.length - finalCorrectCount,
-                    score,
-                    passed: score >= 80,
-                    wrongWords: [],
-                    timestamp: new Date().toISOString(),
-                };
-
-                localStorage.setItem('testResult', JSON.stringify(testResult));
-
-                setTimeout(() => {
-                    router.push('/test/result');
-                }, 1500);
+                finishTest(newResults);
             }
         }, 1500);
     };
+
+    const finishTest = async (finalResults: boolean[]) => {
+        const studentInfoStr = localStorage.getItem('user');
+        if (!studentInfoStr) return;
+        const studentInfo = JSON.parse(studentInfoStr);
+
+        const finalCorrectCount = finalResults.filter(r => r).length;
+        const wrongWords = words.filter((_, i) => !finalResults[i]);
+        const score = Math.round((finalCorrectCount / words.length) * 100);
+
+        // Save Result to LocalStorage (Legacy support)
+        const testResult = {
+            totalQuestions: words.length,
+            correctCount: finalCorrectCount,
+            wrongCount: words.length - finalCorrectCount,
+            score,
+            passed: score >= 80,
+            wrongWords: wrongWords,
+            timestamp: new Date().toISOString(),
+            testType: 'scramble'
+        };
+        localStorage.setItem('testResult', JSON.stringify(testResult));
+
+        // Recursive Retry Logic
+        if (wrongWords.length > 0) {
+            // Update Session for Flashcard -> Retry Loop
+            await fetch('/api/test/session', {
+                method: 'POST',
+                body: JSON.stringify({
+                    studentId: studentInfo.id,
+                    sessionData: {
+                        type: 'scramble', // Keep type
+                        step: 'WRONG_FLASHCARD', // Set step
+                        wrongWords: wrongWords,
+                        // Context
+                        itemId: searchParams.get('itemId'),
+                        curriculumId: searchParams.get('curriculumId'),
+                        scheduledDate: searchParams.get('scheduledDate')
+                    }
+                })
+            });
+
+            // Redirect to Wrong Flashcard with testType param
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('testType', 'scramble');
+            params.set('mode', 'retry');
+            router.push(`/test/wrong-flashcard?${params.toString()}`);
+        } else {
+            // Success - Go to Result
+            // Clear session or mark complete? 
+            // Usually Result page handles finalization or user clicks "Done".
+            // Since Scramble is standalone-ish, let's just go to result.
+            // But if we want to clear session:
+            await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+            router.push('/test/result');
+        }
+    };
+
+    if (loading) {
+        return (
+            <StudentLayout>
+                <Container size="sm" py={40}><Text>로딩 중...</Text></Container>
+            </StudentLayout>
+        );
+    }
 
     if (words.length === 0) {
         return (

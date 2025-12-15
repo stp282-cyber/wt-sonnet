@@ -75,6 +75,10 @@ function TestResultContent() {
             if (val) params.set(key, val);
         });
 
+        if (result.testType) {
+            params.set('testType', result.testType);
+        }
+
         router.push(`/test/wrong-flashcard?${params.toString()}`);
     };
 

@@ -140,8 +140,12 @@ function WrongFlashcardContent() {
                         // Support both legacy and new structure
                         if (data.session) {
                             const sData = data.session.session_data;
-                            // If step is WRONG_FLASHCARD, load wrongWords
-                            if (sData.step === 'WRONG_FLASHCARD') {
+                            // If step is WRONG_FLASHCARD or similar re-entry
+                            const mode = searchParams.get('mode');
+                            // Determine which words to show
+                            if (mode === 'review_wrong' && sData.reviewWrongQuestions && sData.reviewWrongQuestions.length > 0) {
+                                setWords(sData.reviewWrongQuestions);
+                            } else if (sData.wrongWords) {
                                 setWords(sData.wrongWords || []);
                             }
                             // If resuming from Review Wrong Flashcard? (If we add that step later)
@@ -171,28 +175,33 @@ function WrongFlashcardContent() {
     };
 
     const handleStartRetryTest = async () => {
-        // Transition to WRONG_RETRY
-        // We need to update session step to BASIC_WRONG_RETRY (or REVIEW_WRONG_RETRY)
-        // But since we are here, it's likely BASIC_WRONG_RETRY.
-        // Wait, if we use this page for "Review Wrong" as well?
-        // Currently, Review Test -> Wrong Retry (Directly).
-        // If we want to add Review Flashcard Review, we can.
-
-        // Let's assume this is mostly for Basic Test right now.
+        // Handle Test Type
+        const testType = searchParams.get('testType');
         const mode = searchParams.get('mode') || 'basic';
-        const nextStep = mode === 'basic' ? 'BASIC_WRONG_RETRY' : 'REVIEW_WRONG_RETRY'; // If we use it for review later
 
+        const params = new URLSearchParams();
+        params.set('mode', mode);
+        params.set('resume', 'true'); // Add resume flag
+
+        const preserveParams = ['itemId', 'start', 'end', 'curriculumId', 'curriculumItemId', 'scheduledDate'];
+        preserveParams.forEach(key => {
+            const val = searchParams.get(key);
+            if (val) params.set(key, val);
+        });
+
+        // Update Session Step
         const studentInfoStr = localStorage.getItem('user');
         if (studentInfoStr) {
             const studentInfo = JSON.parse(studentInfoStr);
-            // Update Session Step
-            // We need to fetch current session to keep data valid?
-            // Since we are moving forward, we can just update 'step'.
-
-            // First, fetch existing to be safe
             const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
             const d = await r.json();
             const sData = d.session?.session_data || {};
+
+            let nextStep = mode === 'basic' ? 'BASIC_WRONG_RETRY' : 'REVIEW_WRONG_RETRY';
+            // Custom Logic for Scramble
+            if (testType === 'scramble') {
+                nextStep = 'SCRAMBLE_RETRY'; // Or just keep it as scramble but handled by params
+            }
 
             await fetch('/api/test/session', {
                 method: 'POST',
@@ -206,16 +215,11 @@ function WrongFlashcardContent() {
             });
         }
 
-        const params = new URLSearchParams();
-        params.set('mode', mode);
-
-        const preserveParams = ['itemId', 'start', 'end', 'curriculumId', 'curriculumItemId', 'scheduledDate'];
-        preserveParams.forEach(key => {
-            const val = searchParams.get(key);
-            if (val) params.set(key, val);
-        });
-
-        router.push(`/test/wrong-retry?${params.toString()}`);
+        if (testType === 'scramble') {
+            router.push(`/test/scramble?${params.toString()}`);
+        } else {
+            router.push(`/test/wrong-retry?${params.toString()}`);
+        }
     };
 
     if (loading) {

@@ -64,9 +64,14 @@ function WrongRetryContent() {
 
                     if (targetWords.length > 0) {
                         setWords(targetWords);
-                        if (isResume && sData.currentRetryIndex) {
-                            setCurrentIndex(sData.currentRetryIndex);
-                            setResults(sData.retryResults || []);
+                        if (isResume && typeof sData.currentRetryIndex === 'number') {
+                            if (sData.currentRetryIndex < targetWords.length) {
+                                setCurrentIndex(sData.currentRetryIndex);
+                                setResults(sData.retryResults || []);
+                            } else {
+                                setCurrentIndex(0);
+                                setResults([]);
+                            }
                         }
                     } else {
                         notifications.show({ title: 'Info', message: 'No wrong words to retry', color: 'blue' });
@@ -155,6 +160,65 @@ function WrongRetryContent() {
         const d = await r.json();
         const sData = d.session?.session_data || {};
 
+        // Calculate if there are still wrong words
+        const stillWrongWords = words.filter((_, idx) => !finalResults[idx]);
+
+        if (stillWrongWords.length > 0) {
+            // Update session with new wrongWords
+            // CRITICAL: Update the correct key based on mode
+            const updateData: any = {
+                step: 'WRONG_FLASHCARD',
+                currentRetryIndex: 0,
+                retryResults: []
+            };
+
+            if (currentMode === 'review_wrong') {
+                updateData.reviewWrongQuestions = stillWrongWords;
+            } else {
+                updateData.wrongWords = stillWrongWords;
+            }
+
+            await fetch('/api/test/session', {
+                method: 'POST',
+                body: JSON.stringify({
+                    studentId: studentInfo.id,
+                    sessionData: {
+                        ...sData,
+                        ...updateData
+                    }
+                })
+            });
+
+            notifications.show({
+                title: '오답이 남았습니다!',
+                message: `${stillWrongWords.length}개의 오답이 남았습니다. 다시 공부해 봅시다!`,
+                color: 'red',
+                autoClose: 3000
+            });
+
+            // Redirect back to wrong-flashcard
+            // Preserve params
+            const params = new URLSearchParams();
+            params.set('mode', currentMode);
+            const gp = (key: string) => searchParams.get(key) || sData[key];
+            const preserveParams = ['itemId', 'start', 'end', 'curriculumId', 'curriculumItemId', 'scheduledDate'];
+            preserveParams.forEach(key => {
+                const val = gp(key);
+                if (val) params.set(key, val);
+            });
+
+            router.push(`/test/wrong-flashcard?${params.toString()}`);
+            return;
+        }
+
+        // NO wrong words left -> Proceed to finish
+        notifications.show({
+            title: '완벽합니다!',
+            message: '모든 오답을 해결했습니다!',
+            color: 'green',
+            autoClose: 3000
+        });
+
         if (currentMode === 'basic') {
             const nextStep = 'REVIEW_TEST';
             const gp = (key: string) => searchParams.get(key) || sData[key];
@@ -188,7 +252,7 @@ function WrongRetryContent() {
                     status: 'completed',
                     test_phase: 'completed',
                     score: sData.basicResults?.score || 0,
-                    wrong_answers: sData.basicResults?.wrongWords || []
+                    wrong_answers: sData.basicResults?.wrongWords || [] // Log initial wrong words? or final? usually initial record is kept
                 })
             });
 
