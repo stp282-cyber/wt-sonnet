@@ -70,16 +70,31 @@ export default function StudentLearningPage() {
                 return;
             }
 
-            try {
-                // 1. Fetch Curriculum
-                const response = await fetch(`/api/student-curriculums/student/${user.id}`);
-                if (!response.ok) throw new Error('Failed to fetch data');
-                const data = await response.json();
-                setStudent(data.student);
-                setCurriculums(data.curriculums || []);
+            setLoading(true); // Ensure loading state is set when refetching
 
-                // 2. Fetch Active Session
-                const sessionRes = await fetch(`/api/test/session?studentId=${user.id}`);
+            try {
+                // Calculate date range for logs (Current week - 1 week to + 4 weeks for buffer)
+                const startDate = new Date(searchStartDate);
+                startDate.setDate(startDate.getDate() - 7);
+                const endDate = new Date(searchStartDate);
+                endDate.setDate(endDate.getDate() + 28);
+
+                const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+                // Parallel Fetching
+                const [curriculumRes, sessionRes, logsRes] = await Promise.all([
+                    fetch(`/api/student-curriculums/student/${user.id}`),
+                    fetch(`/api/test/session?studentId=${user.id}`),
+                    fetch(`/api/study-logs?student_id=${user.id}&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}`)
+                ]);
+
+                // 1. Process Curriculum
+                if (!curriculumRes.ok) throw new Error('Failed to fetch curriculum data');
+                const curriculumData = await curriculumRes.json();
+                setStudent(curriculumData.student);
+                setCurriculums(curriculumData.curriculums || []);
+
+                // 2. Process Session
                 if (sessionRes.ok) {
                     const sessionData = await sessionRes.json();
                     if (sessionData.session) {
@@ -87,12 +102,12 @@ export default function StudentLearningPage() {
                     }
                 }
 
-                // 3. Fetch Study Logs
-                const logsRes = await fetch(`/api/study-logs?student_id=${user.id}`);
+                // 3. Process Logs
                 if (logsRes.ok) {
                     const logsData = await logsRes.json();
                     setStudyLogs(logsData.logs || []);
                 }
+
             } catch (error) {
                 console.error(error);
                 notifications.show({
@@ -106,7 +121,7 @@ export default function StudentLearningPage() {
         };
 
         fetchStudentData();
-    }, [router]);
+    }, [router, searchStartDate]);
 
     const handleResume = () => {
         if (!activeSession) return;
@@ -357,8 +372,6 @@ export default function StudentLearningPage() {
                                                     <Box
                                                         key={idx}
                                                         style={{
-                                                            flex: 1,
-                                                            padding: '1rem',
                                                             flex: 1,
                                                             padding: '1rem',
                                                             borderRight: idx < 4 ? '3px solid black' : 'none',
