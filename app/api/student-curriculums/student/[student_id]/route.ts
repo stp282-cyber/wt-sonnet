@@ -135,11 +135,19 @@ export async function GET(
                             });
 
                             // 소단원을 대단원-소단원 순서로 정렬하여 학습 순서 결정
-                            const sortedSections = sortedSectionsList.map((section: any, index: number) => ({
-                                ...section,
-                                sequence: index + 1,
-                                word_count: section.words?.length || 0,
-                            }));
+                            const sortedSections = sortedSectionsList.map((section: any, index: number) => {
+                                const wordCount = section.words?.length || 0;
+                                // [OPTIMIZATION] Do NOT send the full word list to client to save bandwidth.
+                                // We record the count above, then delete the words array.
+                                const optimizedSection = { ...section };
+                                delete optimizedSection.words;
+
+                                return {
+                                    ...optimizedSection,
+                                    sequence: index + 1,
+                                    word_count: wordCount,
+                                };
+                            });
 
                             return {
                                 ...item,
