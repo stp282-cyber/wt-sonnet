@@ -120,14 +120,35 @@ export async function GET(
                                 };
                             }
 
-                            // 단어장의 소단원(sections) 정보 가져오기
-                            const { data: sections } = await supabase
-                                .from('wordbook_sections')
-                                .select('id, major_unit, minor_unit, unit_name, words')
-                                .eq('wordbook_id', item.item_id);
+                            // [OPTIMIZATION] Use RPC to fetch sections without heavy 'words' data
+                            // The RPC returns 'word_count' directly.
+                            const { data: sections, error: sectionsError } = await supabase
+                                .rpc('get_wordbook_sections_lean', {
+                                    p_wordbook_id: item.item_id
+                                });
+
+                            if (sectionsError) {
+                                console.error('Error fetching sections via RPC:', sectionsError);
+                                // Fallback to normal fetch if RPC fails (failsafe)
+                                const { data: fallbackSections } = await supabase
+                                    .from('wordbook_sections')
+                                    .select('id, major_unit, minor_unit, unit_name, words')
+                                    .eq('wordbook_id', item.item_id);
+
+                                return {
+                                    ...item,
+                                    item_details: wordbook,
+                                    sections: (fallbackSections || []).map((s: any, idx: number) => ({
+                                        ...s,
+                                        sequence: idx + 1,
+                                        word_count: s.words?.length || 0,
+                                        words: undefined // Clear words to be safe
+                                    }))
+                                };
+                            }
 
                             // 소단원을 대단원-소단원 숫자 기준으로 정렬 (1, 2, ... 10 순서 보장)
-                            const sortedSectionsList = (sections || []).sort((a, b) => {
+                            const sortedSectionsList = (sections || []).sort((a: any, b: any) => {
                                 try {
                                     const majorCompare = (a.major_unit || '').localeCompare(b.major_unit || '', undefined, { numeric: true });
                                     if (majorCompare !== 0) return majorCompare;
@@ -140,16 +161,10 @@ export async function GET(
 
                             // 소단원을 대단원-소단원 순서로 정렬하여 학습 순서 결정
                             const sortedSections = sortedSectionsList.map((section: any, index: number) => {
-                                const wordCount = section.words?.length || 0;
-                                // [OPTIMIZATION] Do NOT send the full word list to client to save bandwidth.
-                                // We record the count above, then delete the words array.
-                                const optimizedSection = { ...section };
-                                delete optimizedSection.words;
-
                                 return {
-                                    ...optimizedSection,
+                                    ...section,
                                     sequence: index + 1,
-                                    word_count: wordCount,
+                                    // word_count is already returned by RPC
                                 };
                             });
 
