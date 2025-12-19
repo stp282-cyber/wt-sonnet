@@ -26,12 +26,7 @@ interface Word {
     korean: string;
 }
 
-function normalizeAnswer(answer: string): string {
-    return answer
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '')
-        .trim();
-}
+import { normalizeAnswer } from '@/lib/stringUtils';
 
 function TypingTestContent() {
     const router = useRouter();

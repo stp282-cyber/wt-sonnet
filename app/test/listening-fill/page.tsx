@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Container, Title, Paper, Text, Box, Group, Progress, Badge, TextInput, Button } from '@mantine/core';
 import { IconCheck, IconX, IconPlayerPlay, IconVolume } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
+import { normalizeAnswer } from '@/lib/stringUtils';
 
 interface ListeningQuestion {
     question_no: number;
@@ -85,8 +86,8 @@ export function ListeningFillPage() {
         const blank = blanks.find((b) => b.index === blankIndex);
         if (!blank) return;
 
-        const userAnswer = userAnswers[blankIndex]?.toLowerCase().trim();
-        const correctAnswer = blank.word.toLowerCase();
+        const userAnswer = normalizeAnswer(userAnswers[blankIndex]);
+        const correctAnswer = normalizeAnswer(blank.word);
 
         setCheckedBlanks({
             ...checkedBlanks,
@@ -100,8 +101,8 @@ export function ListeningFillPage() {
         let allCorrect = true;
 
         blanks.forEach((blank) => {
-            const userAnswer = userAnswers[blank.index]?.toLowerCase().trim();
-            const correctAnswer = blank.word.toLowerCase();
+            const userAnswer = normalizeAnswer(userAnswers[blank.index]);
+            const correctAnswer = normalizeAnswer(blank.word);
             const isCorrect = userAnswer === correctAnswer;
             newCheckedBlanks[blank.index] = isCorrect;
             if (!isCorrect) allCorrect = false;

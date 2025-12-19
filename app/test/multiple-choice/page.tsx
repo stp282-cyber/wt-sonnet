@@ -12,11 +12,157 @@ import {
   Stack,
   Loader,
   Center,
-  Button
+  Button,
+  SimpleGrid,
+  Badge
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconBrain } from '@tabler/icons-react';
+import { IconCheck, IconX, IconBrain, IconCards, IconArrowRight, IconVolume } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
+
+// Flashcard Component for Review Phase
+function ReviewFlashcardView({ questions, onStart }: { questions: any[], onStart: () => void }) {
+  const speakWord = (text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.8;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  return (
+    <Box p="xl" style={{ position: 'relative', minHeight: '100%', background: 'transparent' }}>
+      <Container size={1200}>
+        <div className="animate-fade-in">
+          <Stack gap="xl">
+            {/* Header */}
+            <Group justify="space-between" align="center" mb="lg">
+              <Box>
+                <Paper
+                  p="xs"
+                  style={{
+                    background: '#FFD93D',
+                    border: '3px solid black',
+                    display: 'inline-block',
+                    marginBottom: '10px',
+                    boxShadow: '4px 4px 0px black'
+                  }}
+                >
+                  <Group gap={8}>
+                    <IconCards color="black" size={20} stroke={3} />
+                    <Text c="black" fw={900} tt="uppercase" size="sm">Learning Phase</Text>
+                  </Group>
+                </Paper>
+                <Title
+                  order={1}
+                  style={{
+                    fontSize: '2.5rem',
+                    fontWeight: 900,
+                    color: 'white',
+                    lineHeight: 1
+                  }}
+                >
+                  Brief<br />
+                  <span style={{ color: '#FFD93D' }}>Review</span>
+                </Title>
+              </Box>
+
+              <Box ta="right">
+                <Text fw={700} size="xl" c="white">{questions.length} Words</Text>
+                <Text c="dimmed" size="sm" fw={600} style={{ color: '#94a3b8' }}>Review before the test!</Text>
+              </Box>
+            </Group>
+
+            {/* Grid */}
+            <SimpleGrid
+              cols={{ base: 1, sm: 2, md: 3, lg: 4 }}
+              spacing="lg"
+              verticalSpacing="lg"
+              style={{ maxHeight: '60vh', overflowY: 'auto', padding: '10px' }} // Scrollable if many
+            >
+              {questions.map((q, index) => (
+                <Paper
+                  key={index}
+                  p="xl"
+                  onClick={() => speakWord(q.english)}
+                  style={{
+                    border: '3px solid black',
+                    borderRadius: '0px',
+                    background: 'white',
+                    minHeight: '180px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    boxShadow: '4px 4px 0px black',
+                    transition: 'transform 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <Text size="1.5rem" fw={900} ta="center" style={{ color: 'black', marginBottom: '8px' }}>
+                    {q.english}
+                  </Text>
+                  <Box style={{ width: '30px', height: '3px', background: '#FFD93D', marginBottom: '8px' }} />
+                  <Text size="1.2rem" fw={600} ta="center" style={{ color: '#495057' }}>
+                    {q.answer}
+                  </Text>
+                  <Group gap={4} mt={10} style={{ opacity: 0.4 }}>
+                    <IconVolume size={16} />
+                  </Group>
+                </Paper>
+              ))}
+            </SimpleGrid>
+
+            {/* Footer - Start Button */}
+            <Center mt={20} mb={40}>
+              <Button
+                onClick={onStart}
+                size="xl"
+                rightSection={<IconArrowRight size={24} stroke={3} />}
+                styles={{
+                  root: {
+                    background: '#FFD93D',
+                    color: 'black',
+                    border: '3px solid black',
+                    borderRadius: '0px',
+                    boxShadow: '8px 8px 0px 0px black',
+                    height: '70px',
+                    paddingLeft: '40px',
+                    paddingRight: '40px',
+                    transition: 'all 0.2s'
+                  },
+                  label: {
+                    fontSize: '1.5rem',
+                    fontWeight: 900
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                  e.currentTarget.style.boxShadow = '10px 10px 0px 0px black';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translate(0, 0)';
+                  e.currentTarget.style.boxShadow = '8px 8px 0px 0px black';
+                }}
+              >
+                START TEST
+              </Button>
+            </Center>
+          </Stack>
+        </div>
+      </Container>
+    </Box>
+  );
+}
 
 function MultipleChoiceContent() {
   const router = useRouter();
@@ -27,6 +173,7 @@ function MultipleChoiceContent() {
   const [loading, setLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
+  const [phase, setPhase] = useState<'learning' | 'testing'>('learning');
 
   // Initial Fetch
   useEffect(() => {
@@ -46,6 +193,14 @@ function MultipleChoiceContent() {
               setQuestions(sData.reviewQuestions || []);
               setCurrentIndex(sData.currentIndex || 0);
               setResults(sData.results || []);
+
+              // Only skip learning if we have actually started answering
+              if ((sData.currentIndex || 0) > 0) {
+                setPhase('testing');
+              } else {
+                setPhase('learning');
+              }
+
               setLoading(false);
               return;
             }
@@ -72,7 +227,8 @@ function MultipleChoiceContent() {
 
         if (data.questions && data.questions.length > 0) {
           setQuestions(data.questions);
-          saveSessionState(data.questions, 0, []);
+          setPhase('learning'); // Default to learning on fresh start
+          saveSessionState(0, []);
         } else {
           // No review words -> Finish immediately
           finishTest([], true);
@@ -87,14 +243,21 @@ function MultipleChoiceContent() {
     initTest();
   }, [searchParams]);
 
-  const saveSessionState = async (qs: any[], idx: number, res: boolean[]) => {
-    const studentInfoStr = localStorage.getItem('user');
-    if (!studentInfoStr) return;
-    const studentInfo = JSON.parse(studentInfoStr);
+  // Check user info once
+  const [studentInfo, setStudentInfo] = useState<any>(null);
 
+  useEffect(() => {
+    const sStr = localStorage.getItem('user');
+    if (sStr) setStudentInfo(JSON.parse(sStr));
+  }, []);
+
+  const saveSessionState = async (idx: number, res: boolean[]) => {
+    if (!studentInfo) return;
+
+    // Payload reduced: Removed 'reviewQuestions'
     const sessionData = {
       step: 'REVIEW_TEST',
-      reviewQuestions: qs,
+      // reviewQuestions: qs, // REMOVED for performance
       currentIndex: idx,
       results: res,
       itemId: searchParams.get('itemId'),
@@ -106,13 +269,16 @@ function MultipleChoiceContent() {
     };
 
     try {
-      await fetch('/api/test/session', {
+      // Fire and forget - don't await to block UI if not needed, but keep await for error handling if critical.
+      // Since it's background save, we catch errors silently.
+      fetch('/api/test/session', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentId: studentInfo.id,
           sessionData
         })
-      });
+      }).catch(e => console.error("Background save failed", e));
     } catch (e) {
       console.error("Failed to save session", e);
     }
@@ -124,12 +290,15 @@ function MultipleChoiceContent() {
     setIsAnswered(true);
 
     const currentQ = questions[currentIndex];
-    // Ensure answer comparison is safe
     const isCorrect = choice === currentQ.answer;
     const newResults = [...results, isCorrect];
     setResults(newResults);
 
-    saveSessionState(questions, currentIndex + 1, newResults);
+    // Save in background (no questions array passed)
+    saveSessionState(currentIndex + 1, newResults);
+
+    // Dynamic Delay: 200ms for Correct, 1000ms for Wrong
+    const delay = isCorrect ? 200 : 1000;
 
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
@@ -139,7 +308,7 @@ function MultipleChoiceContent() {
       } else {
         finishTest(newResults);
       }
-    }, 1500);
+    }, delay);
   };
 
   const finishTest = async (finalResults: boolean[], forceEmpty = false) => {
@@ -222,6 +391,11 @@ function MultipleChoiceContent() {
 
   if (questions.length === 0) {
     return <Center h="100vh"><Text c="white">No questions loaded.</Text></Center>;
+  }
+
+  // --- Render Learning Phase ---
+  if (phase === 'learning') {
+    return <ReviewFlashcardView questions={questions} onStart={() => setPhase('testing')} />;
   }
 
   const currentQ = questions[currentIndex];

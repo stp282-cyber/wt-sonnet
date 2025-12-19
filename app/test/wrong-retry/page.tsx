@@ -19,6 +19,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconRefresh } from '@tabler/icons-react';
 import StudentLayout from '../../student/layout';
+import { normalizeAnswer } from '@/lib/stringUtils';
 
 function WrongRetryContent() {
     const router = useRouter();
@@ -124,8 +125,8 @@ function WrongRetryContent() {
             setSelectedChoice(userChoice);
         } else {
             // Typing Logic (Basic)
-            const correct = currentWord.english.toLowerCase().trim();
-            const answer = userAnswer.toLowerCase().trim();
+            const correct = normalizeAnswer(currentWord.english);
+            const answer = normalizeAnswer(userAnswer);
             isCorrect = correct === answer;
         }
 

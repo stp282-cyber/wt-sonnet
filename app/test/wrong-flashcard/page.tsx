@@ -200,17 +200,26 @@ function WrongFlashcardContent() {
             let nextStep = mode === 'basic' ? 'BASIC_WRONG_RETRY' : 'REVIEW_WRONG_RETRY';
             // Custom Logic for Scramble
             if (testType === 'scramble') {
-                nextStep = 'SCRAMBLE_RETRY'; // Or just keep it as scramble but handled by params
+                nextStep = 'SCRAMBLE_RETRY';
+            }
+
+            // [NEW] Shuffle Function
+            const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
+
+            // Prepare updated data with shuffled words
+            const updatedSessionData: any = { ...sData, step: nextStep };
+
+            if (mode === 'review_wrong' && sData.reviewWrongQuestions) {
+                updatedSessionData.reviewWrongQuestions = shuffle([...sData.reviewWrongQuestions]);
+            } else if (sData.wrongWords) {
+                updatedSessionData.wrongWords = shuffle([...sData.wrongWords]);
             }
 
             await fetch('/api/test/session', {
                 method: 'POST',
                 body: JSON.stringify({
                     studentId: studentInfo.id,
-                    sessionData: {
-                        ...sData,
-                        step: nextStep
-                    }
+                    sessionData: updatedSessionData
                 })
             });
         }

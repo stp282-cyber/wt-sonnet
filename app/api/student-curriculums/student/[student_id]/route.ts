@@ -128,10 +128,14 @@ export async function GET(
 
                             // 소단원을 대단원-소단원 숫자 기준으로 정렬 (1, 2, ... 10 순서 보장)
                             const sortedSectionsList = (sections || []).sort((a, b) => {
-                                const majorCompare = (a.major_unit || '').localeCompare(b.major_unit || '', undefined, { numeric: true });
-                                if (majorCompare !== 0) return majorCompare;
-
-                                return (a.minor_unit || '').localeCompare(b.minor_unit || '', undefined, { numeric: true });
+                                try {
+                                    const majorCompare = (a.major_unit || '').localeCompare(b.major_unit || '', undefined, { numeric: true });
+                                    if (majorCompare !== 0) return majorCompare;
+                                    return (a.minor_unit || '').localeCompare(b.minor_unit || '', undefined, { numeric: true });
+                                } catch (e) {
+                                    console.error('Error sorting sections:', e);
+                                    return 0;
+                                }
                             });
 
                             // 소단원을 대단원-소단원 순서로 정렬하여 학습 순서 결정
@@ -187,9 +191,13 @@ export async function GET(
 
         return NextResponse.json(responseData);
     } catch (error: any) {
-        console.error('Unexpected error:', error);
+        console.error('Unexpected error in student-curriculum route:', error);
         return NextResponse.json(
-            { error: 'Internal server error' },
+            {
+                error: 'Internal server error',
+                message: error.message,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            },
             { status: 500 }
         );
     }
