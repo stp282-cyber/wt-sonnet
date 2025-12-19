@@ -208,6 +208,9 @@ function TypingTestContent() {
         // Save Progress
         saveProgress(currentIndex + 1, newResults);
 
+        // Dynamic Delay: 200ms for Correct, 1000ms for Wrong/Timeout
+        const delay = (isCorrect && !timeout) ? 200 : 1000;
+
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
                 setCurrentIndex(currentIndex + 1);
@@ -218,7 +221,7 @@ function TypingTestContent() {
             } else {
                 finishTest(newResults);
             }
-        }, 1500); // 1.5초 대기
+        }, delay);
     };
 
     const finishTest = async (finalResults: boolean[]) => {

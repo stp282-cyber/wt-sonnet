@@ -85,6 +85,23 @@ export async function POST(request: NextRequest) {
             };
         }
 
+        // DB 저장용 데이터 최적화 (전체 단어/문제 데이터 제외하고 메타데이터만 저장)
+        const testDataForDB = { ...testData };
+        // 단어 시험 데이터 제거
+        if (testDataForDB.words) delete testDataForDB.words;
+        if (testDataForDB.wordbook) {
+            // wordbook 메타데이터만 남기고 sections/words 제거
+            const { sections, ...mw } = testDataForDB.wordbook;
+            testDataForDB.wordbook = mw;
+        }
+        // 듣기 시험 데이터 제거
+        if (testDataForDB.questions) delete testDataForDB.questions;
+        if (testDataForDB.listeningTest) {
+            // listeningTest 메타데이터만 남기고 questions 제거
+            const { questions, ...ml } = testDataForDB.listeningTest;
+            testDataForDB.listeningTest = ml;
+        }
+
         // 학습 기록 생성 (시험 시작)
         const { data: studyLog, error: logError } = await supabase
             .from('study_logs')
@@ -95,7 +112,7 @@ export async function POST(request: NextRequest) {
                 scheduled_date: new Date().toISOString().split('T')[0],
                 status: 'in_progress',
                 test_phase: 'initial',
-                test_data: testData,
+                test_data: testDataForDB,
             })
             .select()
             .single();

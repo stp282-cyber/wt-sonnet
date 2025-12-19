@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
         let query = supabase
             .from('study_logs')
-            .select('*')
+            .select('id, student_id, curriculum_id, curriculum_item_id, scheduled_date, status, test_phase, score, created_at')
             .order('scheduled_date', { ascending: false });
 
         if (studentId) query = query.eq('student_id', studentId);

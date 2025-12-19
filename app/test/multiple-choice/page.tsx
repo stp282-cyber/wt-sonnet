@@ -340,10 +340,10 @@ function MultipleChoiceContent() {
       const wrongQuestions = questions.filter((_, i) => !finalResults[i]);
 
       if (wrongQuestions.length > 0) {
-        // Go to Wrong Retry
-        // Reset Session for Retry
+        // Go to Wrong Flashcard (Review Mode)
+        // Reset Session for Retry Preparation
         const sessionData = {
-          step: 'REVIEW_WRONG_RETRY',
+          step: 'WRONG_FLASHCARD', // Set step to generic Flashcard
           reviewWrongQuestions: wrongQuestions,
           itemId: searchParams.get('itemId'),
           start: searchParams.get('start'),
@@ -360,7 +360,7 @@ function MultipleChoiceContent() {
 
         const params = new URLSearchParams(searchParams.toString());
         params.set('mode', 'review_wrong');
-        router.push(`/test/wrong-retry?${params.toString()}`);
+        router.push(`/test/wrong-flashcard?${params.toString()}`);
       } else {
         // Complete!
         await fetch('/api/study-logs', {

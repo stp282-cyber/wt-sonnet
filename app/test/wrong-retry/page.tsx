@@ -136,6 +136,9 @@ function WrongRetryContent() {
 
         saveState(currentIndex + 1, newResults);
 
+        // Dynamic Delay: 200ms for Correct, 1000ms for Wrong
+        const delay = isCorrect ? 200 : 1000;
+
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
                 setCurrentIndex(currentIndex + 1);
@@ -149,7 +152,7 @@ function WrongRetryContent() {
             } else {
                 finishTest(newResults, mode);
             }
-        }, 1500);
+        }, delay);
     };
 
     const finishTest = async (finalResults: boolean[], currentMode: string) => {
