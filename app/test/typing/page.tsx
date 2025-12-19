@@ -34,7 +34,7 @@ function TypingTestContent() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [results, setResults] = useState<boolean[]>([]);
-    const [timeLeft, setTimeLeft] = useState(20);
+    const [timeLeft, setTimeLeft] = useState(40);
     const [isAnswered, setIsAnswered] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const [words, setWords] = useState<Word[]>([]);
@@ -215,7 +215,7 @@ function TypingTestContent() {
             if (currentIndex < words.length - 1) {
                 setCurrentIndex(currentIndex + 1);
                 setUserAnswer('');
-                setTimeLeft(20);
+                setTimeLeft(40);
                 setIsAnswered(false);
                 setTimeout(() => inputRef.current?.focus(), 50);
             } else {
