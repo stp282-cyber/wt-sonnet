@@ -29,7 +29,7 @@ function WrongRetryContent() {
     const [userAnswer, setUserAnswer] = useState(''); // For Typing
     const [selectedChoice, setSelectedChoice] = useState<string | null>(null); // For MC
     const [results, setResults] = useState<boolean[]>([]);
-    const [timeLeft, setTimeLeft] = useState(20);
+    const [timeLeft, setTimeLeft] = useState(40);
     const [isAnswered, setIsAnswered] = useState(false);
     const [loading, setLoading] = useState(true);
     const [mode, setMode] = useState('basic'); // 'basic' | 'review_wrong'
@@ -144,7 +144,7 @@ function WrongRetryContent() {
                 setCurrentIndex(currentIndex + 1);
                 setUserAnswer('');
                 setSelectedChoice(null); // Reset MC selection
-                setTimeLeft(20);
+                setTimeLeft(40);
                 setIsAnswered(false);
                 if (mode !== 'review_wrong') {
                     setTimeout(() => inputRef.current?.focus(), 50);
