@@ -134,6 +134,7 @@ export async function PUT(
                     major_unit: representativeWord?.major_unit || null,
                     minor_unit: minorUnit,
                     unit_name: representativeWord?.unit_name || minorUnit,
+                    word_count: sectionWords.length, // [Safety Fix] 섹션별 단어 수 저장
                     words: sectionWords,
                 };
             });

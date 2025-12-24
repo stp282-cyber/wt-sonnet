@@ -52,7 +52,7 @@ export default function LoginPage() {
       if (user.role === 'teacher' || user.role === 'super_admin') {
         router.push('/teacher/dashboard');
       } else if (user.role === 'student') {
-        router.push('/student/dashboard');
+        router.push('/student/learning'); // [UX] 대시보드 대신 학습 페이지로 이동
       }
     } catch (error: any) {
       notifications.show({

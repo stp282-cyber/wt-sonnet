@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
             .from('wordbooks')
             .insert({
                 title,
-                word_count: words.length,
+                word_count: words.length, // [Safety Fix] 단어 수 명시적 저장
                 is_shared: false,
             })
             .select()
@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
                 major_unit: firstWord.major_unit,
                 minor_unit: firstWord.minor_unit,
                 unit_name: firstWord.unit_name || `${firstWord.major_unit}-${firstWord.minor_unit}`,
+                word_count: sectionWords.length, // [Safety Fix] 섹션별 단어 수 저장
                 words: sectionWords.map(w => ({
                     no: w.no,
                     english: w.english,

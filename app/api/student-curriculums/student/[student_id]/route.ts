@@ -132,7 +132,7 @@ export async function GET(
                                 // Fallback to normal fetch if RPC fails (failsafe)
                                 const { data: fallbackSections } = await supabase
                                     .from('wordbook_sections')
-                                    .select('id, major_unit, minor_unit, unit_name, words')
+                                    .select('id, major_unit, minor_unit, unit_name, word_count') // [Optimized] Fetch count directly
                                     .eq('wordbook_id', item.item_id);
 
                                 return {
@@ -141,8 +141,7 @@ export async function GET(
                                     sections: (fallbackSections || []).map((s: any, idx: number) => ({
                                         ...s,
                                         sequence: idx + 1,
-                                        word_count: s.words?.length || 0,
-                                        words: undefined // Clear words to be safe
+                                        // word_count is already in 's'
                                     }))
                                 };
                             }

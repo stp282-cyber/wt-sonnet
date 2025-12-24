@@ -56,7 +56,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     };
 
     const navItems = [
-        { icon: IconHome, label: '대시보드', href: '/student/dashboard' },
         { icon: IconBook, label: '나의 학습', href: '/student/learning' },
         // Removed Messages nav item
         { icon: IconSettings, label: '설정', href: '/student/settings' },
@@ -99,7 +98,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
                             {/* 로고 영역 */}
                             <Box
-                                onClick={() => router.push('/student/dashboard')}
+                                onClick={() => router.push('/student/learning')}
                                 style={{
                                     background: '#FFD93D', // Yellow Accent remains
                                     border: '2px solid white',
