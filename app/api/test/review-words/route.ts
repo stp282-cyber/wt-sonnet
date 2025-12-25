@@ -65,8 +65,20 @@ export async function GET(req: NextRequest) {
         const reviewEnd = endLimit - dailyAmount;
         const reviewStart = Math.max(1, reviewEnd - (2 * dailyAmount) + 1);
 
+        // First day check - no review words available
         if (reviewEnd < 1) {
-            return NextResponse.json({ words: [], message: 'Not enough previous words for review' });
+            return NextResponse.json({
+                questions: [],
+                message: '첫 학습일입니다. 복습할 단어가 없습니다.',
+                meta: { reviewStart: 0, reviewEnd: 0, total: 0, isFirstDay: true }
+            });
+        }
+
+        // Second day check - only 1 day worth of review
+        if (reviewStart < 1 && reviewEnd >= 1) {
+            // Adjust to review only the first day's words
+            const adjustedStart = 1;
+            // Continue with adjusted range (will be handled below)
         }
 
         const targetWordbookId = wordbookId;

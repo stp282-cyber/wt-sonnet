@@ -267,7 +267,8 @@ function TypingTestContent() {
             route = `/test/result?itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&curriculumItemId=${curriculumItemId}&mode=basic&nextStep=WRONG_FLASHCARD&scheduledDate=${scheduledDate}`;
         } else {
             nextStep = 'REVIEW_TEST';
-            route = `/test/multiple-choice?itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&curriculumItemId=${curriculumItemId}&scheduledDate=${scheduledDate}`;
+            // Pass parameters to result page for progress-based review
+            route = `/test/result?nextAction=check_review&scheduledDate=${scheduledDate}&curriculumItemId=${curriculumItemId}&itemId=${itemId}&end=${end}&curriculumId=${curriculumId}`;
         }
 
         const sessionData = {

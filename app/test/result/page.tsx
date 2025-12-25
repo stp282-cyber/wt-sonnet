@@ -88,39 +88,60 @@ function TestResultContent() {
         if (nextAction === 'check_review') {
             setCheckingReview(true);
             try {
-                const studentInfoStr = localStorage.getItem('studentInfo');
-                if (!studentInfoStr) {
-                    console.error('Student info not found');
+                // Extract parameters for progress-based review
+                const curriculumItemId = searchParams.get('curriculumItemId');
+                const wordbookId = searchParams.get('itemId');
+                const currentEnd = searchParams.get('end');
+
+                // Validate required parameters
+                if (!curriculumItemId || !wordbookId || !currentEnd) {
+                    console.error('Missing parameters for review test');
+                    notifications.show({
+                        title: '오류',
+                        message: '복습 시험 정보가 부족합니다.',
+                        color: 'red'
+                    });
                     router.push('/student/learning');
                     return;
                 }
-                const studentInfo = JSON.parse(studentInfoStr);
 
-                const res = await fetch('/api/test/review', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        studentId: studentInfo.id,
-                        curriculumId: studentInfo.curriculum_id
-                    })
-                });
+                // Call progress-based review API
+                const res = await fetch(
+                    `/api/test/review-words?curriculumItemId=${curriculumItemId}&wordbookId=${wordbookId}&currentEnd=${currentEnd}`
+                );
 
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.reviewWords && data.reviewWords.length > 0) {
-                        localStorage.setItem('reviewWords', JSON.stringify(data.reviewWords));
+                    if (data.questions && data.questions.length > 0) {
+                        localStorage.setItem('reviewWords', JSON.stringify(data.questions));
                         notifications.show({
                             title: '복습 시험',
-                            message: `지난 복습 단어 ${data.reviewWords.length}개가 있습니다. 복습 시험을 시작합니다!`,
+                            message: `이전 2일치 단어 ${data.questions.length}개를 복습합니다!`,
                             color: 'blue',
                             autoClose: 3000
                         });
-                        router.push(`/test/multiple-choice?nextAction=home&scheduledDate=${searchParams.get('scheduledDate')}`);
+
+                        // Pass parameters to multiple-choice page
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('nextAction', 'home');
+                        router.push(`/test/multiple-choice?${params.toString()}`);
                         return;
+                    } else {
+                        // No review words (first or second day)
+                        notifications.show({
+                            title: '복습 시험 없음',
+                            message: data.message || '아직 복습할 단어가 충분하지 않습니다.',
+                            color: 'blue'
+                        });
                     }
                 }
             } catch (error) {
                 console.error('Failed to check review words', error);
+                notifications.show({
+                    title: '오류',
+                    message: '복습 단어를 불러오는데 실패했습니다.',
+                    color: 'red'
+                });
             }
             setCheckingReview(false);
             router.push('/student/learning');
