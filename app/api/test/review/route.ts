@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     try {
         const supabase = createClient();
         const body = await req.json();
-        const { studentId, curriculumId } = body;
+        const { studentId, curriculumId, curriculumItemId, currentEnd } = body;
 
         if (!studentId || !curriculumId) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -32,74 +32,82 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Curriculum not found' }, { status: 404 });
         }
 
-        // Sort items and sections for correct schedule calculation
-        if (curriculum.curriculum_items) {
-            curriculum.curriculum_items.sort((a: any, b: any) => a.sequence - b.sequence);
-            curriculum.curriculum_items.forEach((item: any) => {
-                if (item.sections) {
-                    item.sections.sort((s1: any, s2: any) => (s1.sequence || s1.id) - (s2.sequence || s2.id));
-                }
-            });
+        // 2. Identify Target Item & Daily Amount
+        let targetItem: any = null;
+        if (curriculumItemId) {
+            targetItem = curriculum.curriculum_items.find((item: any) => item.id === curriculumItemId);
+        } else {
+            // Fallback: Try to find the current active item
+            targetItem = curriculum.curriculum_items.find((item: any) => item.id === curriculum.current_item_id);
         }
 
-        // 2. Calculate Dates (Today - 1, Today - 2)
-        const today = new Date();
-        const reviewDates = [];
-
-        // Review Day 1 (Yesterday)
-        const day1 = new Date(today);
-        day1.setDate(today.getDate() - 1);
-        reviewDates.push(day1);
-
-        // Review Day 2 (Day before Yesterday)
-        const day2 = new Date(today);
-        day2.setDate(today.getDate() - 2);
-        reviewDates.push(day2);
-
-        let reviewWords: any[] = [];
-
-        // 3. Fetch Schedule & Words for each date
-        for (const date of reviewDates) {
-            const dateStr = date.toISOString().split('T')[0];
-            const schedule = getScheduleForDate(curriculum as StudentCurriculum, dateStr);
-
-            if (schedule && schedule.itemType === 'wordbook' && schedule.item) {
-                const targetBookId = schedule.item.item_id;
-
-                // Fetch words from wordbook
-                // Note: 'words' column in 'wordbooks' table is JSONB
-                const { data: wordbook, error: wbError } = await supabase
-                    .from('wordbooks')
-                    .select('words')
-                    .eq('id', targetBookId)
-                    .single();
-
-                if (!wbError && wordbook?.words) {
-                    // Filter by progress range
-                    // schedule.progressStart and End are 1-based indices.
-                    const start = schedule.progressStart;
-                    const end = schedule.progressEnd;
-
-                    if (typeof start === 'number' && typeof end === 'number') {
-
-                        // JSON array slice? simpler to do in JS
-                        const allWords = wordbook.words as any[];
-                        // 1-based index to 0-based slice
-                        // slice(start, end) extracts up to but not including end.
-                        // If start=1, end=20 (20 words). slice(0, 20).
-                        const dailyWords = allWords.slice(start - 1, end);
-                        reviewWords = [...reviewWords, ...dailyWords];
-                    }
-                }
-            }
+        if (!targetItem) {
+            return NextResponse.json({ reviewWords: [], count: 0, message: 'Target item not found' });
         }
 
+        let dailyAmount = 30; // Default
+        if (curriculum.setting_overrides?.daily_amount) {
+            dailyAmount = Number(curriculum.setting_overrides.daily_amount);
+        } else if (targetItem.daily_amount) {
+            dailyAmount = Number(targetItem.daily_amount);
+        }
+
+        // 3. Calculate Review Range (Volume Based)
+        // Logic: Review the *previous 2 days* relative to the *current progress*.
+        // Current Window: [currentEnd - dailyAmount + 1, currentEnd]
+        // Review End: currentEnd - dailyAmount
+        // Review Start: Review End - (2 * dailyAmount) + 1
+
+        if (!currentEnd || currentEnd <= 0) {
+            // If no progress info, we can't determine "previous".
+            return NextResponse.json({ reviewWords: [], count: 0, message: 'No progress info provided' });
+        }
+
+        const reviewEnd = currentEnd - dailyAmount;
+        const reviewStart = Math.max(1, reviewEnd - (2 * dailyAmount) + 1);
+
+        // If reviewEnd is less than 1, it means we are on Day 1. No review.
+        if (reviewEnd < 1) {
+            // Day 1
+            return NextResponse.json({ reviewWords: [], count: 0, message: 'Day 1: No previous words to review' });
+        }
+
+        // 4. Fetch Words from Wordbook
+        const targetBookId = targetItem.item_id;
+        const { data: wordbook, error: wbError } = await supabase
+            .from('wordbooks')
+            .select('words')
+            .eq('id', targetBookId)
+            .single();
+
+        if (wbError || !wordbook?.words) {
+            return NextResponse.json({ reviewWords: [], count: 0, message: 'Wordbook not found' });
+        }
+
+        const allWords = wordbook.words as any[];
+
+        // 5. Slice Words
+        // reviewStart is 1-based index
+        // Array index = reviewStart - 1
+        // slice(start, end) -> end is exclusive. So we want slice(start - 1, reviewEnd)
+
+        const startIndex = Math.max(0, reviewStart - 1);
+        const endIndex = Math.min(allWords.length, reviewEnd);
+
+        if (startIndex >= endIndex) {
+            return NextResponse.json({ reviewWords: [], count: 0, message: 'Invalid range' });
+        }
+
+        const reviewWords = allWords.slice(startIndex, endIndex);
+
+        // 6. Return Unique Words
         const uniqueWords = Array.from(new Set(reviewWords.map(w => w.english)))
             .map(eng => reviewWords.find(w => w.english === eng));
 
         return NextResponse.json({
             reviewWords: uniqueWords,
-            count: uniqueWords.length
+            count: uniqueWords.length,
+            debug: { reviewStart, reviewEnd, dailyAmount, currentEnd }
         });
 
     } catch (error: any) {
