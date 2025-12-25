@@ -10,60 +10,50 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const curriculumItemId = searchParams.get('curriculumItemId');
         const wordbookId = searchParams.get('wordbookId');
-        const currentEndParam = searchParams.get('currentEnd'); // To exclude current range if needed, or define "previous" relative to this.
+        const currentStartParam = searchParams.get('currentStart');  // Added for actual range
+        const currentEndParam = searchParams.get('currentEnd');
 
         if (!curriculumItemId && !wordbookId) {
             return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
         }
 
-        // Strategy: 
-        // 1. Get current item's daily_amount and sequence.
-        // 2. We want words from "2 days ago" amount.
-        // 3. Simple approach: Get daily_amount from DB. 
-        // 4. Target Range: (currentEnd - currentDailyAmount - (2 * currentDailyAmount)) to (currentEnd - currentDailyAmount) ??
-        // User said: "Review test is set learning amount's 2 days volume".
-        // It implies Review = 2 * Daily Amount.
-        // Range: From [Current Start - (2 * Daily Amount)] to [Current Start - 1].
+        // Calculate review range based on ACTUAL learning amount
+        let reviewStart = 1;
+        let reviewEnd = 0;
+        let actualDailyAmount = 30;  // Default fallback
 
-        let dailyAmount = 30; // Default
-        let currentStart = 1;
+        // Method 1: Use actual range if provided (PREFERRED)
+        if (currentStartParam && currentEndParam) {
+            const currentStart = parseInt(currentStartParam);
+            const currentEnd = parseInt(currentEndParam);
 
-        if (curriculumItemId) {
-            const { data: itemData, error: itemError } = await supabase
-                .from('curriculum_items')
-                .select('daily_amount, item_id')
-                .eq('id', curriculumItemId)
-                .single();
+            // Calculate actual daily amount from today's learning
+            actualDailyAmount = currentEnd - currentStart + 1;
 
-            if (itemData) {
-                dailyAmount = Number(itemData.daily_amount) || 30;
-                // If we rely on passed 'currentEnd', we can calculate back.
-            }
+            // Review range: 2 days worth of actual learning, ending just before today
+            reviewEnd = currentStart - 1;
+            reviewStart = Math.max(1, reviewEnd - (2 * actualDailyAmount) + 1);
+
         }
+        // Method 2: Fallback to DB daily_amount if actual range not provided
+        else if (currentEndParam) {
+            // Get daily_amount from DB
+            if (curriculumItemId) {
+                const { data: itemData } = await supabase
+                    .from('curriculum_items')
+                    .select('daily_amount')
+                    .eq('id', curriculumItemId)
+                    .single();
 
-        const endLimit = parseInt(currentEndParam || '0');
-        // Assuming currentEnd is the end of the TODAY'S test.
-        // So Review should be `endLimit - dailyAmount` (Today's Start - 1) down to `endLimit - dailyAmount - (2 * dailyAmount)`.
+                if (itemData) {
+                    actualDailyAmount = Number(itemData.daily_amount) || 30;
+                }
+            }
 
-        // Actually, simpler logic:
-        // Review Range End = endLimit; (If we include today? No, review is usually previous)
-        // Let's assume Review = Previous 2 Days PRIOR to today.
-        // Today = Day N. Review = Day N-1 and N-2.
-        // So Range End = (Today Start - 1).
-        // Range Start = (Today Start - 1) - (2 * dailyAmount) + 1.
-
-        // However, if we don't have exact "Today Start", we can use `endLimit` (which is Today End).
-        // Today Start = endLimit - dailyAmount + 1.
-        // Review End = Today Start - 1 = endLimit - dailyAmount.
-        // Review Start = Review End - (2 * dailyAmount) + 1.
-
-        // Wait, what if it's the first day?
-        // If Review End < 1, then no review? Or just review existing?
-        // User requirement: "Review test... set learning amount's 2 days volume".
-        // If not enough words, take all available previous words.
-
-        const reviewEnd = endLimit - dailyAmount;
-        const reviewStart = Math.max(1, reviewEnd - (2 * dailyAmount) + 1);
+            const endLimit = parseInt(currentEndParam);
+            reviewEnd = endLimit - actualDailyAmount;
+            reviewStart = Math.max(1, reviewEnd - (2 * actualDailyAmount) + 1);
+        }
 
         // First day check - no review words available
         if (reviewEnd < 1) {
@@ -76,9 +66,8 @@ export async function GET(req: NextRequest) {
 
         // Second day check - only 1 day worth of review
         if (reviewStart < 1 && reviewEnd >= 1) {
-            // Adjust to review only the first day's words
-            const adjustedStart = 1;
-            // Continue with adjusted range (will be handled below)
+            reviewStart = 1;  // Adjust to start from beginning
+            // Will review only what's available (less than 2 days)
         }
 
         const targetWordbookId = wordbookId;

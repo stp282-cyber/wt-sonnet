@@ -91,10 +91,11 @@ function TestResultContent() {
                 // Extract parameters for progress-based review
                 const curriculumItemId = searchParams.get('curriculumItemId');
                 const wordbookId = searchParams.get('itemId');
+                const currentStart = searchParams.get('start');  // Added for actual range calculation
                 const currentEnd = searchParams.get('end');
 
                 // Validate required parameters
-                if (!curriculumItemId || !wordbookId || !currentEnd) {
+                if (!curriculumItemId || !wordbookId || !currentStart || !currentEnd) {
                     console.error('Missing parameters for review test');
                     notifications.show({
                         title: '오류',
@@ -105,9 +106,9 @@ function TestResultContent() {
                     return;
                 }
 
-                // Call progress-based review API
+                // Call progress-based review API with actual range
                 const res = await fetch(
-                    `/api/test/review-words?curriculumItemId=${curriculumItemId}&wordbookId=${wordbookId}&currentEnd=${currentEnd}`
+                    `/api/test/review-words?curriculumItemId=${curriculumItemId}&wordbookId=${wordbookId}&currentStart=${currentStart}&currentEnd=${currentEnd}`
                 );
 
                 if (res.ok) {
