@@ -213,6 +213,7 @@ function MultipleChoiceContent() {
       // Fresh Start - Fetch Review Words
       const curriculumItemId = searchParams.get('curriculumItemId');
       const wordbookId = searchParams.get('itemId');
+      const startLimit = searchParams.get('start');  // Added for actual range
       const endLimit = searchParams.get('end');
 
       if (!curriculumItemId || !wordbookId) {
@@ -221,7 +222,7 @@ function MultipleChoiceContent() {
       }
 
       try {
-        const res = await fetch(`/api/test/review-words?curriculumItemId=${curriculumItemId}&wordbookId=${wordbookId}&currentEnd=${endLimit}`);
+        const res = await fetch(`/api/test/review-words?curriculumItemId=${curriculumItemId}&wordbookId=${wordbookId}&currentStart=${startLimit}&currentEnd=${endLimit}`);
         if (!res.ok) throw new Error('Failed to fetch review words');
         const data = await res.json();
 
