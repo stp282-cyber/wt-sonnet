@@ -17,58 +17,37 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
         }
 
-        // Calculate review range based on ACTUAL learning amount
-        let reviewStart = 1;
-        let reviewEnd = 0;
-        let actualDailyAmount = 30;  // Default fallback
-
-        // Method 1: Use actual range if provided (PREFERRED)
-        if (currentStartParam && currentEndParam) {
-            const currentStart = parseInt(currentStartParam);
-            const currentEnd = parseInt(currentEndParam);
-
-            // Calculate actual daily amount from today's learning
-            actualDailyAmount = currentEnd - currentStart + 1;
-
-            // Review range: 2 days worth of actual learning, ending just before today
-            reviewEnd = currentStart - 1;
-            reviewStart = Math.max(1, reviewEnd - (2 * actualDailyAmount) + 1);
-
+        // CRITICAL: We need currentStart and currentEnd to calculate review range
+        if (!currentStartParam || !currentEndParam) {
+            return NextResponse.json({
+                error: 'Missing currentStart or currentEnd parameters',
+                questions: [],
+                meta: { error: 'Parameters required for volume-based review' }
+            }, { status: 400 });
         }
-        // Method 2: Fallback to DB daily_amount if actual range not provided
-        else if (currentEndParam) {
-            // Get daily_amount from DB
-            if (curriculumItemId) {
-                const { data: itemData } = await supabase
-                    .from('curriculum_items')
-                    .select('daily_amount')
-                    .eq('id', curriculumItemId)
-                    .single();
 
-                if (itemData) {
-                    actualDailyAmount = Number(itemData.daily_amount) || 30;
-                }
-            }
+        const currentStart = parseInt(currentStartParam);
+        const currentEnd = parseInt(currentEndParam);
 
-            const endLimit = parseInt(currentEndParam);
-            reviewEnd = endLimit - actualDailyAmount;
-            reviewStart = Math.max(1, reviewEnd - (2 * actualDailyAmount) + 1);
-        }
+        // Calculate actual daily amount from today's learning
+        const actualDailyAmount = currentEnd - currentStart + 1;
+
+        // Review range: 2 days worth of actual learning, ending just before today
+        // Today: [currentStart, currentEnd]
+        // Review End: currentStart - 1
+        // Review Start: max(1, reviewEnd - 2*dailyAmount + 1)
+        const reviewEnd = currentStart - 1;
+        const reviewStart = Math.max(1, reviewEnd - (2 * actualDailyAmount) + 1);
 
         // First day check - no review words available
         if (reviewEnd < 1) {
             return NextResponse.json({
                 questions: [],
                 message: '첫 학습일입니다. 복습할 단어가 없습니다.',
-                meta: { reviewStart: 0, reviewEnd: 0, total: 0, isFirstDay: true }
+                meta: { reviewStart: 0, reviewEnd: 0, total: 0, isFirstDay: true, dailyAmount: actualDailyAmount }
             });
         }
 
-        // Second day check - only 1 day worth of review
-        if (reviewStart < 1 && reviewEnd >= 1) {
-            reviewStart = 1;  // Adjust to start from beginning
-            // Will review only what's available (less than 2 days)
-        }
 
         const targetWordbookId = wordbookId;
 
@@ -163,7 +142,10 @@ export async function GET(req: NextRequest) {
             meta: {
                 reviewStart,
                 reviewEnd,
-                total: shuffledQuestions.length
+                total: shuffledQuestions.length,
+                dailyAmount: currentEnd - currentStart + 1,
+                currentStart,
+                currentEnd
             }
         });
 
