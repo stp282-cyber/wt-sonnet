@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import {
     Container, Title, Button, Group, TextInput, Paper, Stack,
-    Accordion, ActionIcon, Text, Box, LoadingOverlay, Badge
+    Accordion, ActionIcon, Text, Box, LoadingOverlay, Badge, Collapse
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconPlus, IconTrash, IconDeviceFloppy, IconVideo, IconEdit, IconCheck, IconX, IconMenu2, IconEye, IconEyeOff } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconDeviceFloppy, IconVideo, IconEdit, IconCheck, IconX, IconMenu2, IconEye, IconEyeOff, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { v4 as uuidv4 } from 'uuid';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -191,6 +191,16 @@ export default function TeacherGrammarPage() {
         }));
     };
 
+    // Helper to toggle book expansion
+    const toggleBookExpansion = (bookId: string) => {
+        setBooks(books.map(b => {
+            if (b.id === bookId) {
+                return { ...b, isExpanded: !b.isExpanded };
+            }
+            return b;
+        }));
+    };
+
     const updateBookTitle = (bookId: string, newTitle: string) => {
         setBooks(prevBooks => prevBooks.map(book => {
             if (book.id !== bookId) return book;
@@ -290,16 +300,24 @@ export default function TeacherGrammarPage() {
                                             >
                                                 <Group justify="space-between" mb="md">
                                                     <Group>
-                                                        <div {...provided.dragHandleProps} style={{ display: 'flex', alignItems: 'center', cursor: 'grab' }}>
+                                                        <div {...provided.dragHandleProps} style={{ display: 'flex', alignItems: 'center', cursor: 'grab', marginRight: '8px' }}>
                                                             <IconMenu2 size={20} color="gray" />
                                                         </div>
+                                                        <ActionIcon
+                                                            variant="subtle"
+                                                            color="gray"
+                                                            onClick={() => toggleBookExpansion(book.id)}
+                                                        >
+                                                            {book.isExpanded ? <IconChevronDown size={20} /> : <IconChevronRight size={20} />}
+                                                        </ActionIcon>
                                                         <TextInput
                                                             variant="unstyled"
                                                             value={book.title}
                                                             onChange={(e) => updateBookTitle(book.id, e.target.value)}
+                                                            onClick={(e) => e.stopPropagation()} // Keep editing focus
                                                             styles={{
                                                                 input: {
-                                                                    fontSize: '1.25rem', // Text size="lg" equivalent approx
+                                                                    fontSize: '1.25rem',
                                                                     fontWeight: 700,
                                                                     color: book.isVisible === false ? "var(--mantine-color-gray-5)" : "var(--mantine-color-yellow-4)"
                                                                 }
@@ -323,72 +341,74 @@ export default function TeacherGrammarPage() {
                                                     </Group>
                                                 </Group>
 
-                                                <Accordion variant="separated" radius="md">
-                                                    {book.chapters.map((chapter) => (
-                                                        <Accordion.Item key={chapter.id} value={chapter.id} style={{ backgroundColor: '#0F172A' }}>
-                                                            <Accordion.Control>
-                                                                <Group justify="space-between">
-                                                                    <TextInput
-                                                                        variant="unstyled"
-                                                                        value={chapter.title}
-                                                                        onChange={(e) => updateChapterTitle(book.id, chapter.id, e.target.value)}
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        styles={{ input: { color: 'white', fontWeight: 600, fontSize: '1rem' } }}
-                                                                    />
-                                                                    <ActionIcon component="div" role="button" color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); deleteChapter(book.id, chapter.id); }}>
-                                                                        <IconTrash size={14} />
-                                                                    </ActionIcon>
-                                                                </Group>
-                                                            </Accordion.Control>
-                                                            <Accordion.Panel>
-                                                                <Stack>
-                                                                    {chapter.sections.length === 0 && <Text c="dimmed" size="sm" ta="center">강의가 없습니다. 아래 버튼을 눌러 추가하세요.</Text>}
-                                                                    <Droppable droppableId={chapter.id} type="SECTION">
-                                                                        {(provided) => (
-                                                                            <div ref={provided.innerRef} {...provided.droppableProps}>
-                                                                                {chapter.sections.map((section, index) => (
-                                                                                    <Draggable key={section.id} draggableId={section.id} index={index}>
-                                                                                        {(provided) => (
-                                                                                            <div
-                                                                                                ref={provided.innerRef}
-                                                                                                {...provided.draggableProps}
-                                                                                            >
-                                                                                                <Group align="center" grow mb="xs">
-                                                                                                    <div {...provided.dragHandleProps} style={{ display: 'flex', alignItems: 'center', cursor: 'grab' }}>
-                                                                                                        <IconMenu2 size={16} color="gray" />
-                                                                                                    </div>
-                                                                                                    <TextInput
-                                                                                                        placeholder="강의 제목 (예: 1강 - 명사)"
-                                                                                                        value={section.title}
-                                                                                                        onChange={(e) => updateSection(book.id, chapter.id, section.id, 'title', e.target.value)}
-                                                                                                        styles={{ input: { backgroundColor: '#334155', color: 'white', border: 'none' } }}
-                                                                                                    />
-                                                                                                    <TextInput
-                                                                                                        placeholder="유튜브 URL (예: https://youtu.be/...)"
-                                                                                                        value={section.youtubeUrl}
-                                                                                                        onChange={(e) => updateSection(book.id, chapter.id, section.id, 'youtubeUrl', e.target.value)}
-                                                                                                        styles={{ input: { backgroundColor: '#334155', color: 'white', border: 'none' } }}
-                                                                                                    />
-                                                                                                    <ActionIcon color="red" variant="subtle" onClick={() => deleteSection(book.id, chapter.id, section.id)} style={{ flexGrow: 0 }}>
-                                                                                                        <IconX size={16} />
-                                                                                                    </ActionIcon>
-                                                                                                </Group>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </Draggable>
-                                                                                ))}
-                                                                                {provided.placeholder}
-                                                                            </div>
-                                                                        )}
-                                                                    </Droppable>
-                                                                    <Button variant="outline" size="xs" onClick={() => addSection(book.id, chapter.id)} fullWidth style={{ borderColor: '#334155', color: '#94A3B8' }}>
-                                                                        + 강의 추가
-                                                                    </Button>
-                                                                </Stack>
-                                                            </Accordion.Panel>
-                                                        </Accordion.Item>
-                                                    ))}
-                                                </Accordion>
+                                                <Collapse in={book.isExpanded || false}>
+                                                    <Accordion variant="separated" radius="md">
+                                                        {book.chapters.map((chapter) => (
+                                                            <Accordion.Item key={chapter.id} value={chapter.id} style={{ backgroundColor: '#0F172A' }}>
+                                                                <Accordion.Control>
+                                                                    <Group justify="space-between">
+                                                                        <TextInput
+                                                                            variant="unstyled"
+                                                                            value={chapter.title}
+                                                                            onChange={(e) => updateChapterTitle(book.id, chapter.id, e.target.value)}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            styles={{ input: { color: 'white', fontWeight: 600, fontSize: '1rem' } }}
+                                                                        />
+                                                                        <ActionIcon component="div" role="button" color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); deleteChapter(book.id, chapter.id); }}>
+                                                                            <IconTrash size={14} />
+                                                                        </ActionIcon>
+                                                                    </Group>
+                                                                </Accordion.Control>
+                                                                <Accordion.Panel>
+                                                                    <Stack>
+                                                                        {chapter.sections.length === 0 && <Text c="dimmed" size="sm" ta="center">강의가 없습니다. 아래 버튼을 눌러 추가하세요.</Text>}
+                                                                        <Droppable droppableId={chapter.id} type="SECTION">
+                                                                            {(provided) => (
+                                                                                <div ref={provided.innerRef} {...provided.droppableProps}>
+                                                                                    {chapter.sections.map((section, index) => (
+                                                                                        <Draggable key={section.id} draggableId={section.id} index={index}>
+                                                                                            {(provided) => (
+                                                                                                <div
+                                                                                                    ref={provided.innerRef}
+                                                                                                    {...provided.draggableProps}
+                                                                                                >
+                                                                                                    <Group align="center" grow mb="xs">
+                                                                                                        <div {...provided.dragHandleProps} style={{ display: 'flex', alignItems: 'center', cursor: 'grab' }}>
+                                                                                                            <IconMenu2 size={16} color="gray" />
+                                                                                                        </div>
+                                                                                                        <TextInput
+                                                                                                            placeholder="강의 제목 (예: 1강 - 명사)"
+                                                                                                            value={section.title}
+                                                                                                            onChange={(e) => updateSection(book.id, chapter.id, section.id, 'title', e.target.value)}
+                                                                                                            styles={{ input: { backgroundColor: '#334155', color: 'white', border: 'none' } }}
+                                                                                                        />
+                                                                                                        <TextInput
+                                                                                                            placeholder="유튜브 URL (예: https://youtu.be/...)"
+                                                                                                            value={section.youtubeUrl}
+                                                                                                            onChange={(e) => updateSection(book.id, chapter.id, section.id, 'youtubeUrl', e.target.value)}
+                                                                                                            styles={{ input: { backgroundColor: '#334155', color: 'white', border: 'none' } }}
+                                                                                                        />
+                                                                                                        <ActionIcon color="red" variant="subtle" onClick={() => deleteSection(book.id, chapter.id, section.id)} style={{ flexGrow: 0 }}>
+                                                                                                            <IconX size={16} />
+                                                                                                        </ActionIcon>
+                                                                                                    </Group>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </Draggable>
+                                                                                    ))}
+                                                                                    {provided.placeholder}
+                                                                                </div>
+                                                                            )}
+                                                                        </Droppable>
+                                                                        <Button variant="outline" size="xs" mt="sm" onClick={() => addSection(book.id, chapter.id)} leftSection={<IconPlus size={14} />}>
+                                                                            강의 추가
+                                                                        </Button>
+                                                                    </Stack>
+                                                                </Accordion.Panel>
+                                                            </Accordion.Item>
+                                                        ))}
+                                                    </Accordion>
+                                                </Collapse>
                                             </Paper>
                                         </div>
                                     )}
