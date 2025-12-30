@@ -9,6 +9,7 @@ import {
     IconBook,
     IconSettings,
     IconLogout,
+    IconVideo,
 } from '@tabler/icons-react'; // Removed IconMail
 import { SpotlightEffect } from '@/components/ui/SpotlightEffect';
 
@@ -57,6 +58,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
     const navItems = [
         { icon: IconBook, label: '나의 학습', href: '/student/learning' },
+        { icon: IconVideo, label: '강의보기', href: '/student/grammar-lectures' },
         // Removed Messages nav item
         { icon: IconSettings, label: '설정', href: '/student/settings' },
     ];

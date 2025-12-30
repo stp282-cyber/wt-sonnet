@@ -24,6 +24,7 @@ import {
     IconLogout,
     IconDashboard,
     IconHeadphones,
+    IconVideo,
 } from '@tabler/icons-react';
 import { SpotlightEffect } from '@/components/ui/SpotlightEffect';
 
@@ -55,6 +56,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
         { icon: IconBook, label: '단어장 관리', href: '/teacher/wordbooks' },
         { icon: IconList, label: '커리큘럼 관리', href: '/teacher/curriculums' },
         { icon: IconHeadphones, label: '듣기 문제 관리', href: '/teacher/listening' },
+        { icon: IconVideo, label: '강의보기', href: '/teacher/grammar-lectures' },
         { icon: IconBell, label: '공지사항', href: '/teacher/notices' },
         { icon: IconSettings, label: '설정', href: '/teacher/settings' },
     ];
