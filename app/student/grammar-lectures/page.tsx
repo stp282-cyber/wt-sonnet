@@ -51,13 +51,22 @@ export default function StudentGrammarPage() {
     };
 
     return (
-        <Container fluid p="lg" style={{ color: 'white', height: '100%' }}>
+        <Container fluid p="lg" style={{ color: 'white', height: '100%', overflow: 'hidden' }}>
             <LoadingOverlay visible={loading} />
 
             <Grid gutter="md">
                 {/* Left: Navigation (Books & Chapters) */}
                 <Grid.Col span={{ base: 12, md: 3 }}>
-                    <Paper p="md" style={{ backgroundColor: '#1E293B', borderColor: '#334155', minHeight: '80vh' }} withBorder>
+                    <Paper
+                        p="md"
+                        style={{
+                            backgroundColor: '#1E293B',
+                            borderColor: '#334155',
+                            height: 'calc(100vh - 120px)',
+                            overflowY: 'auto'
+                        }}
+                        withBorder
+                    >
                         <Group mb="lg">
                             <IconVideo size={28} color="#3B82F6" />
                             <Title order={3} style={{ color: 'white' }}>나의 강의실</Title>
@@ -126,7 +135,18 @@ export default function StudentGrammarPage() {
 
                 {/* Right: Video Player */}
                 <Grid.Col span={{ base: 12, md: 9 }}>
-                    <Paper p="md" style={{ backgroundColor: '#0F172A', borderColor: '#334155', minHeight: '80vh', display: 'flex', flexDirection: 'column' }} withBorder>
+                    <Paper
+                        p="md"
+                        style={{
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            height: 'calc(100vh - 120px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflowY: 'auto'
+                        }}
+                        withBorder
+                    >
                         {selectedSection ? (
                             <Stack h="100%">
                                 <Title order={3} c="white">{selectedSection.title}</Title>
