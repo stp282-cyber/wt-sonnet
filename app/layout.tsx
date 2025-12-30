@@ -1,6 +1,6 @@
 'use client';
 
-import { MantineProvider, createTheme, MantineColorsTuple } from '@mantine/core';
+import { MantineProvider, createTheme, MantineColorsTuple, ColorSchemeScript } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Notifications } from '@mantine/notifications';
 import '@mantine/core/styles.css';
@@ -124,8 +124,9 @@ export default function RootLayout({
   }));
 
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
+        <ColorSchemeScript />
         <title>이스턴영어학원 WordTest</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

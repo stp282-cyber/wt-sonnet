@@ -14,6 +14,7 @@ export interface GrammarBook {
     id: string;
     title: string;
     chapters: GrammarChapter[];
+    isVisible?: boolean;
 }
 
 export interface GrammarLectureData {

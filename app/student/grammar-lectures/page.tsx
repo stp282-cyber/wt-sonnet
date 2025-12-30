@@ -33,9 +33,9 @@ export default function StudentGrammarPage() {
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data)) {
-                    setBooks(data);
+                    setBooks(data.filter((b: GrammarBook) => b.isVisible !== false));
                 } else if (data.books) {
-                    setBooks(data.books);
+                    setBooks(data.books.filter((b: GrammarBook) => b.isVisible !== false));
                 } else {
                     setBooks([]);
                 }
@@ -56,7 +56,7 @@ export default function StudentGrammarPage() {
 
             <Grid gutter="md">
                 {/* Left: Navigation (Books & Chapters) */}
-                <Grid.Col span={{ base: 12, md: 4 }}>
+                <Grid.Col span={{ base: 12, md: 3 }}>
                     <Paper p="md" style={{ backgroundColor: '#1E293B', borderColor: '#334155', minHeight: '80vh' }} withBorder>
                         <Group mb="lg">
                             <IconVideo size={28} color="#3B82F6" />
@@ -125,7 +125,7 @@ export default function StudentGrammarPage() {
                 </Grid.Col>
 
                 {/* Right: Video Player */}
-                <Grid.Col span={{ base: 12, md: 8 }}>
+                <Grid.Col span={{ base: 12, md: 9 }}>
                     <Paper p="md" style={{ backgroundColor: '#0F172A', borderColor: '#334155', minHeight: '80vh', display: 'flex', flexDirection: 'column' }} withBorder>
                         {selectedSection ? (
                             <Stack h="100%">
