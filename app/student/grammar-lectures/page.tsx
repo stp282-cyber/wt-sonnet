@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container, Title, Group, Paper, Stack,
-    Accordion, Text, Box, LoadingOverlay, Grid, AspectRatio
+    Accordion, Text, Box, LoadingOverlay, Grid, AspectRatio, Loader, Center
 } from '@mantine/core';
 import { IconVideo, IconPlayerPlay } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -18,7 +18,8 @@ const getYoutubeId = (url: string) => {
     return (match && match[2].length === 11) ? match[2] : null;
 };
 
-export default function StudentGrammarPage() {
+// Main Content Component (Uses useSearchParams)
+function StudentGrammarContent() {
     const searchParams = useSearchParams();
     const targetBookId = searchParams.get('bookId');
 
@@ -189,5 +190,18 @@ export default function StudentGrammarPage() {
                 </Grid.Col>
             </Grid>
         </Container>
+    );
+}
+
+// Suspense Wrapper
+export default function StudentGrammarPage() {
+    return (
+        <Suspense fallback={
+            <Center style={{ height: '100vh' }}>
+                <Loader color="blue" />
+            </Center>
+        }>
+            <StudentGrammarContent />
+        </Suspense>
     );
 }
