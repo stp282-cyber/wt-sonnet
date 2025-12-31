@@ -196,7 +196,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                             transition: 'all 0.1s',
                                         }}
                                         classNames={{
-                                            root: 'hover:bg-slate-800'
+                                            root: 'hover:bg-slate-800 hover:translate-x-1 transition-transform duration-200'
                                         }}
                                     />
                                 );
@@ -209,9 +209,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                 onClick={handleLogout}
                                 style={{
                                     borderRadius: '0px',
-                                    border: '2px solid #EF4444', // Red border for logout
+                                    border: '2px solid white', // White border
                                     backgroundColor: 'transparent',
-                                    color: '#EF4444', // Red text
+                                    color: 'white', // White text
                                     fontWeight: 700,
                                     padding: '1rem',
                                     marginTop: 'auto', // Push to bottom if container allows, or just spacing
@@ -219,7 +219,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                     transition: 'all 0.1s',
                                 }}
                                 classNames={{
-                                    root: 'hover:bg-red-900/20'
+                                    root: 'hover:bg-slate-800 hover:translate-x-1 transition-transform duration-200'
                                 }}
                             />
                         </Stack>
