@@ -42,7 +42,8 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
     return (
         <Box
             style={{
-                animation: `fadeInUp 0.5s ease-out forwards ${index * 0.1}s`,
+                // Animation Speedup: 0.1 -> 0.03 (Very fast stagger)
+                animation: `fadeInUp 0.4s ease-out forwards ${index * 0.03}s`,
                 opacity: 0,
                 transform: 'translateY(20px)',
             }}
@@ -143,13 +144,14 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
     );
 }
 
-// ... (FlashcardItem component remains unchanged)
-
 function FlashcardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [words, setWords] = useState<Word[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // 1. Timer Logic State
+    const [countdown, setCountdown] = useState(3);
 
     useEffect(() => {
         const fetchWords = async () => {
@@ -194,6 +196,15 @@ function FlashcardContent() {
         fetchWords();
     }, [searchParams]);
 
+    // 2. Countdown Effect
+    useEffect(() => {
+        if (!loading && words.length > 0 && countdown > 0) {
+            const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, words, countdown]);
+
+
     // TTS 음성 재생
     const speakWord = (text: string) => {
         if ('speechSynthesis' in window) {
@@ -231,6 +242,7 @@ function FlashcardContent() {
     }, []);
 
     const handleStartTest = () => {
+        if (countdown > 0) return; // Prevent early click
         const params = new URLSearchParams(searchParams.toString());
         router.push(`/test/typing?${params.toString()}`);
     };
@@ -306,40 +318,45 @@ function FlashcardContent() {
                         <Center mt={40} mb={60}>
                             <button
                                 onClick={handleStartTest}
+                                disabled={countdown > 0}
                                 style={{
-                                    background: '#FFD93D',
-                                    color: 'black',
-                                    border: 'none',
+                                    background: countdown > 0 ? '#e5e7eb' : '#FFD93D', // Gray if disabled
+                                    color: countdown > 0 ? '#9ca3af' : 'black',
+                                    border: countdown > 0 ? '3px solid #d1d5db' : 'none',
                                     borderRadius: '0px',
                                     fontSize: '1.2rem',
                                     fontWeight: 900,
                                     padding: '1.4rem 4.5rem',
-                                    cursor: 'pointer',
+                                    cursor: countdown > 0 ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '1rem',
                                     transition: 'all 0.2s ease',
-                                    boxShadow: '8px 8px 0px #FFD93D',
+                                    boxShadow: countdown > 0 ? 'none' : '8px 8px 0px #FFD93D',
                                 }}
                                 onMouseEnter={(e) => {
+                                    if (countdown > 0) return;
                                     e.currentTarget.style.transform = 'translate(-2px, -2px)';
                                     e.currentTarget.style.boxShadow = '10px 10px 0px #FFD93D';
                                 }}
                                 onMouseLeave={(e) => {
+                                    if (countdown > 0) return;
                                     e.currentTarget.style.transform = 'translate(0px, 0px)';
                                     e.currentTarget.style.boxShadow = '8px 8px 0px #FFD93D';
                                 }}
                                 onMouseDown={(e) => {
+                                    if (countdown > 0) return;
                                     e.currentTarget.style.transform = 'translate(2px, 2px)';
                                     e.currentTarget.style.boxShadow = '4px 4px 0px #FFD93D';
                                 }}
                                 onMouseUp={(e) => {
+                                    if (countdown > 0) return;
                                     e.currentTarget.style.transform = 'translate(-2px, -2px)';
                                     e.currentTarget.style.boxShadow = '10px 10px 0px #FFD93D';
                                 }}
                             >
-                                START TEST
-                                <IconArrowRight size={20} stroke={3} />
+                                {countdown > 0 ? `START TEST (${countdown})` : 'START TEST'}
+                                {countdown === 0 && <IconArrowRight size={20} stroke={3} />}
                             </button>
                         </Center>
                     </Stack>

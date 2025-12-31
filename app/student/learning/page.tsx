@@ -16,7 +16,8 @@ import {
     Center,
     Card,
     ThemeIcon,
-    SimpleGrid
+    SimpleGrid,
+    Skeleton
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
@@ -70,7 +71,11 @@ export default function StudentLearningPage() {
                 return;
             }
 
-            setLoading(true); // Ensure loading state is set when refetching
+            // Don't set full page loading on date change if we want smoother transitions, 
+            // but for now, let's keep it simple and just optimizing the initial mount feel
+            // or use specific loading states.
+            // For now, we will use a single loading state but render a Skeleton UI instead of a spinner.
+            setLoading(true);
 
             try {
                 // Calculate date range for logs (Current week - 1 week to + 4 weeks for buffer)
@@ -167,25 +172,15 @@ export default function StudentLearningPage() {
 
     const weeksToRender = [0, 1, 2]; // 3주 표시
 
-    if (loading) {
-        return (
-            <Container size="xl" py={40}>
-                <Center style={{ minHeight: '60vh' }}>
-                    <Loader size="xl" color="yellow" type="dots" />
-                </Center>
-            </Container>
-        );
-    }
-
     return (
         <Container size="xl" py={20}>
             {/* Custom Animations Styles */}
             <style jsx global>{`
                 @keyframes slideUp {
-                    from { transform: translateY(20px); opacity: 0; }
+                    from { transform: translateY(10px); opacity: 0; }
                     to { transform: translateY(0); opacity: 1; }
                 }
-                .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
                 .hover-lift { transition: transform 0.2s, box-shadow 0.2s; }
                 .hover-lift:hover { 
                     transform: translate(-4px, -4px); 
@@ -266,7 +261,30 @@ export default function StudentLearningPage() {
             </Group>
 
             {/* Resume Banner */}
-            {activeSession && (
+            {loading ? (
+                // Skeleton for Resume Banner
+                <Paper
+                    mb={20}
+                    style={{
+                        border: '3px solid black',
+                        background: 'white',
+                        boxShadow: '6px 6px 0px black',
+                        height: '100px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <Group style={{ width: '100%', padding: '0 2rem' }}>
+                        <Skeleton height={40} circle />
+                        <Stack gap="xs" style={{ flex: 1 }}>
+                            <Skeleton height={20} width="40%" />
+                            <Skeleton height={15} width="20%" />
+                        </Stack>
+                        <Skeleton height={40} width={120} />
+                    </Group>
+                </Paper>
+            ) : activeSession && (
                 <Paper
                     p="lg"
                     mb={20}
@@ -305,7 +323,34 @@ export default function StudentLearningPage() {
 
             {/* 주차별 테이블 */}
             <Stack gap={40}>
-                {curriculums.length === 0 ? (
+                {loading ? (
+                    // Skeleton for Curriculum Table
+                    [0, 1].map((i) => (
+                        <Box key={i} className="animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
+                            <Skeleton height={30} width={150} mb="md" radius={0} />
+                            <Paper
+                                p="xl"
+                                style={{
+                                    border: '4px solid black',
+                                    borderRadius: '0px',
+                                    background: 'white',
+                                    boxShadow: '8px 8px 0px 0px #e5e7eb',
+                                }}
+                            >
+                                <Stack gap="md">
+                                    <Skeleton height={30} width="100%" radius={0} />
+                                    <Group grow>
+                                        <Skeleton height={150} radius={0} />
+                                        <Skeleton height={150} radius={0} />
+                                        <Skeleton height={150} radius={0} />
+                                        <Skeleton height={150} radius={0} />
+                                        <Skeleton height={150} radius={0} />
+                                    </Group>
+                                </Stack>
+                            </Paper>
+                        </Box>
+                    ))
+                ) : curriculums.length === 0 ? (
                     <Paper
                         p="xl"
                         style={{
@@ -413,7 +458,7 @@ export default function StudentLearningPage() {
                                                     </Text>
                                                 </Box>
 
-                                                {/* 오른쪽: 일정 셀 (Entrance Animation 적용) */}
+                                                {/* 오른쪽: 일정 셀 (Entrance Animation 적용 - Optimized) */}
                                                 <Box style={{ flex: 1, display: 'flex' }}>
                                                     {weekDays.map((day, idx) => {
                                                         const schedule = getScheduleForDate(curr, day.date);
@@ -429,15 +474,18 @@ export default function StudentLearningPage() {
 
                                                         const isToday = schedule?.status === 'today';
                                                         const isCompleted = isLogCompleted; // Override with actual log
-                                                        // const isMissed = !isCompleted && new Date(day.date) < new Date(new Date().setHours(0, 0, 0, 0)) && schedule;
                                                         // Safer date comparison for missed status
                                                         const todayDate = new Date();
                                                         todayDate.setHours(0, 0, 0, 0);
                                                         const checkDate = new Date(day.date);
                                                         const isMissed = !isCompleted && checkDate < todayDate && schedule;
 
-                                                        // 애니메이션 딜레이: (커리큘럼 인덱스 * 5 + 날짜 인덱스) * 0.1s
-                                                        const animationDelay = `${(cIdx * 5 + idx) * 0.05}s`;
+                                                        // 애니메이션 최적화: 딜레이 감소 및 제한
+                                                        // Reduce stagger time significantly (0.02s instead of 0.05s)
+                                                        // Cap the max delay at 0.5s to prevent long waits
+                                                        const rawDelay = (cIdx * 3 + idx) * 0.03;
+                                                        const cappedDelay = Math.min(rawDelay, 0.4);
+                                                        const animationDelay = `${cappedDelay}s`;
 
                                                         return (
                                                             <Box
