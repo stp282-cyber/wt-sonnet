@@ -15,40 +15,23 @@ export async function getGrammarTitles(): Promise<GrammarBookSummary[]> {
     try {
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-        // 1. Try to use the optimized RPC function first
-        // Note: We couldn't create the RPC due to permission issues in the previous step,
-        // but if it existed/gets created, this would be the best path.
-        // For now, we will use the same logic as the API route but executed directly on the server.
-
-        /* 
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_grammar_titles');
-        if (!rpcError && rpcData) {
-            return rpcData;
-        } 
-        */
-
-        // 2. Fallback: Fetch JSON and parse (Server-side)
-        // Since this runs on the server (Next.js), it avoids the network round-trip of an internal API call.
         const { data, error } = await supabase
-            .from('grammar_lectures')
-            .select('content')
-            .limit(1)
-            .single();
+            .from('lecture_books')
+            .select('id, title')
+            .eq('is_visible', true)
+            .order('sequence', { ascending: true });
 
         if (error) {
             console.error('Error fetching grammar lectures:', error);
             return [];
         }
 
-        const content = data?.content || {};
-        // Handle potentially different JSON structures
-        const books = Array.isArray(content) ? content : (content.books || []);
+        if (!data) return [];
 
-        // Map to essential fields
-        return books.map((book: any) => ({
+        return data.map((book: any) => ({
             id: book.id,
             title: book.title,
-            description: book.description || ''
+            description: '' // Description is not currently in the table, defaulting to empty
         }));
 
     } catch (error) {

@@ -127,45 +127,50 @@ export default function HomeDashboard({ books }: HomeDashboardProps) {
                 </Link>
             </SimpleGrid>
 
-            {/* Quick Access Books Section */}
+            {/* All Books Section */}
             <Box mt={60} style={{ position: 'relative', zIndex: 10 }}>
                 <Group align="center" mb="lg">
                     <IconBook size={28} color="#FACC15" />
                     <Title order={3} c="white" style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800 }}>
-                        QUICK ACCESS <span style={{ fontWeight: 400, color: '#94A3B8', fontSize: '1rem', marginLeft: '10px' }}>최근 등록된 교재 바로가기</span>
+                        LECTURE BOOKS <span style={{ fontWeight: 400, color: '#94A3B8', fontSize: '1rem', marginLeft: '10px' }}>전체 교재 목록</span>
                     </Title>
                 </Group>
 
                 {books.length > 0 ? (
-                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="md">
+                    <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }} spacing="md">
                         {books.map((book) => (
                             <Link key={book.id} href={`/student/grammar-lectures?bookId=${book.id}`} style={{ textDecoration: 'none' }}>
                                 <Paper
-                                    p="md"
+                                    p="sm"
                                     style={{
                                         cursor: 'pointer',
                                         background: '#1E293B', // Dark Slate
-                                        border: '2px solid #334155',
+                                        border: '1px solid #334155',
                                         transition: 'all 0.2s',
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column'
                                     }}
                                     className="hover:border-yellow-400 group hover:scale-[1.02] active:scale-[0.98]"
                                 >
-                                    <Group justify="space-between" mb="xs">
-                                        <Badge color="yellow" variant="light" size="sm">BOOK</Badge>
-                                        <IconPlayerPlay size={16} color="gray" style={{ transition: 'color 0.2s' }} />
+                                    <Group justify="space-between" mb={8} align="flex-start">
+                                        <Badge color="yellow" variant="light" size="xs" radius="sm">BOOK</Badge>
+                                        <IconPlayerPlay size={14} color="gray" style={{ transition: 'color 0.2s' }} />
                                     </Group>
                                     <Text
                                         fw={700}
                                         c="white"
-                                        size="lg"
-                                        style={{ minHeight: '3rem', lineHeight: 1.3 }}
+                                        size="sm"
+                                        style={{ lineHeight: 1.3, flex: 1 }}
                                         lineClamp={2}
                                     >
                                         {book.title}
                                     </Text>
-                                    <Text size="xs" c="dimmed" lineClamp={1} mt="sm">
-                                        {book.description || '스터디 교재'}
-                                    </Text>
+                                    {book.description && (
+                                        <Text size="xs" c="dimmed" lineClamp={1} mt={4}>
+                                            {book.description}
+                                        </Text>
+                                    )}
                                 </Paper>
                             </Link>
                         ))}

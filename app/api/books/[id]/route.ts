@@ -51,13 +51,18 @@ export async function PUT(
         if (body.is_visible !== undefined) updates.is_visible = body.is_visible;
         if (body.sequence !== undefined) updates.sequence = body.sequence;
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('lecture_books')
             .update(updates)
-            .eq('id', id);
+            .eq('id', id)
+            .select();
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        if (!data || data.length === 0) {
+            return NextResponse.json({ error: 'Book not found' }, { status: 404 });
         }
 
         return NextResponse.json({ success: true });
