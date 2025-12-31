@@ -29,20 +29,19 @@ export default function TeacherGrammarPage() {
     const fetchLectures = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/grammar');
+            const res = await fetch('/api/books');
             if (res.ok) {
                 const data = await res.json();
-                // data might be { books: [...] } or just [...] depend on saved structure
-                // API route returns `data.content`. If we saved { books: [] }, it returns { books: [] }.
-                // If we saved [], it returns [].
-                // Let's normalize it.
-                if (Array.isArray(data)) {
-                    setBooks(data);
-                } else if (data.books) {
-                    setBooks(data.books);
-                } else {
-                    setBooks([]);
-                }
+                // Map to GrammarBook format, chapters empty initially
+                const mappedBooks = data.map((b: any) => ({
+                    id: b.id,
+                    title: b.title,
+                    isVisible: b.is_visible,
+                    chapters: [],
+                    isLoaded: false,
+                    isExpanded: false
+                }));
+                setBooks(mappedBooks);
             } else {
                 notifications.show({ title: '오류', message: '데이터를 불러오지 못했습니다.', color: 'red' });
             }
@@ -54,44 +53,116 @@ export default function TeacherGrammarPage() {
         }
     };
 
+    const fetchBookDetails = async (bookId: string) => {
+        try {
+            const res = await fetch(`/api/books/${bookId}`);
+            if (res.ok) {
+                const data = await res.json();
+                const chapters = data.content?.chapters || [];
+                setBooks(prev => prev.map(b =>
+                    b.id === bookId ? { ...b, chapters, isLoaded: true } : b
+                ));
+            }
+        } catch (e) {
+            console.error('Error fetching book details:', e);
+            notifications.show({ title: '오류', message: '상세 내용을 불러오지 못했습니다.', color: 'red' });
+        }
+    };
+
     const saveLectures = async () => {
         setSaving(true);
-        try {
-            // Remove isExpanded before saving to keep DB clean if needed, 
-            // but keeping it in memory is fine. 
-            // The backend likely expects a certain structure, so let's send 'books' wrapped.
-            const res = await fetch('/api/grammar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ books }),
-            });
+        let errorCount = 0;
 
-            if (res.ok) {
-                notifications.show({ title: '저장 완료', message: '변경사항이 저장되었습니다.', color: 'green' });
+        try {
+            // Save each book individually (sequence + content if loaded)
+            // Use Promise.all to do it in parallel
+            await Promise.all(books.map(async (book, index) => {
+                const payload: any = {
+                    id: book.id,
+                    title: book.title,
+                    is_visible: book.isVisible,
+                    sequence: index
+                };
+
+                // Only send content if it was loaded (modified or fetched)
+                // If not loaded, we don't send content -> API won't update it (keeps existing)
+                if (book.isLoaded) {
+                    payload.content = { chapters: book.chapters };
+                }
+
+                // 1. Try UPDATE (PUT)
+                // Note: If the book is new (created on client), PUT might fail if row doesn't exist?
+                // My API PUT implementation expects row to exist.
+                // So for new books, we must use POST.
+                // However, we don't easily know which is new without tracking.
+                // Strategy: Try PUT. If 404, try POST.
+
+                let res = await fetch(`/api/books/${book.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.status === 404 || res.status === 400) { // Assuming 404 for not found
+                    // 2. Fallback to CREATE (POST)
+                    res = await fetch('/api/books', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (!res.ok) {
+                    errorCount++;
+                    console.error(`Failed to save book ${book.title}`);
+                }
+            }));
+
+            if (errorCount === 0) {
+                notifications.show({ title: '저장 완료', message: '모든 변경사항이 저장되었습니다.', color: 'green' });
             } else {
-                notifications.show({ title: '오류', message: '저장 중 문제가 발생했습니다.', color: 'red' });
+                notifications.show({ title: '일부 저장 실패', message: `${errorCount}개의 교재 저장 중 문제가 발생했습니다.`, color: 'orange' });
             }
         } catch (e) {
             console.error(e);
-            notifications.show({ title: '오류', message: '저장 실패', color: 'red' });
+            notifications.show({ title: '오류', message: '저장 중 치명적 오류 발생', color: 'red' });
         } finally {
             setSaving(false);
         }
     };
 
     const addBook = () => {
+        // Create new book locally
+        // It is effectively "Loaded" because it's empty and we hold the truth
         setBooks([...books, {
             id: uuidv4(),
             title: '새 교재',
             chapters: [],
             isVisible: true,
-            isExpanded: true // New books expanded by default for convenience
+            isExpanded: true,
+            isLoaded: true // Important: Mark as loaded so we save its empty content
         }]);
     };
 
-    const deleteBook = (bookId: string) => {
-        if (confirm('정말 삭제하시겠습니까? 포함된 모든 강의가 삭제됩니다.')) {
-            setBooks(books.filter(b => b.id !== bookId));
+    const deleteBook = async (bookId: string) => {
+        if (!confirm('정말 삭제하시겠습니까? 포함된 모든 강의가 삭제됩니다.')) return;
+
+        // Optimistic update
+        setBooks(books.filter(b => b.id !== bookId));
+
+        // Delete from server immediately? 
+        // Or wait for Save?
+        // Existing logic was "Save" button commits everything.
+        // But here, if I remove from list, my "Save loop" won't see it to delete it.
+        // So I MUST delete from server immediately OR track deleted IDs.
+        // Let's delete immediately for simplicity and consistency with Row-per-Book.
+
+        try {
+            await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
+            notifications.show({ title: '삭제 완료', message: '교재가 삭제되었습니다.', color: 'blue' });
+        } catch (e) {
+            console.error(e);
+            notifications.show({ title: '오류', message: '삭제 실패 (저장되지 않은 새 교재였을 수 있습니다)', color: 'orange' });
         }
     };
 
@@ -100,7 +171,14 @@ export default function TeacherGrammarPage() {
     };
 
     const toggleBookExpansion = (bookId: string) => {
-        setBooks(books.map(b => b.id === bookId ? { ...b, isExpanded: !b.isExpanded } : b));
+        setBooks(prev => {
+            const target = prev.find(b => b.id === bookId);
+            if (target && !target.isExpanded && !target.isLoaded) {
+                // Trigger Lazy Load
+                fetchBookDetails(bookId);
+            }
+            return prev.map(b => b.id === bookId ? { ...b, isExpanded: !b.isExpanded } : b);
+        });
     };
 
     const addChapter = (bookId: string) => {

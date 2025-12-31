@@ -31,19 +31,32 @@ function StudentGrammarContent() {
         fetchLectures();
     }, []);
 
+    // NEW: Automatically load content if coming from Quick Menu (URL has bookId)
+    useEffect(() => {
+        if (targetBookId && books.length > 0) {
+            const targetBook = books.find(b => b.id === targetBookId);
+            // If book exists but chapters are empty, trigger fetch
+            if (targetBook && targetBook.chapters.length === 0) {
+                handleBookChange(targetBookId);
+            }
+        }
+    }, [books, targetBookId]);
+
     const fetchLectures = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/grammar');
+            // New API: Fetch list only
+            const res = await fetch('/api/books');
             if (res.ok) {
                 const data = await res.json();
-                if (Array.isArray(data)) {
-                    setBooks(data.filter((b: GrammarBook) => b.isVisible !== false));
-                } else if (data.books) {
-                    setBooks(data.books.filter((b: GrammarBook) => b.isVisible !== false));
-                } else {
-                    setBooks([]);
-                }
+                // Initialize chapters as empty array for lazy loading
+                const mappedBooks = data.map((b: any) => ({
+                    id: b.id,
+                    title: b.title,
+                    isVisible: b.is_visible,
+                    chapters: [] // Empty initially
+                }));
+                setBooks(mappedBooks);
             } else {
                 notifications.show({ title: '오류', message: '데이터를 불러오지 못했습니다.', color: 'red' });
             }
@@ -52,6 +65,35 @@ function StudentGrammarContent() {
             notifications.show({ title: '오류', message: '데이터 로딩 중 오류 발생', color: 'red' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleBookChange = async (bookId: string | null) => {
+        if (!bookId) return;
+
+        // Find the book
+        const bookIndex = books.findIndex(b => b.id === bookId);
+        if (bookIndex === -1) return;
+
+        // If chapters are already loaded, don't re-fetch
+        if (books[bookIndex].chapters.length > 0) return;
+
+        try {
+            const res = await fetch(`/api/books/${bookId}`);
+            if (res.ok) {
+                const data = await res.json();
+                // data.content should contain { chapters: [...] }
+                const chapters = data.content?.chapters || [];
+
+                // Update state
+                setBooks(prev => {
+                    const newBooks = [...prev];
+                    newBooks[bookIndex] = { ...newBooks[bookIndex], chapters };
+                    return newBooks;
+                });
+            }
+        } catch (e) {
+            console.error('Error fetching book details:', e);
         }
     };
 
@@ -85,6 +127,7 @@ function StudentGrammarContent() {
                                     radius="md"
                                     style={{ borderRadius: '8px' }}
                                     defaultValue={targetBookId === book.id ? book.id : undefined}
+                                    onChange={handleBookChange} // Add Lazy Load Trigger
                                 >
                                     <Accordion.Item value={book.id} style={{ backgroundColor: '#0F172A', border: '1px solid #334155' }}>
                                         <Accordion.Control>
@@ -92,46 +135,51 @@ function StudentGrammarContent() {
                                         </Accordion.Control>
                                         <Accordion.Panel>
                                             <Stack gap="xs">
-                                                {book.chapters.map((chapter) => (
-                                                    <Box key={chapter.id}>
-                                                        <Text size="sm" fw={600} c="gray.4" mb={4} pl={4}>
-                                                            {chapter.title}
-                                                        </Text>
-                                                        {chapter.sections.length > 0 ? (
-                                                            <Stack gap={4}>
-                                                                {chapter.sections.map((section) => (
-                                                                    <Box
-                                                                        key={section.id}
-                                                                        onClick={() => setSelectedSection(section)}
-                                                                        style={{
-                                                                            padding: '8px 12px',
-                                                                            cursor: 'pointer',
-                                                                            borderRadius: '4px',
-                                                                            backgroundColor: selectedSection?.id === section.id ? '#3B82F6' : 'transparent',
-                                                                            transition: 'all 0.2s',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: '8px'
-                                                                        }}
-                                                                        className="hover:bg-slate-700"
-                                                                    >
-                                                                        <IconPlayerPlay size={14} color={selectedSection?.id === section.id ? 'white' : '#94A3B8'} />
-                                                                        <Text
-                                                                            size="sm"
-                                                                            c={selectedSection?.id === section.id ? 'white' : 'gray.3'}
-                                                                            style={{ flex: 1 }}
+                                                {book.chapters.length === 0 ? (
+                                                    <Center p="sm">
+                                                        <Loader size="sm" color="yellow" />
+                                                    </Center>
+                                                ) : (
+                                                    book.chapters.map((chapter) => (
+                                                        <Box key={chapter.id}>
+                                                            <Text size="sm" fw={600} c="gray.4" mb={4} pl={4}>
+                                                                {chapter.title}
+                                                            </Text>
+                                                            {chapter.sections.length > 0 ? (
+                                                                <Stack gap={4}>
+                                                                    {chapter.sections.map((section) => (
+                                                                        <Box
+                                                                            key={section.id}
+                                                                            onClick={() => setSelectedSection(section)}
+                                                                            style={{
+                                                                                padding: '8px 12px',
+                                                                                cursor: 'pointer',
+                                                                                borderRadius: '4px',
+                                                                                backgroundColor: selectedSection?.id === section.id ? '#3B82F6' : 'transparent',
+                                                                                transition: 'all 0.2s',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '8px'
+                                                                            }}
+                                                                            className="hover:bg-slate-700"
                                                                         >
-                                                                            {section.title}
-                                                                        </Text>
-                                                                    </Box>
-                                                                ))}
-                                                            </Stack>
-                                                        ) : (
-                                                            <Text size="xs" c="dimmed" pl={8}>강의 없음</Text>
-                                                        )}
-                                                        <Box mt={8} />
-                                                    </Box>
-                                                ))}
+                                                                            <IconPlayerPlay size={14} color={selectedSection?.id === section.id ? 'white' : '#94A3B8'} />
+                                                                            <Text
+                                                                                size="sm"
+                                                                                c={selectedSection?.id === section.id ? 'white' : 'gray.3'}
+                                                                                style={{ flex: 1 }}
+                                                                            >
+                                                                                {section.title}
+                                                                            </Text>
+                                                                        </Box>
+                                                                    ))}
+                                                                </Stack>
+                                                            ) : (
+                                                                <Text size="xs" c="dimmed" pl={8}>강의 없음</Text>
+                                                            )}
+                                                            <Box mt={8} />
+                                                        </Box>
+                                                    )))}
                                             </Stack>
                                         </Accordion.Panel>
                                     </Accordion.Item>

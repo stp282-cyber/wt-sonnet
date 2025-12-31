@@ -16,6 +16,7 @@ export interface GrammarBook {
     chapters: GrammarChapter[];
     isVisible?: boolean;
     isExpanded?: boolean;
+    isLoaded?: boolean; // Tracks if detailed content (chapters) has been fetched
 }
 
 export interface GrammarLectureData {
