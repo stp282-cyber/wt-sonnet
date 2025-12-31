@@ -143,25 +143,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             </Box>
                         </Group>
 
-                        <button
-                            onClick={handleLogout}
-                            style={{
-                                background: 'transparent',
-                                color: 'white',
-                                border: '2px solid white',
-                                fontSize: '0.8rem',
-                                fontWeight: 800,
-                                padding: '0.4rem 0.8rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                marginTop: '2px', // Alignment fix
-                                transition: 'all 0.1s',
-                            }}
-                            className="neo-button hover:bg-white hover:text-black"
-                        >
-                            <IconLogout size={16} stroke={2} />
-                        </button>
+
                     </Group>
                 </AppShell.Header>
 
@@ -219,6 +201,27 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                     />
                                 );
                             })}
+
+                            {/* Logout Button in Sidebar */}
+                            <NavLink
+                                label="로그아웃"
+                                leftSection={<IconLogout size={24} stroke={2} />}
+                                onClick={handleLogout}
+                                style={{
+                                    borderRadius: '0px',
+                                    border: '2px solid #EF4444', // Red border for logout
+                                    backgroundColor: 'transparent',
+                                    color: '#EF4444', // Red text
+                                    fontWeight: 700,
+                                    padding: '1rem',
+                                    marginTop: 'auto', // Push to bottom if container allows, or just spacing
+                                    fontSize: '1rem',
+                                    transition: 'all 0.1s',
+                                }}
+                                classNames={{
+                                    root: 'hover:bg-red-900/20'
+                                }}
+                            />
                         </Stack>
                     </Box>
                 </AppShell.Navbar>
