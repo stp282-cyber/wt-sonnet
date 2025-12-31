@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AppShell, Burger, Group, Text, NavLink, Box, Paper, Stack } from '@mantine/core'; // Removed Badge
+import { AppShell, Burger, Group, Text, NavLink, Box, Paper, Stack, Title } from '@mantine/core'; // Removed Badge
 import { useDisclosure } from '@mantine/hooks';
 import {
     IconHome,
@@ -57,6 +57,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     };
 
     const navItems = [
+        { icon: IconHome, label: '홈', href: '/student/home' },
         { icon: IconBook, label: '나의 학습', href: '/student/learning' },
         { icon: IconVideo, label: '강의 보기', href: '/student/grammar-lectures' },
         // Removed Messages nav item
@@ -100,7 +101,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
                             {/* 로고 영역 */}
                             <Box
-                                onClick={() => router.push('/student/learning')}
+                                onClick={() => router.push('/student/home')}
                                 style={{
                                     background: '#FFD93D', // Yellow Accent remains
                                     border: '2px solid white',
@@ -110,20 +111,34 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                     cursor: 'pointer',
                                 }}
                             >
-                                <Text
-                                    size="xl"
-                                    fw={900}
+                                <Title
+                                    order={4}
                                     style={{
                                         color: 'black',
-                                        textShadow: 'none',
+                                        fontWeight: 900,
                                         fontFamily: "'Montserrat', sans-serif",
-                                        letterSpacing: '-1px'
+                                        letterSpacing: '-1px',
+                                        lineHeight: 1
                                     }}
                                 >
-                                    WORDTEST
-                                    <span style={{ fontSize: '0.8em', marginLeft: '5px', fontWeight: 500, color: 'black' }}>
-                                        STUDENT
-                                    </span>
+                                    WORDTEST <span style={{ fontWeight: 300, fontSize: '0.9em' }}>STUDENT</span>
+                                </Title>
+                            </Box>
+
+                            {/* Branding Text */}
+                            <Box ml="xs">
+                                <Text
+                                    size="xs"
+                                    fw={700}
+                                    style={{
+                                        color: 'white',
+                                        letterSpacing: '1px',
+                                        borderBottom: '2px solid #FACC15', // Yellow underline to match logo
+                                        paddingBottom: '2px',
+                                        textTransform: 'uppercase'
+                                    }}
+                                >
+                                    이스턴 영어 공부방
                                 </Text>
                             </Box>
                         </Group>

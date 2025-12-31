@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container, Title, Group, Paper, Stack,
     Accordion, Text, Box, LoadingOverlay, Grid, AspectRatio
@@ -18,6 +19,9 @@ const getYoutubeId = (url: string) => {
 };
 
 export default function StudentGrammarPage() {
+    const searchParams = useSearchParams();
+    const targetBookId = searchParams.get('bookId');
+
     const [books, setBooks] = useState<GrammarBook[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedSection, setSelectedSection] = useState<GrammarSection | null>(null);
@@ -74,7 +78,13 @@ export default function StudentGrammarPage() {
 
                         <Stack gap="md">
                             {books.map((book) => (
-                                <Accordion key={book.id} variant="separated" radius="md" style={{ borderRadius: '8px' }}>
+                                <Accordion
+                                    key={book.id}
+                                    variant="separated"
+                                    radius="md"
+                                    style={{ borderRadius: '8px' }}
+                                    defaultValue={targetBookId === book.id ? book.id : undefined}
+                                >
                                     <Accordion.Item value={book.id} style={{ backgroundColor: '#0F172A', border: '1px solid #334155' }}>
                                         <Accordion.Control>
                                             <Text fw={700} c="yellow.4">{book.title}</Text>
