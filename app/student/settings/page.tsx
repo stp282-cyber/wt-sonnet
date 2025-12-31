@@ -30,11 +30,29 @@ export default function StudentSettingsPage() {
             return;
         }
 
+        if (!user || !user.username) {
+            notifications.show({ title: '오류', message: '사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.', color: 'red' });
+            return;
+        }
+
         setLoading(true);
-        // TODO: Implement actual API call for password change here
-        // For now, simulate success
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            const res = await fetch('/api/users/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: user.username,
+                    currentPassword: currentPassword,
+                    newPassword: newPassword
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || '비밀번호 변경 실패');
+            }
+
             notifications.show({
                 title: '성공',
                 message: '비밀번호가 성공적으로 변경되었습니다.',
@@ -44,7 +62,17 @@ export default function StudentSettingsPage() {
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
-        }, 1000);
+
+        } catch (error: any) {
+            console.error(error);
+            notifications.show({
+                title: '오류',
+                message: error.message || '비밀번호 변경 중 오류가 발생했습니다.',
+                color: 'red'
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

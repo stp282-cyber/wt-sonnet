@@ -61,7 +61,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         { icon: IconBook, label: '나의 학습', href: '/student/learning' },
         { icon: IconVideo, label: '강의 보기', href: '/student/grammar-lectures' },
         // Removed Messages nav item
-        { icon: IconSettings, label: '설정', href: '/student/settings' },
+        // { icon: IconSettings, label: '설정', href: '/student/settings' }, // Disabled as per request
     ];
 
     return (
