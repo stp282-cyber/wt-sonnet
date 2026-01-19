@@ -351,11 +351,11 @@ export default function WordbooksPage() {
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(w =>
-                w.english.toLowerCase().includes(query) ||
-                w.korean.toLowerCase().includes(query) ||
-                w.major_unit?.toLowerCase().includes(query) ||
-                w.minor_unit?.toLowerCase().includes(query) ||
-                w.unit_name?.toLowerCase().includes(query)
+                String(w.english || '').toLowerCase().includes(query) ||
+                String(w.korean || '').toLowerCase().includes(query) ||
+                String(w.major_unit || '').toLowerCase().includes(query) ||
+                String(w.minor_unit || '').toLowerCase().includes(query) ||
+                String(w.unit_name || '').toLowerCase().includes(query)
             );
         }
 
@@ -521,9 +521,9 @@ export default function WordbooksPage() {
                         setSelectedMinorUnit(null);
                     }}
                     title={
-                        <Title order={3} style={{ fontWeight: 900 }}>
+                        <Text size="xl" fw={900}>
                             {selectedWordbook?.title}
-                        </Title>
+                        </Text>
                     }
                     size="95%"
                     radius={0}
@@ -705,8 +705,8 @@ export default function WordbooksPage() {
                                                         {word.unit_name || '-'}
                                                     </Text>
                                                 </Table.Td>
-                                                <Table.Td style={{ fontWeight: 600 }}>{word.english}</Table.Td>
-                                                <Table.Td>{word.korean}</Table.Td>
+                                                <Table.Td style={{ fontWeight: 600 }}>{String(word.english)}</Table.Td>
+                                                <Table.Td>{String(word.korean)}</Table.Td>
                                                 <Table.Td>
                                                     <Group justify="flex-end">
                                                         <ActionIcon
@@ -717,7 +717,11 @@ export default function WordbooksPage() {
                                                             style={{ border: '2px solid black' }}
                                                             onClick={() => {
                                                                 setEditingWord(word);
-                                                                wordForm.setValues(word);
+                                                                wordForm.setValues({
+                                                                    ...word,
+                                                                    english: String(word.english),
+                                                                    korean: String(word.korean)
+                                                                });
                                                                 setWordModalOpened(true);
                                                             }}
                                                         >
@@ -739,9 +743,9 @@ export default function WordbooksPage() {
                     opened={wordModalOpened}
                     onClose={() => setWordModalOpened(false)}
                     title={
-                        <Title order={4} style={{ fontWeight: 900 }}>
+                        <Text size="lg" style={{ fontWeight: 900 }}>
                             {editingWord ? '단어 수정' : '단어 추가'}
-                        </Title>
+                        </Text>
                     }
                     size="md"
                     radius={0}
