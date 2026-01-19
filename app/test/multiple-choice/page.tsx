@@ -486,49 +486,121 @@ function MultipleChoiceContent() {
 
             {/* Choices */}
             <Stack gap="md">
-              {currentQ.choices?.map((choice: string, idx: number) => {
-                const isSelected = selectedChoice === choice;
-                const isCorrect = choice === currentQ.answer;
+              <Stack gap="sm">
+                {currentQ.choices?.map((choice: string, idx: number) => {
+                  const isSelected = selectedChoice === choice;
+                  const isCorrect = choice === currentQ.answer;
 
-                let bg = 'white';
-                let borderColor = 'black';
+                  let bg = 'white';
+                  let borderColor = 'black';
 
-                if (isAnswered) {
-                  if (isCorrect) {
-                    bg = '#D3F9D8'; borderColor = '#2b8a3e';
-                  } else if (isSelected && !isCorrect) {
-                    bg = '#FFE3E3'; borderColor = '#c92a2a';
+                  if (isAnswered) {
+                    if (isCorrect) {
+                      bg = '#D3F9D8'; borderColor = '#2b8a3e';
+                    } else if (isSelected && !isCorrect) {
+                      bg = '#FFE3E3'; borderColor = '#c92a2a';
+                    } else if (choice === currentQ.answer && isSelected === false) {
+                      // Optional: Highlight correct answer if wrong one was selected? 
+                      // Current logic just shows wrong selection red and correct one green if selected.
+                      // Usually good to show correct answer if wrong.
+                      bg = '#D3F9D8'; borderColor = '#2b8a3e'; // Show correct answer too
+                    }
+                  } else {
+                    if (isSelected) {
+                      bg = '#E7F5FF'; borderColor = '#339AF0';
+                    }
                   }
-                }
 
-                return (
-                  <Button
-                    key={idx}
-                    onClick={() => handleAnswer(choice)}
-                    disabled={isAnswered}
-                    fullWidth
-                    styles={{
-                      root: {
-                        height: 'auto',
-                        padding: '20px',
-                        background: bg,
-                        border: `3px solid ${borderColor}`,
-                        borderRadius: '0px',
-                        color: 'black',
-                        boxShadow: isSelected ? 'none' : '4px 4px 0px black',
-                        transform: isSelected ? 'translate(2px, 2px)' : 'none',
-                        transition: 'all 0.1s'
-                      },
-                      inner: { justifyContent: 'flex-start' },
-                      label: { fontSize: '1.2rem', fontWeight: 700 }
-                    }}
-                  >
-                    {choice}
-                    {isAnswered && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} color="#2b8a3e" />}
-                    {isAnswered && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} color="#c92a2a" />}
-                  </Button>
-                );
-              })}
+                  return (
+                    <Button
+                      key={idx}
+                      onClick={() => !isAnswered && setSelectedChoice(choice)}
+                      disabled={isAnswered}
+                      fullWidth
+                      styles={{
+                        root: {
+                          height: 'auto',
+                          padding: '20px',
+                          background: bg,
+                          border: `3px solid ${borderColor}`,
+                          borderRadius: '0px',
+                          color: 'black',
+                          boxShadow: isSelected && !isAnswered ? 'none' : '4px 4px 0px black',
+                          transform: isSelected && !isAnswered ? 'translate(2px, 2px)' : 'none',
+                          transition: 'all 0.1s',
+                          justifyContent: 'flex-start'
+                        },
+                        inner: { justifyContent: 'flex-start', width: '100%' },
+                        label: { fontSize: '1.2rem', fontWeight: 700, width: '100%', display: 'flex', alignItems: 'center' }
+                      }}
+                    >
+                      <Group style={{ width: '100%' }}>
+                        {/* Radio Circle */}
+                        <Box
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            border: `3px solid ${isAnswered && isCorrect ? '#2b8a3e' : isAnswered && isSelected && !isCorrect ? '#c92a2a' : 'black'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '15px',
+                            background: isSelected ? (isAnswered && !isCorrect ? '#c92a2a' : isAnswered && isCorrect ? '#2b8a3e' : 'black') : 'transparent',
+                            flexShrink: 0
+                          }}
+                        >
+                          {isSelected && <IconCheck size={14} color="white" stroke={4} />}
+                        </Box>
+
+                        <Text style={{ flex: 1, textAlign: 'left' }}>{choice}</Text>
+
+                        {isAnswered && isCorrect && <IconCheck style={{ marginLeft: 'auto' }} color="#2b8a3e" stroke={3} />}
+                        {isAnswered && isSelected && !isCorrect && <IconX style={{ marginLeft: 'auto' }} color="#c92a2a" stroke={3} />}
+                      </Group>
+                    </Button>
+                  );
+                })}
+              </Stack>
+
+              {/* Submit Button */}
+              <Button
+                onClick={() => {
+                  if (selectedChoice) handleAnswer(selectedChoice);
+                }}
+                disabled={!selectedChoice || isAnswered}
+                fullWidth
+                size="xl"
+                styles={{
+                  root: {
+                    background: '#FFD93D',
+                    color: 'black',
+                    border: '3px solid black',
+                    borderRadius: '0px',
+                    boxShadow: !selectedChoice || isAnswered ? 'none' : '6px 6px 0px black',
+                    height: '60px',
+                    marginTop: '20px',
+                    opacity: !selectedChoice || isAnswered ? 0.5 : 1,
+                    transition: 'all 0.2s'
+                  },
+                  label: {
+                    fontSize: '1.4rem',
+                    fontWeight: 900
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (!selectedChoice || isAnswered) return;
+                  e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                  e.currentTarget.style.boxShadow = '8px 8px 0px black';
+                }}
+                onMouseLeave={(e) => {
+                  if (!selectedChoice || isAnswered) return;
+                  e.currentTarget.style.transform = 'translate(0, 0)';
+                  e.currentTarget.style.boxShadow = '6px 6px 0px black';
+                }}
+              >
+                {isAnswered ? 'RESULT' : 'SUBMIT ANSWER'}
+              </Button>
             </Stack>
           </Stack>
         </div>
