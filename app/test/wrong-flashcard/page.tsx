@@ -247,17 +247,61 @@ function WrongFlashcardContent() {
         return (
             <StudentLayout>
                 <Center style={{ minHeight: '100vh', background: '#fff' }}>
-                    <Stack align="center">
-                        <Text size="lg" fw={700}>복습할 오답 단어가 없습니다!</Text>
-                        <button onClick={() => router.push('/student/learning')} style={{
-                            padding: '0.8rem 2rem',
-                            background: 'black',
-                            color: 'white',
-                            fontWeight: 700,
-                            border: 'none',
-                            cursor: 'pointer',
-                        }}>
-                            학습 홈으로 이동
+                    <Stack align="center" gap="lg">
+                        <IconVolume size={48} color="#FFD93D" style={{ opacity: 0.5 }} />
+                        <Title order={2}>잠시만요!</Title>
+                        <Text size="lg" c="dimmed" ta="center">
+                            복습할 오답 단어가 발견되지 않았습니다.<br />
+                            데이터가 이미 처리되었거나 누락되었을 수 있습니다.
+                        </Text>
+
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const studentInfoStr = localStorage.getItem('user');
+                                    if (studentInfoStr) {
+                                        const studentInfo = JSON.parse(studentInfoStr);
+                                        // Force Complete Logic
+                                        await fetch('/api/study-logs', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                student_id: studentInfo.id,
+                                                curriculum_id: searchParams.get('curriculumId'),
+                                                curriculum_item_id: searchParams.get('curriculumItemId'),
+                                                scheduled_date: searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
+                                                status: 'completed',
+                                                test_phase: 'review_completed_empty',
+                                                score: 100, // Score maintenance
+                                                wrong_answers: []
+                                            })
+                                        });
+                                        // Clear Session
+                                        await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+
+                                        notifications.show({
+                                            title: '학습 완료',
+                                            message: '오류가 있는 상태를 정리하고 학습을 완료 처리했습니다.',
+                                            color: 'green'
+                                        });
+                                    }
+                                } catch (e) {
+                                    console.error("Force complete failed", e);
+                                }
+                                router.push('/student/learning');
+                            }}
+                            style={{
+                                padding: '1rem 3rem',
+                                background: 'black',
+                                color: '#FFD93D',
+                                fontWeight: 900,
+                                border: '3px solid black',
+                                cursor: 'pointer',
+                                fontSize: '1.2rem',
+                                boxShadow: '6px 6px 0px 0px rgba(0,0,0,0.2)'
+                            }}
+                        >
+                            학습 완료 처리하고 나가기
                         </button>
                     </Stack>
                 </Center>

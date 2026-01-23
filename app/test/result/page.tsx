@@ -90,6 +90,7 @@ function TestResultContent() {
             try {
                 // Extract parameters for progress-based review
                 const curriculumItemId = searchParams.get('curriculumItemId');
+                const curriculumId = searchParams.get('curriculumId');
                 const wordbookId = searchParams.get('itemId');
                 const currentStart = searchParams.get('start');  // Added for actual range calculation
                 const currentEnd = searchParams.get('end');
@@ -128,10 +129,33 @@ function TestResultContent() {
                         router.push(`/test/multiple-choice?${params.toString()}`);
                         return;
                     } else {
-                        // No review words (first or second day)
+                        // No review words (first or second day) -> Mark as Completed/Skipped
+                        try {
+                            const studentInfoStr = localStorage.getItem('user');
+                            if (studentInfoStr) {
+                                const studentInfo = JSON.parse(studentInfoStr);
+                                await fetch('/api/study-logs', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        student_id: studentInfo.id,
+                                        curriculum_id: curriculumId,
+                                        curriculum_item_id: curriculumItemId,
+                                        scheduled_date: searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
+                                        status: 'completed',
+                                        test_phase: 'review_skipped',
+                                        score: 100
+                                    })
+                                });
+                                await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+                            }
+                        } catch (logError) {
+                            console.error("Failed to log skipped review", logError);
+                        }
+
                         notifications.show({
-                            title: '복습 시험 없음',
-                            message: data.message || '아직 복습할 단어가 충분하지 않습니다.',
+                            title: '복습 시험 패스',
+                            message: data.message || '복습할 단어가 없어 학습을 완료합니다.',
                             color: 'blue'
                         });
                     }
