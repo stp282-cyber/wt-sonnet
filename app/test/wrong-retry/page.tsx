@@ -182,16 +182,23 @@ function WrongRetryContent() {
                 updateData.wrongWords = stillWrongWords;
             }
 
-            await fetch('/api/test/session', {
-                method: 'POST',
-                body: JSON.stringify({
-                    studentId: studentInfo.id,
-                    sessionData: {
-                        ...sData,
-                        ...updateData
-                    }
-                })
-            });
+            try {
+                const res = await fetch('/api/test/session', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        studentId: studentInfo.id,
+                        sessionData: {
+                            ...sData,
+                            ...updateData
+                        }
+                    })
+                });
+                if (!res.ok) throw new Error('Session save failed');
+            } catch (e) {
+                console.error("Session update failed", e);
+                notifications.show({ title: '오류', message: '진도를 저장하지 못했습니다. 다시 시도해주세요.', color: 'red' });
+                return;
+            }
 
             notifications.show({
                 title: '오답이 남았습니다!',
@@ -235,33 +242,45 @@ function WrongRetryContent() {
 
             const route = `/test/multiple-choice?itemId=${pItemId}&start=${pStart}&end=${pEnd}&curriculumId=${pCurrId}&curriculumItemId=${pCurrItemId}&scheduledDate=${pDate}`;
 
-            await fetch('/api/test/session', {
-                method: 'POST',
-                body: JSON.stringify({
-                    studentId: studentInfo.id,
-                    sessionData: { ...sData, step: nextStep, retryResults: finalResults }
-                })
-            });
-            router.push(route);
+            try {
+                const res = await fetch('/api/test/session', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        studentId: studentInfo.id,
+                        sessionData: { ...sData, step: nextStep, retryResults: finalResults }
+                    })
+                });
+                if (!res.ok) throw new Error('Session save failed');
+                router.push(route);
+            } catch (e) {
+                console.error("Save failed", e);
+                notifications.show({ title: '오류', message: '학습 결과를 저장하지 못했습니다. 인터넷 연결을 확인해주세요.', color: 'red' });
+            }
         } else {
             // Review Wrong Retry -> Log as completed
-            await fetch('/api/study-logs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    student_id: studentInfo.id,
-                    curriculum_id: sData.curriculumId,
-                    curriculum_item_id: sData.curriculumItemId,
-                    scheduled_date: sData.scheduledDate || searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
-                    status: 'completed',
-                    test_phase: 'completed',
-                    score: sData.basicResults?.score || 0,
-                    wrong_answers: sData.basicResults?.wrongWords || [] // Log initial wrong words? or final? usually initial record is kept
-                })
-            });
+            try {
+                const logRes = await fetch('/api/study-logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        student_id: studentInfo.id,
+                        curriculum_id: sData.curriculumId,
+                        curriculum_item_id: sData.curriculumItemId,
+                        scheduled_date: sData.scheduledDate || searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0],
+                        status: 'completed',
+                        test_phase: 'completed',
+                        score: sData.basicResults?.score || 0,
+                        wrong_answers: sData.basicResults?.wrongWords || [] // Log initial wrong words? or final? usually initial record is kept
+                    })
+                });
+                if (!logRes.ok) throw new Error('Log save failed');
 
-            await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
-            router.push('/student/learning');
+                await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
+                router.push('/student/learning');
+            } catch (e) {
+                console.error("Save failed", e);
+                notifications.show({ title: '오류', message: '학습 완료 처리에 실패했습니다. 인터넷 연결을 확인해주세요.', color: 'red' });
+            }
         }
     };
 

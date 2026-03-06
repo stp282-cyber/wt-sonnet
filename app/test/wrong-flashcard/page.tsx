@@ -215,13 +215,20 @@ function WrongFlashcardContent() {
                 updatedSessionData.wrongWords = shuffle([...sData.wrongWords]);
             }
 
-            await fetch('/api/test/session', {
-                method: 'POST',
-                body: JSON.stringify({
-                    studentId: studentInfo.id,
-                    sessionData: updatedSessionData
-                })
-            });
+            try {
+                const res = await fetch('/api/test/session', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        studentId: studentInfo.id,
+                        sessionData: updatedSessionData
+                    })
+                });
+                if (!res.ok) throw new Error("Flashcard session update failed");
+            } catch (e) {
+                console.error("Session save error", e);
+                notifications.show({ title: '오류', message: '데이터를 준비하지 못했습니다. 인터넷 연결 상태를 확인 후 다시 클릭해주세요.', color: 'red' });
+                return;
+            }
         }
 
         if (testType === 'scramble') {

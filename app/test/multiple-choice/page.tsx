@@ -174,6 +174,7 @@ function MultipleChoiceContent() {
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [phase, setPhase] = useState<'learning' | 'testing'>('learning');
+  const [isEmptyError, setIsEmptyError] = useState(false);
 
   // Initial Fetch
   useEffect(() => {
@@ -229,10 +230,10 @@ function MultipleChoiceContent() {
         if (data.questions && data.questions.length > 0) {
           setQuestions(data.questions);
           setPhase('learning'); // Default to learning on fresh start
-          saveSessionState(0, []);
+          saveSessionState(0, [], data.questions); // Pass full list explicitly for the first time
         } else {
-          // No review words -> Finish immediately
-          finishTest([], true);
+          // No review words -> Show manual completion screen, do NOT auto execute finishTest
+          setIsEmptyError(true);
         }
       } catch (error) {
         console.error(error);
@@ -252,13 +253,16 @@ function MultipleChoiceContent() {
     if (sStr) setStudentInfo(JSON.parse(sStr));
   }, []);
 
-  const saveSessionState = async (idx: number, res: boolean[]) => {
+  const saveSessionState = async (idx: number, res: boolean[], currentQs?: any[]) => {
     if (!studentInfo) return;
 
-    // Payload reduced: Removed 'reviewQuestions'
+    // Use passed currentQs if available (init), else use state questions
+    const qToSave = currentQs || questions;
+
+    // Restore Full Payload: Important for F5 refresh safety!
     const sessionData = {
       step: 'REVIEW_TEST',
-      // reviewQuestions: qs, // REMOVED for performance
+      reviewQuestions: qToSave, // MUST BE INCLUDED so F5 doesn't wipe progress
       currentIndex: idx,
       results: res,
       itemId: searchParams.get('itemId'),
@@ -270,16 +274,16 @@ function MultipleChoiceContent() {
     };
 
     try {
-      // Fire and forget - don't await to block UI if not needed, but keep await for error handling if critical.
-      // Since it's background save, we catch errors silently.
-      fetch('/api/test/session', {
+      // Must await to ensure session is saved securely, catching errors individually
+      const res = await fetch('/api/test/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentId: studentInfo.id,
           sessionData
         })
-      }).catch(e => console.error("Background save failed", e));
+      });
+      if (!res.ok) throw new Error('Failed saving session');
     } catch (e) {
       console.error("Failed to save session", e);
     }
@@ -319,8 +323,8 @@ function MultipleChoiceContent() {
 
     try {
       if (forceEmpty) {
-        // Just mark complete
-        await fetch('/api/study-logs', {
+        // Just mark complete (safely awaited)
+        const res = await fetch('/api/study-logs', {
           method: 'POST',
           body: JSON.stringify({
             student_id: studentInfo.id,
@@ -332,6 +336,12 @@ function MultipleChoiceContent() {
             score: 100
           })
         });
+        
+        if (!res.ok) {
+           notifications.show({ title: '오류', message: '학습 완료 처리에 실패했습니다. 인터넷 연결을 확인해주세요.', color: 'red' });
+           return; // Do not bounce to home if network failed
+        }
+        
         await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
         router.push('/student/learning');
         return;
@@ -344,7 +354,7 @@ function MultipleChoiceContent() {
         // Go to Wrong Flashcard (Review Mode)
         // Reset Session for Retry Preparation
         const sessionData = {
-          step: 'WRONG_FLASHCARD', // Set step to generic Flashcard
+          step: 'WRONG_FLASHCARD', // Set step to generic Flashcard // Wait, it should be mode=review_wrong logic but generic name
           reviewWrongQuestions: wrongQuestions,
           itemId: searchParams.get('itemId'),
           start: searchParams.get('start'),
@@ -364,7 +374,7 @@ function MultipleChoiceContent() {
         router.push(`/test/wrong-flashcard?${params.toString()}`);
       } else {
         // Complete!
-        await fetch('/api/study-logs', {
+        const logRes = await fetch('/api/study-logs', {
           method: 'POST',
           body: JSON.stringify({
             student_id: studentInfo.id,
@@ -376,18 +386,46 @@ function MultipleChoiceContent() {
             score: 100
           })
         });
+
+        if (!logRes.ok) {
+           notifications.show({ title: '오류', message: '학습 완료 처리에 실패했습니다. 인터넷 연결을 확인해주세요.', color: 'red' });
+           return; 
+        }
+
         await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
         router.push('/student/learning');
       }
     } catch (e) {
       console.error("Finish test processing failed", e);
-      // Fallback for demo/safety
-      router.push('/student/learning');
+      notifications.show({ title: '오류', message: '결과를 전송하지 못했습니다. 문제가 지속되면 문의바랍니다.', color: 'red' });
     }
   };
 
   if (loading) {
     return <Center h="100vh"><Loader color="yellow" type="dots" /></Center>;
+  }
+
+  if (isEmptyError) {
+    return (
+      <Center h="100vh" bg="#fff">
+        <Stack align="center" gap="lg" p="xl" style={{ border: '4px solid black', borderRadius: '16px', boxShadow: '8px 8px 0px black' }}>
+          <IconBrain size={64} style={{ color: '#FFD93D' }} />
+          <Title order={2}>복습할 단어가 없습니다</Title>
+          <Text size="lg" c="dimmed" ta="center">
+            학습 범위를 찾을 수 없거나 첫 학습일입니다.<br />
+            아래 버튼을 눌러야 정상적으로 학습이 완료됩니다.
+          </Text>
+          <Button 
+            size="xl" 
+            color="dark" 
+            onClick={() => finishTest([], true)}
+            style={{ marginTop: '1rem', border: '2px solid black' }}
+          >
+            학습 완료하고 나가기
+          </Button>
+        </Stack>
+      </Center>
+    );
   }
 
   if (questions.length === 0) {

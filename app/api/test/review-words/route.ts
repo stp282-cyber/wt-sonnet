@@ -18,12 +18,19 @@ export async function GET(req: NextRequest) {
         }
 
         // CRITICAL: We need currentStart and currentEnd to calculate review range
-        if (!currentStartParam || !currentEndParam) {
+        // Fix: "null" or "undefined" strings must be explicitly checked, and they must be valid numbers
+        if (
+            !currentStartParam || !currentEndParam ||
+            currentStartParam === 'null' || currentEndParam === 'null' ||
+            currentStartParam === 'undefined' || currentEndParam === 'undefined' ||
+            isNaN(parseInt(currentStartParam)) || isNaN(parseInt(currentEndParam))
+        ) {
+            // Return 200 OK to prevent client-side throw, but gracefully say it's empty with an error flag
             return NextResponse.json({
-                error: 'Missing currentStart or currentEnd parameters',
                 questions: [],
-                meta: { error: 'Parameters required for volume-based review' }
-            }, { status: 400 });
+                message: '학습 범위가 정상적으로 전달되지 않았습니다.',
+                meta: { isFirstDay: false, isError: true, error: 'Invalid or missing currentStart/currentEnd parameters' }
+            });
         }
 
         const currentStart = parseInt(currentStartParam);

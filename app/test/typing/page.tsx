@@ -284,17 +284,18 @@ function TypingTestContent() {
             itemId, start, end, curriculumId, curriculumItemId, scheduledDate
         };
 
-        await fetch('/api/test/session', {
-            method: 'POST',
-            body: JSON.stringify({
-                studentId: studentInfo.id,
-                sessionData
-            })
-        });
-
-        // Also Save "Pending" Log if needed? 
         try {
-            await fetch('/api/study-logs', {
+            const sessionRes = await fetch('/api/test/session', {
+                method: 'POST',
+                body: JSON.stringify({
+                    studentId: studentInfo.id,
+                    sessionData
+                })
+            });
+            if (!sessionRes.ok) throw new Error('Session save failed');
+
+            // Also Save "Pending" Log
+            const logRes = await fetch('/api/study-logs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -308,11 +309,13 @@ function TypingTestContent() {
                     wrong_answers: wrongWords
                 })
             });
-        } catch (e) {
-            console.error("Log save failed", e);
-        }
+            if (!logRes.ok) throw new Error('Study logs save failed');
 
-        router.push(route);
+            router.push(route);
+        } catch (e) {
+            console.error("Finish test processing failed", e);
+            notifications.show({ title: '오류', message: '학습 결과를 저장하지 못했습니다. 인터넷 연결을 확인해주세요.', color: 'red' });
+        }
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
