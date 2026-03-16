@@ -287,6 +287,7 @@ function TypingTestContent() {
         try {
             const sessionRes = await fetch('/api/test/session', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     studentId: studentInfo.id,
                     sessionData
