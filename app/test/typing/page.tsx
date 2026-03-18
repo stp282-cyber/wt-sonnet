@@ -54,7 +54,7 @@ function TypingTestContent() {
                     const studentInfoStr = localStorage.getItem('user');
                     if (studentInfoStr) {
                         const studentInfo = JSON.parse(studentInfoStr);
-                        const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                        const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
                         if (res.ok) {
                             const data = await res.json();
                             if (data.session && data.session.session_data.type === 'typing_test') {
@@ -205,8 +205,10 @@ function TypingTestContent() {
             notifications.show({ title: '시간 초과', message: '다음 문제로 넘어갑니다.', color: 'orange' });
         }
 
-        // Save Progress
-        saveProgress(currentIndex + 1, newResults);
+        // Save Progress (Race condition 방지: 마지막 문제가 아닐 때만 저장)
+        if (currentIndex < words.length - 1) {
+            saveProgress(currentIndex + 1, newResults);
+        }
 
         // Dynamic Delay: 200ms for Correct, 1000ms for Wrong/Timeout
         const delay = (isCorrect && !timeout) ? 200 : 1000;

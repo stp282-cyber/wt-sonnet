@@ -1,0 +1,117 @@
+[
+  {
+    "type": "typing_test_finished",
+    "step": "BASIC_WRONG_RETRY",
+    "wrongWords_exists": true,
+    "wrongWords_val": [
+      {
+        "no": 30,
+        "korean": "먼저, 우선",
+        "english": "first ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 20,
+        "korean": "리본",
+        "english": "ribbon ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 21,
+        "korean": "동물원에 가다",
+        "english": "go to the zoo ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 16,
+        "korean": "미끄러운",
+        "english": "slippery ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 27,
+        "korean": "그거 좋은 생각이다.",
+        "english": "That’s a good idea. ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 28,
+        "korean": "목이 마른",
+        "english": "thirsty ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 19,
+        "korean": "끈",
+        "english": "strap ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 26,
+        "korean": "도서관에 가다",
+        "english": "go to the library ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 24,
+        "korean": "축구를 하다",
+        "english": "play soccer ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      },
+      {
+        "no": 22,
+        "korean": "~와 함께 가다",
+        "english": "go with somebody ",
+        "unit_name": "2",
+        "major_unit": "2",
+        "minor_unit": "2"
+      }
+    ],
+    "studentInfo_exists": false,
+    "words_count": null,
+    "keys": "end, step, type, start, itemId, wrongWords, basicResults, curriculumId, retryResults, scheduledDate, curriculumItemId, currentRetryIndex"
+  },
+  {
+    "type": "typing_test_finished",
+    "step": "REVIEW_TEST",
+    "wrongWords_exists": true,
+    "wrongWords_val": [
+      {
+        "no": 6,
+        "korean": "너무, 훨씬",
+        "english": "way",
+        "unit_name": "13",
+        "major_unit": "1",
+        "minor_unit": "13"
+      }
+    ],
+    "studentInfo_exists": false,
+    "words_count": null,
+    "keys": "end, step, type, start, itemId, wrongWords, basicResults, curriculumId, retryResults, scheduledDate, curriculumItemId, currentRetryIndex"
+  },
+  {
+    "type": "typing_test",
+    "wrongWords_exists": false,
+    "studentInfo_exists": true,
+    "words_count": 15,
+    "keys": "end, type, start, words, itemId, results, studentInfo, currentIndex, curriculumId, scheduledDate, curriculumItemId"
+  }
+]

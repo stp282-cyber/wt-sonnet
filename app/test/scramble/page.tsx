@@ -50,7 +50,7 @@ function ScrambleContent() {
                 const studentInfoStr = localStorage.getItem('user');
                 if (studentInfoStr) {
                     const studentInfo = JSON.parse(studentInfoStr);
-                    const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                    const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.session) {

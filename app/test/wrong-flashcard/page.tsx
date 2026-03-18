@@ -134,7 +134,7 @@ function WrongFlashcardContent() {
                 const studentInfoStr = localStorage.getItem('user');
                 if (studentInfoStr) {
                     const studentInfo = JSON.parse(studentInfoStr);
-                    const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                    const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
                     if (res.ok) {
                         const data = await res.json();
                         // Support both legacy and new structure
@@ -193,7 +193,7 @@ function WrongFlashcardContent() {
         const studentInfoStr = localStorage.getItem('user');
         if (studentInfoStr) {
             const studentInfo = JSON.parse(studentInfoStr);
-            const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+            const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
             const d = await r.json();
             const sData = d.session?.session_data || {};
 

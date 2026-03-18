@@ -47,7 +47,7 @@ function WrongRetryContent() {
                 if (!studentInfoStr) throw new Error("No user found");
                 const studentInfo = JSON.parse(studentInfoStr);
 
-                const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+                const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
                 const data = await res.json();
 
                 if (data.session) {
@@ -94,7 +94,7 @@ function WrongRetryContent() {
         if (!studentInfoStr) return;
         const studentInfo = JSON.parse(studentInfoStr);
 
-        const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+        const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
         const d = await r.json();
         const existingData = d.session?.session_data || {};
 
@@ -160,7 +160,7 @@ function WrongRetryContent() {
         if (!studentInfoStr) return;
         const studentInfo = JSON.parse(studentInfoStr);
 
-        const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`);
+        const r = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
         const d = await r.json();
         const sData = d.session?.session_data || {};
 
