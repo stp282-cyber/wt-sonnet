@@ -184,6 +184,7 @@ function TypingTestContent() {
     }, []);
 
     const handleSubmit = (timeout = false) => {
+        if (isAnswered) return; // Prevent double submissions
         if (!currentWord) return;
 
         const normalizedUser = normalizeAnswer(userAnswer);

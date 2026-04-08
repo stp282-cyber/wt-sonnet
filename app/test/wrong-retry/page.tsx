@@ -111,6 +111,7 @@ function WrongRetryContent() {
     };
 
     const handleSubmit = (choice?: string) => {
+        if (isAnswered) return; // Prevent double submissions
         if (!words[currentIndex]) return;
         const currentWord = words[currentIndex];
         let isCorrect = false;

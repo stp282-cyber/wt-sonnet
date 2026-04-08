@@ -137,6 +137,7 @@ function ScrambleContent() {
     };
 
     const handleSubmit = (timeout: boolean) => {
+        if (isAnswered) return; // Prevent double submissions
         if (!words[currentIndex]) return;
 
         const userAnswer = scrambledWords.join(' ');
