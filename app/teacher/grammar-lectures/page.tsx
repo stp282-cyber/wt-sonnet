@@ -9,7 +9,7 @@ import { useForm } from '@mantine/form';
 import {
     IconPlus, IconTrash, IconDeviceFloppy, IconVideo, IconEdit, IconCheck, IconX,
     IconMenu2, IconEye, IconEyeOff, IconChevronDown, IconChevronRight,
-    IconArrowUp, IconArrowDown, IconRowInsertTop
+    IconArrowUp, IconArrowDown, IconRowInsertTop, IconMusic
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,6 +20,21 @@ export default function TeacherGrammarPage() {
     const [books, setBooks] = useState<GrammarBook[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Helper to check if it is an audio URL
+    const isAudioUrl = (url: string) => {
+        if (!url) return false;
+        const cleanUrl = url.split('?')[0].toLowerCase();
+        return cleanUrl.endsWith('.mp3') || cleanUrl.endsWith('.wav') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.m4a');
+    };
+
+    // Helper to extract video ID (for verification)
+    const getYoutubeId = (url: string) => {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
 
     // Initial load
     useEffect(() => {
@@ -480,9 +495,13 @@ export default function TeacherGrammarPage() {
                                                                                                             styles={{ input: { backgroundColor: '#334155', color: 'white', border: 'none' } }}
                                                                                                         />
                                                                                                         <TextInput
-                                                                                                            placeholder="유튜브 URL (예: https://youtu.be/...)"
+                                                                                                            placeholder="유튜브 URL 또는 MP3 주소"
                                                                                                             value={section.youtubeUrl}
                                                                                                             onChange={(e) => updateSection(book.id, chapter.id, section.id, 'youtubeUrl', e.target.value)}
+                                                                                                            rightSection={
+                                                                                                                isAudioUrl(section.youtubeUrl) ? <IconMusic size={16} color="#3B82F6" /> :
+                                                                                                                    getYoutubeId(section.youtubeUrl) ? <IconVideo size={16} color="#EF4444" /> : null
+                                                                                                            }
                                                                                                             styles={{ input: { backgroundColor: '#334155', color: 'white', border: 'none' } }}
                                                                                                         />
                                                                                                         <Group gap={4} style={{ flexGrow: 0 }}>

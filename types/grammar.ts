@@ -1,7 +1,7 @@
 export interface GrammarSection {
     id: string;
     title: string;
-    youtubeUrl: string;
+    youtubeUrl: string; // Supports both YouTube URLs and direct MP3 links
 }
 
 export interface GrammarChapter {

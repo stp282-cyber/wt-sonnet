@@ -6,7 +6,7 @@ import {
     Container, Title, Group, Paper, Stack,
     Accordion, Text, Box, LoadingOverlay, Grid, AspectRatio, Loader, Center
 } from '@mantine/core';
-import { IconVideo, IconPlayerPlay } from '@tabler/icons-react';
+import { IconVideo, IconPlayerPlay, IconMusic } from '@tabler/icons-react';
 import { GrammarBook, GrammarSection } from '@/types/grammar';
 
 // Helper to extract video ID
@@ -15,6 +15,13 @@ const getYoutubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
+};
+
+// Helper to check if it is an audio URL
+const isAudioUrl = (url: string) => {
+    if (!url) return false;
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    return cleanUrl.endsWith('.mp3') || cleanUrl.endsWith('.wav') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.m4a');
 };
 
 interface LecturesClientProps {
@@ -179,20 +186,36 @@ export default function LecturesClient({ initialBooks }: LecturesClientProps) {
                                 <Title order={3} c="white">{selectedSection.title}</Title>
                                 {selectedSection.youtubeUrl ? (
                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                        <AspectRatio ratio={16 / 9}>
-                                            <iframe
-                                                src={`https://www.youtube.com/embed/${getYoutubeId(selectedSection.youtubeUrl)}?modestbranding=1&rel=0`}
-                                                title="YouTube video player"
-                                                frameBorder="0"
-                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                allowFullScreen
-                                                style={{ borderRadius: '8px', border: '2px solid #334155' }}
-                                            />
-                                        </AspectRatio>
+                                        {isAudioUrl(selectedSection.youtubeUrl) ? (
+                                            <Box p="xl" style={{ textAlign: 'center', backgroundColor: '#1E293B', borderRadius: '12px', border: '1px solid #334155' }}>
+                                                <IconMusic size={64} color="#3B82F6" style={{ marginBottom: '20px', opacity: 0.8 }} />
+                                                <Text size="lg" fw={600} mb="xl" c="gray.3">오디오 강의 재생</Text>
+                                                <audio
+                                                    src={selectedSection.youtubeUrl}
+                                                    controls
+                                                    style={{ width: '100%', maxWidth: '600px' }}
+                                                />
+                                            </Box>
+                                        ) : getYoutubeId(selectedSection.youtubeUrl) ? (
+                                            <AspectRatio ratio={16 / 9}>
+                                                <iframe
+                                                    src={`https://www.youtube.com/embed/${getYoutubeId(selectedSection.youtubeUrl)}?modestbranding=1&rel=0`}
+                                                    title="YouTube video player"
+                                                    frameBorder="0"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    allowFullScreen
+                                                    style={{ borderRadius: '8px', border: '2px solid #334155' }}
+                                                />
+                                            </AspectRatio>
+                                        ) : (
+                                            <Box style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Text c="dimmed">지원하지 않는 미디어 형식 또는 잘못된 링크입니다.</Text>
+                                            </Box>
+                                        )}
                                     </div>
                                 ) : (
                                     <Box style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Text c="dimmed">동영상 링크가 없습니다.</Text>
+                                        <Text c="dimmed">동영상 또는 오디오 링크가 없습니다.</Text>
                                     </Box>
                                 )}
                             </Stack>
