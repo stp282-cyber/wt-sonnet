@@ -135,7 +135,11 @@ function WrongRetryContent() {
         setResults(newResults);
         setIsAnswered(true);
 
-        saveState(currentIndex + 1, newResults);
+        // Only save intermediate state if there are more questions remaining
+        // Prevents race condition where saveState overwrites finishTest's updated wrongWords
+        if (currentIndex < words.length - 1) {
+            saveState(currentIndex + 1, newResults);
+        }
 
         // Dynamic Delay: 200ms for Correct, 1000ms for Wrong
         const delay = isCorrect ? 200 : 1000;
@@ -195,6 +199,22 @@ function WrongRetryContent() {
                     })
                 });
                 if (!res.ok) throw new Error('Session save failed');
+
+            // Sync LocalStorage for back button defense
+            if (currentMode !== 'review_wrong') {
+                try {
+                    localStorage.setItem('wrongWords', JSON.stringify(stillWrongWords));
+                    const savedTestResult = localStorage.getItem('testResult');
+                    if (savedTestResult) {
+                        const tr = JSON.parse(savedTestResult);
+                        tr.wrongWords = stillWrongWords;
+                        tr.wrongCount = stillWrongWords.length;
+                        localStorage.setItem('testResult', JSON.stringify(tr));
+                    }
+                } catch (err) {
+                    console.error('LocalStorage sync failed', err);
+                }
+            }
             } catch (e) {
                 console.error("Session update failed", e);
                 notifications.show({ title: '오류', message: '진도를 저장하지 못했습니다. 다시 시도해주세요.', color: 'red' });

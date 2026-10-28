@@ -207,7 +207,12 @@ function WrongFlashcardContent() {
             const shuffle = (array: any[]) => array.sort(() => Math.random() - 0.5);
 
             // Prepare updated data with shuffled words
-            const updatedSessionData: any = { ...sData, step: nextStep };
+            const updatedSessionData: any = {
+                ...sData,
+                step: nextStep,
+                currentRetryIndex: 0,
+                retryResults: []
+            };
 
             if (mode === 'review_wrong' && sData.reviewWrongQuestions) {
                 updatedSessionData.reviewWrongQuestions = shuffle([...sData.reviewWrongQuestions]);
