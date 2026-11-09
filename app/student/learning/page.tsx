@@ -138,7 +138,14 @@ export default function StudentLearningPage() {
             case 'BASIC_TEST':
             case 'typing_test': // Legacy
                 // Resume Basic Test
-                router.push(`/test/typing?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&resume=true`);
+                if (sData.type === 'scramble') {
+                    router.push(`/test/scramble?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&curriculumId=${sData.curriculumId}&curriculumItemId=${sData.curriculumItemId}&scheduledDate=${sData.scheduledDate}&resume=true&testType=scramble`);
+                } else {
+                    router.push(`/test/typing?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&resume=true`);
+                }
+                break;
+            case 'SCRAMBLE_RETRY':
+                router.push(`/test/scramble?mode=retry&resume=true&itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&curriculumId=${sData.curriculumId}&curriculumItemId=${sData.curriculumItemId}&scheduledDate=${sData.scheduledDate}&testType=scramble`);
                 break;
             case 'BASIC_WRONG_RETRY':
                 // Resume Basic Wrong
@@ -146,7 +153,7 @@ export default function StudentLearningPage() {
                 break;
             case 'WRONG_FLASHCARD':
                 // Resume Basic Wrong Flashcard (Review)
-                router.push(`/test/wrong-flashcard?mode=basic&resume=true`);
+                router.push(`/test/wrong-flashcard?mode=basic&resume=true${sData.type === 'scramble' ? '&testType=scramble' : ''}`);
                 break;
             case 'REVIEW_TEST':
                 // Resume Review Test
@@ -162,7 +169,9 @@ export default function StudentLearningPage() {
                 break;
             default:
                 // Fallback 
-                if (sData.type === 'typing_test') {
+                if (sData.type === 'scramble') {
+                    router.push(`/test/scramble?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&curriculumId=${sData.curriculumId}&curriculumItemId=${sData.curriculumItemId}&scheduledDate=${sData.scheduledDate}&resume=true&testType=scramble`);
+                } else if (sData.type === 'typing_test') {
                     router.push(`/test/typing?itemId=${sData.itemId}&start=${sData.start}&end=${sData.end}&resume=true`);
                 } else {
                     notifications.show({ title: 'Error', message: 'Unknown session state', color: 'red' });

@@ -183,7 +183,7 @@ function WrongFlashcardContent() {
         params.set('mode', mode);
         params.set('resume', 'true'); // Add resume flag
 
-        const preserveParams = ['itemId', 'start', 'end', 'curriculumId', 'curriculumItemId', 'scheduledDate'];
+        const preserveParams = ['itemId', 'start', 'end', 'curriculumId', 'curriculumItemId', 'scheduledDate', 'testType'];
         preserveParams.forEach(key => {
             const val = searchParams.get(key);
             if (val) params.set(key, val);
@@ -198,8 +198,8 @@ function WrongFlashcardContent() {
             const sData = d.session?.session_data || {};
 
             let nextStep = mode === 'basic' ? 'BASIC_WRONG_RETRY' : 'REVIEW_WRONG_RETRY';
-            // Custom Logic for Scramble
-            if (testType === 'scramble') {
+            // Custom Logic for Scramble (기본 단어 시험 오답일 때만 스크램블 재시험으로 분기)
+            if (testType === 'scramble' && mode !== 'review_wrong') {
                 nextStep = 'SCRAMBLE_RETRY';
             }
 
@@ -236,7 +236,9 @@ function WrongFlashcardContent() {
             }
         }
 
-        if (testType === 'scramble') {
+        if (testType === 'scramble' && mode !== 'review_wrong') {
+            params.set('mode', 'retry');
+            params.set('testType', 'scramble');
             router.push(`/test/scramble?${params.toString()}`);
         } else {
             router.push(`/test/wrong-retry?${params.toString()}`);

@@ -96,7 +96,7 @@ function playSound(type: 'click' | 'correct' | 'wrong' | 'complete', soundEnable
 
 // 문장 부호 및 대소문자 정규화 비교 함수
 function cleanSentence(s: string): string {
-    return s.trim().replace(/[.,!?;:'"]/g, '').toLowerCase().replace(/\s+/g, ' ');
+    return s.trim().replace(/[.,!?;:'"’‘“”]/g, '').toLowerCase().replace(/\s+/g, ' ');
 }
 
 function ScrambleContent() {
@@ -128,6 +128,7 @@ function ScrambleContent() {
     ];
 
     const currentWord = words[currentIndex];
+    const isSingleWord = currentWord ? !(/\s+/.test(currentWord.english.trim())) : false;
     const correctCount = results.filter((r) => r).length;
     const wrongCount = results.filter((r) => !r).length;
     const progress = words.length > 0 ? ((currentIndex + 1) / words.length) * 100 : 0;
@@ -156,9 +157,15 @@ function ScrambleContent() {
                     }
                 }
 
+                const isRetry = mode === 'retry' || sessionData?.step === 'SCRAMBLE_RETRY';
+
                 // 1. 오답 재시험 모드 (Retry)
-                if (mode === 'retry' && sessionData?.wrongWords && sessionData.wrongWords.length > 0) {
+                if (isRetry && sessionData?.wrongWords && sessionData.wrongWords.length > 0) {
                     targetWords = sessionData.wrongWords;
+                    if (isResume) {
+                        setCurrentIndex(sessionData.currentRetryIndex || 0);
+                        setResults(sessionData.retryResults || []);
+                    }
                 }
                 // 2. 세션 이어하기 모드 (Resume)
                 else if (isResume && sessionData?.type === 'scramble' && sessionData.words) {
@@ -193,23 +200,35 @@ function ScrambleContent() {
         init();
     }, [searchParams]);
 
-    // 문제 인덱스 변경 시 문장을 단어 단위로 토큰화하고 셔플
+    // 문제 인덱스 변경 시 문장 또는 단어를 토큰화하고 셔플
     useEffect(() => {
         if (words.length > 0 && words[currentIndex]) {
-            const sentence = words[currentIndex].english.trim();
-            const rawTokens = sentence.split(/\s+/);
+            const rawSentence = words[currentIndex].english.trim();
+            const single = !(/\s+/.test(rawSentence));
+
+            let rawTokens: string[] = [];
+            if (single) {
+                // 단일 단어: 문장 부호를 제거한 순수 철자(Letters) 단위로 분리
+                const clean = rawSentence.replace(/[.,!?;:'"’‘“”]/g, '');
+                rawTokens = (clean.length > 0 ? clean : rawSentence).split('');
+            } else {
+                // 구/문장: 공백 기준 단어(Words) 단위로 분리
+                rawTokens = rawSentence.split(/\s+/);
+            }
+
             const tokens: WordToken[] = rawTokens.map((w, idx) => ({
                 id: `${currentIndex}-${idx}-${w}`,
                 text: w,
             }));
 
-            // 단어 셔플 (원문과 순서가 달라질 때까지 셔플)
+            // 단어/철자 셔플 (원문과 순서가 달라질 때까지 셔플)
             let shuffled = [...tokens].sort(() => Math.random() - 0.5);
-            if (tokens.length > 2) {
+            if (tokens.length >= 2) {
                 let attempts = 0;
+                const originalSequence = rawTokens.join('');
                 while (
-                    attempts < 5 &&
-                    shuffled.map((t) => t.text).join(' ') === sentence
+                    attempts < 10 &&
+                    shuffled.map((t) => t.text).join('') === originalSequence
                 ) {
                     shuffled = [...tokens].sort(() => Math.random() - 0.5);
                     attempts++;
@@ -273,6 +292,7 @@ function ScrambleContent() {
             const studentInfoStr = localStorage.getItem('user');
             if (!studentInfoStr) return;
             const studentInfo = JSON.parse(studentInfoStr);
+            const isRetry = searchParams.get('mode') === 'retry';
 
             await fetch('/api/test/session', {
                 method: 'POST',
@@ -281,9 +301,13 @@ function ScrambleContent() {
                     studentId: studentInfo.id,
                     sessionData: {
                         type: 'scramble',
+                        step: isRetry ? 'SCRAMBLE_RETRY' : 'BASIC_TEST',
                         words,
-                        currentIndex: idx,
-                        results: currentResults,
+                        currentIndex: isRetry ? undefined : idx,
+                        currentRetryIndex: isRetry ? idx : undefined,
+                        results: isRetry ? undefined : currentResults,
+                        retryResults: isRetry ? currentResults : undefined,
+                        wrongWords: isRetry ? words : undefined,
                         itemId: searchParams.get('itemId'),
                         start: searchParams.get('start'),
                         end: searchParams.get('end'),
@@ -302,7 +326,8 @@ function ScrambleContent() {
     const handleSubmit = (timeout = false) => {
         if (isAnswered || !words[currentIndex]) return;
 
-        const userAnswer = assembledWords.map((w) => w.text).join(' ');
+        const joinChar = isSingleWord ? '' : ' ';
+        const userAnswer = assembledWords.map((w) => w.text).join(joinChar);
         const correctAnswer = words[currentIndex].english;
         const correct = !timeout && cleanSentence(userAnswer) === cleanSentence(correctAnswer);
 
@@ -363,7 +388,27 @@ function ScrambleContent() {
         };
         localStorage.setItem('testResult', JSON.stringify(testResult));
 
-        // 2. 오답이 남아있는 경우 -> WRONG_FLASHCARD 루프
+        // 2. 학습 로그 저장 (타이핑 시험과 동일하게 진도 반영)
+        try {
+            await fetch('/api/study-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studentInfo.id,
+                    curriculum_id: curriculumId,
+                    curriculum_item_id: curriculumItemId,
+                    scheduled_date: scheduledDate,
+                    status: 'in_progress',
+                    test_phase: wrongWords.length > 0 ? 'WRONG_FLASHCARD' : 'BASIC_PASSED',
+                    score,
+                    wrong_answers: wrongWords
+                })
+            });
+        } catch (logErr) {
+            console.error("Study log error:", logErr);
+        }
+
+        // 3. 오답이 남아있는 경우 -> WRONG_FLASHCARD 루프
         if (wrongWords.length > 0) {
             await fetch('/api/test/session', {
                 method: 'POST',
@@ -389,7 +434,7 @@ function ScrambleContent() {
                 `/test/result?itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&curriculumItemId=${curriculumItemId}&mode=basic&nextStep=WRONG_FLASHCARD&scheduledDate=${scheduledDate}&testType=scramble`
             );
         } else {
-            // 3. 모든 문제를 100% 맞힌 경우 -> 복습 단계(check_review)로 이동!
+            // 4. 모든 문제를 100% 맞힌 경우 -> 복습 단계(check_review)로 이동!
             router.push(
                 `/test/result?nextAction=check_review&scheduledDate=${scheduledDate}&curriculumItemId=${curriculumItemId}&itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&testType=scramble`
             );
@@ -622,7 +667,7 @@ function ScrambleContent() {
                             }}
                         >
                             <Text size="xs" fw={800} c="dimmed" mb="xs">
-                                ✏️ 내가 조립한 문장 (클릭하면 아래로 돌아갑니다)
+                                ✏️ {isSingleWord ? '내가 조립한 단어 (클릭하면 아래로 돌아갑니다)' : '내가 조립한 문장 (클릭하면 아래로 돌아갑니다)'}
                             </Text>
 
                             <Box
@@ -636,7 +681,7 @@ function ScrambleContent() {
                             >
                                 {assembledWords.length === 0 && (
                                     <Text size="sm" c="gray.5" fw={600} style={{ fontStyle: 'italic' }}>
-                                        아래 단어를 클릭하면 여기에 문장이 차례대로 들어갑니다...
+                                        {isSingleWord ? '아래 철자를 클릭하면 여기에 단어가 차례대로 들어갑니다...' : '아래 단어를 클릭하면 여기에 문장이 차례대로 들어갑니다...'}
                                     </Text>
                                 )}
 
@@ -651,7 +696,9 @@ function ScrambleContent() {
                                             border: '3px solid black',
                                             borderRadius: '0px',
                                             boxShadow: '3px 3px 0px black',
-                                            padding: '8px 16px',
+                                            padding: isSingleWord ? '8px 14px' : '8px 16px',
+                                            minWidth: isSingleWord ? '42px' : 'auto',
+                                            textAlign: 'center',
                                             fontSize: '1.15rem',
                                             fontWeight: 800,
                                             cursor: isAnswered ? 'default' : 'pointer',
@@ -712,7 +759,7 @@ function ScrambleContent() {
                             }}
                         >
                             <Text size="xs" fw={800} c="gray.4" mb="sm">
-                                🔀 단어 선택 풀 (클릭하여 위로 올리세요)
+                                {isSingleWord ? '🔀 철자 선택 풀 (클릭하여 위로 올리세요)' : '🔀 단어 선택 풀 (클릭하여 위로 올리세요)'}
                             </Text>
 
                             <Box
@@ -735,7 +782,9 @@ function ScrambleContent() {
                                             border: '3px solid black',
                                             borderRadius: '0px',
                                             boxShadow: '4px 4px 0px black',
-                                            padding: '10px 18px',
+                                            padding: isSingleWord ? '8px 14px' : '10px 18px',
+                                            minWidth: isSingleWord ? '44px' : 'auto',
+                                            textAlign: 'center',
                                             fontSize: '1.2rem',
                                             fontWeight: 800,
                                             cursor: isAnswered ? 'default' : 'pointer',
@@ -791,7 +840,7 @@ function ScrambleContent() {
                                         color: 'white',
                                     }}
                                 >
-                                    한 단어 취소
+                                    {isSingleWord ? '한 글자 취소' : '한 단어 취소'}
                                 </Button>
                             </Group>
 

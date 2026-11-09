@@ -145,7 +145,7 @@ export default function StudentSchedulePage() {
             time_limit_seconds: override?.time_limit_seconds ?? item?.time_limit_seconds ?? 20,
             daily_amount: amount,
             daily_amount_type: type,
-            test_type: override?.test_type ?? item?.test_type ?? 'multiple_choice'
+            test_type: override?.test_type ?? item?.test_type ?? 'typing'
         });
         setActiveModal('settings');
     };
@@ -604,12 +604,12 @@ export default function StudentSchedulePage() {
                     <Select
                         label="시험 방식"
                         data={[
-                            { value: 'multiple_choice', label: '객관식' },
-                            { value: 'subjective', label: '주관식' },
-                            { value: 'scramble', label: '단어 스크램블' } // 실제 지원 타입 확인 필요
+                            { value: 'typing', label: '타이핑 시험 (기본)' },
+                            { value: 'scramble', label: '단어/문장 스크램블 (클릭형)' },
+                            { value: 'multiple_choice', label: '객관식 (4지선다)' },
                         ]}
                         value={settingsForm.test_type}
-                        onChange={(val) => setSettingsForm({ ...settingsForm, test_type: val || 'multiple_choice' })}
+                        onChange={(val) => setSettingsForm({ ...settingsForm, test_type: val || 'typing' })}
                     />
                     <NumberInput
                         label="합격 기준 점수"

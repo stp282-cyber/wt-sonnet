@@ -173,7 +173,7 @@ export default function CurriculumsPage() {
                 const data = await response.json();
                 items = (data.items || []).map((item: any) => ({
                     id: item.id,
-                    type: item.type,
+                    type: item.item_type || item.type,
                     title: item.title,
                     item_id: item.item_id, // Map item_id
                     daily_amount_type: item.daily_amount_type,
@@ -713,7 +713,7 @@ export default function CurriculumsPage() {
                                                                                         setEditingItem(item);
                                                                                         setSelectedMaterialId(item.item_id || null);
                                                                                         itemForm.setValues({
-                                                                                            type: item.type,
+                                                                                            type: item.item_type || item.type,
                                                                                             title: item.title,
                                                                                             daily_amount_type: item.daily_amount_type,
                                                                                             daily_word_count: item.daily_word_count || 20,
