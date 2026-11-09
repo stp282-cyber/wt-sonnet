@@ -43,55 +43,10 @@ interface WordToken {
     text: string;
 }
 
-// Web Audio API 사운드 효과음
-function playSound(type: 'click' | 'correct' | 'wrong' | 'complete', soundEnabled: boolean) {
-    if (!soundEnabled || typeof window === 'undefined') return;
-    try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-
-        if (type === 'click') {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(440, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
-            gain.gain.setValueAtTime(0.15, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.08);
-        } else if (type === 'correct') {
-            [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
-                gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.08);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.08 + 0.25);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(ctx.currentTime + idx * 0.08);
-                osc.stop(ctx.currentTime + idx * 0.08 + 0.25);
-            });
-        } else if (type === 'wrong') {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(220, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.25);
-            gain.gain.setValueAtTime(0.25, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.25);
-        }
-    } catch {
-        // 무음 처리
-    }
+// Web Audio API 사운드 효과음 (비활성화)
+function playSound(_type: 'click' | 'correct' | 'wrong' | 'complete', _soundEnabled: boolean) {
+    // 효과음 비활성화
+    return;
 }
 
 // 문장 부호 및 대소문자 정규화 비교 함수
@@ -117,7 +72,7 @@ function ScrambleContent() {
     const [timeLeft, setTimeLeft] = useState(30);
     const [loading, setLoading] = useState(true);
     const [combo, setCombo] = useState(0);
-    const [soundEnabled, setSoundEnabled] = useState(true);
+    const [soundEnabled, setSoundEnabled] = useState(false);
     const [shake, setShake] = useState(false);
 
     // 폴백 기본 예제 문장 (파라미터 누락 시 안전장치)
@@ -329,7 +284,9 @@ function ScrambleContent() {
         const joinChar = isSingleWord ? '' : ' ';
         const userAnswer = assembledWords.map((w) => w.text).join(joinChar);
         const correctAnswer = words[currentIndex].english;
-        const correct = !timeout && cleanSentence(userAnswer) === cleanSentence(correctAnswer);
+        // 단어/문장의 전체 조각이 모두 채워졌을 때만 정답 검사 수행 (조각이 덜 채워진 상태는 미완성 오답)
+        const isComplete = poolWords.length === 0 && assembledWords.length > 0;
+        const correct = !timeout && isComplete && cleanSentence(userAnswer) === cleanSentence(correctAnswer);
 
         const newResults = [...results, correct];
         setResults(newResults);
@@ -517,18 +474,6 @@ function ScrambleContent() {
                                     </Badge>
                                 )}
                             </Group>
-
-                            <Tooltip label={soundEnabled ? '효과음 끄기' : '효과음 켜기'}>
-                                <ActionIcon
-                                    size="lg"
-                                    variant="filled"
-                                    color="dark"
-                                    onClick={() => setSoundEnabled(!soundEnabled)}
-                                    style={{ border: '2px solid white', borderRadius: '0px' }}
-                                >
-                                    {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
-                                </ActionIcon>
-                            </Tooltip>
                         </Group>
 
                         {/* 상태 바 (타이머 & 맞힌 개수) */}
