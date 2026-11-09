@@ -446,10 +446,11 @@ function ScrambleContent() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: '20px 10px',
+                    width: '100%',
                 }}
             >
-                <Container size={780}>
-                    <div className="animate-fade-in">
+                <Container size={800} style={{ width: '100%', maxWidth: '800px' }}>
+                    <div className="animate-fade-in" style={{ width: '100%' }}>
                         {/* 헤더 & 음소거 토글 */}
                         <Group justify="space-between" align="center" mb={16}>
                             <Group gap="xs">
@@ -604,11 +605,13 @@ function ScrambleContent() {
                                         : '#FEE2E2'
                                     : '#FFFFFF',
                                 boxShadow: '6px 6px 0px black',
-                                minHeight: '130px',
+                                minHeight: '140px',
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s ease',
+                                justifyContent: 'flex-start',
+                                transition: 'background-color 0.2s ease',
                             }}
                         >
                             <Text size="xs" fw={800} c="dimmed" mb="xs">
@@ -621,11 +624,13 @@ function ScrambleContent() {
                                     flexWrap: 'wrap',
                                     gap: '8px',
                                     alignItems: 'center',
+                                    alignContent: 'flex-start',
                                     minHeight: '52px',
+                                    width: '100%',
                                 }}
                             >
                                 {assembledWords.length === 0 && (
-                                    <Text size="sm" c="gray.5" fw={600} style={{ fontStyle: 'italic' }}>
+                                    <Text size="sm" c="gray.5" fw={600} style={{ fontStyle: 'italic', padding: '12px 0' }}>
                                         {isSingleWord ? '아래 철자를 클릭하면 여기에 단어가 차례대로 들어갑니다...' : '아래 단어를 클릭하면 여기에 문장이 차례대로 들어갑니다...'}
                                     </Text>
                                 )}
@@ -700,7 +705,9 @@ function ScrambleContent() {
                                 borderRadius: '0px',
                                 background: '#1E293B',
                                 boxShadow: '6px 6px 0px #3B82F6',
-                                minHeight: '120px',
+                                minHeight: '140px',
+                                width: '100%',
+                                boxSizing: 'border-box',
                             }}
                         >
                             <Text size="xs" fw={800} c="gray.4" mb="sm">
@@ -713,9 +720,16 @@ function ScrambleContent() {
                                     flexWrap: 'wrap',
                                     gap: '10px',
                                     alignItems: 'center',
+                                    alignContent: 'flex-start',
                                     minHeight: '52px',
+                                    width: '100%',
                                 }}
                             >
+                                {poolWords.length === 0 && (
+                                    <Text size="sm" c="gray.5" fw={600} style={{ fontStyle: 'italic', padding: '12px 0' }}>
+                                        모든 조각을 배치했습니다. 아래 정답 확인을 눌러주세요!
+                                    </Text>
+                                )}
                                 {poolWords.map((word) => (
                                     <button
                                         key={word.id}
