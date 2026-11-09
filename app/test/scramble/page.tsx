@@ -2,9 +2,34 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Container, Title, Paper, Text, Box, Group, Progress, Badge, Stack, Center, Loader } from '@mantine/core'; // Added Center, Loader
-import { IconClock, IconCheck, IconX, IconGripVertical } from '@tabler/icons-react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import {
+    Container,
+    Title,
+    Paper,
+    Text,
+    Box,
+    Group,
+    Progress,
+    Badge,
+    Stack,
+    Center,
+    Loader,
+    Button,
+    ActionIcon,
+    Tooltip,
+} from '@mantine/core';
+import {
+    IconClock,
+    IconCheck,
+    IconX,
+    IconVolume,
+    IconRotate,
+    IconArrowBackUp,
+    IconFlame,
+    IconSparkles,
+    IconVolumeOff,
+} from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import StudentLayout from '../../student/layout';
 
 interface Word {
@@ -13,102 +38,236 @@ interface Word {
     korean: string;
 }
 
+interface WordToken {
+    id: string;
+    text: string;
+}
+
+// Web Audio API 사운드 효과음
+function playSound(type: 'click' | 'correct' | 'wrong' | 'complete', soundEnabled: boolean) {
+    if (!soundEnabled || typeof window === 'undefined') return;
+    try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+
+        if (type === 'click') {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.08);
+        } else if (type === 'correct') {
+            [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.08 + 0.25);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + idx * 0.08);
+                osc.stop(ctx.currentTime + idx * 0.08 + 0.25);
+            });
+        } else if (type === 'wrong') {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.25, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.25);
+        }
+    } catch {
+        // 무음 처리
+    }
+}
+
+// 문장 부호 및 대소문자 정규화 비교 함수
+function cleanSentence(s: string): string {
+    return s.trim().replace(/[.,!?;:'"]/g, '').toLowerCase().replace(/\s+/g, ' ');
+}
+
 function ScrambleContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
     const [words, setWords] = useState<Word[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [scrambledWords, setScrambledWords] = useState<string[]>([]);
+
+    // 단어 토큰 상태 (풀 / 조립 영역)
+    const [poolWords, setPoolWords] = useState<WordToken[]>([]);
+    const [assembledWords, setAssembledWords] = useState<WordToken[]>([]);
+
+    // 시험 진행 상태
     const [isAnswered, setIsAnswered] = useState(false);
+    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [results, setResults] = useState<boolean[]>([]);
     const [timeLeft, setTimeLeft] = useState(30);
     const [loading, setLoading] = useState(true);
+    const [combo, setCombo] = useState(0);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const [shake, setShake] = useState(false);
 
+    // 폴백 기본 예제 문장 (파라미터 누락 시 안전장치)
+    const defaultWords: Word[] = [
+        { no: 1, english: 'I love learning English with my friends.', korean: '나는 친구들과 함께 영어 배우는 것을 좋아한다.' },
+        { no: 2, english: 'She goes to school every day.', korean: '그녀는 매일 학교에 간다.' },
+        { no: 3, english: 'Practice makes perfect if you try.', korean: '노력한다면 연습이 완벽을 만든다.' },
+    ];
+
+    const currentWord = words[currentIndex];
     const correctCount = results.filter((r) => r).length;
     const wrongCount = results.filter((r) => !r).length;
     const progress = words.length > 0 ? ((currentIndex + 1) / words.length) * 100 : 0;
 
-    // Hardcoded Fallback Words
-    const defaultWords: Word[] = [
-        { no: 1, english: 'I love learning English', korean: '나는 영어 배우는 것을 좋아한다' },
-        { no: 2, english: 'She goes to school every day', korean: '그녀는 매일 학교에 간다' },
-        { no: 3, english: 'We are studying together', korean: '우리는 함께 공부하고 있다' },
-        { no: 4, english: 'He likes playing soccer', korean: '그는 축구하는 것을 좋아한다' },
-        { no: 5, english: 'They will visit the museum', korean: '그들은 박물관을 방문할 것이다' },
-    ];
-
-    // Initialization
+    // 데이터 초기화 및 세션 복원
     useEffect(() => {
         const init = async () => {
             const mode = searchParams.get('mode');
             const isResume = searchParams.get('resume') === 'true';
+            const itemId = searchParams.get('itemId');
+            const startStr = searchParams.get('start');
+            const endStr = searchParams.get('end');
 
-            let targetWords = defaultWords;
+            let targetWords: Word[] = [];
 
             try {
                 const studentInfoStr = localStorage.getItem('user');
+                let sessionData: any = null;
+
                 if (studentInfoStr) {
                     const studentInfo = JSON.parse(studentInfoStr);
                     const res = await fetch(`/api/test/session?studentId=${studentInfo.id}`, { cache: 'no-store' });
                     if (res.ok) {
                         const data = await res.json();
-                        if (data.session) {
-                            const sData = data.session.session_data;
+                        sessionData = data.session?.session_data;
+                    }
+                }
 
-                            // If Retrying Scramble
-                            if (mode === 'retry' && sData.wrongWords) {
-                                targetWords = sData.wrongWords;
-                            }
-                            // If Resuming Scramble (General)
-                            else if (sData.type === 'scramble' && isResume) {
-                                targetWords = sData.words || defaultWords;
-                                setCurrentIndex(sData.currentIndex || 0);
-                                setResults(sData.results || []);
-                            }
-                        }
+                // 1. 오답 재시험 모드 (Retry)
+                if (mode === 'retry' && sessionData?.wrongWords && sessionData.wrongWords.length > 0) {
+                    targetWords = sessionData.wrongWords;
+                }
+                // 2. 세션 이어하기 모드 (Resume)
+                else if (isResume && sessionData?.type === 'scramble' && sessionData.words) {
+                    targetWords = sessionData.words;
+                    setCurrentIndex(sessionData.currentIndex || 0);
+                    setResults(sessionData.results || []);
+                }
+                // 3. 정상 신규 시험 시작 (단어장 로드)
+                else if (itemId && startStr && endStr) {
+                    const start = parseInt(startStr, 10);
+                    const end = parseInt(endStr, 10);
+                    const res = await fetch(`/api/wordbooks/${itemId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const allWords: Word[] = data.wordbook?.words || [];
+                        targetWords = allWords.slice(start - 1, end);
                     }
                 }
             } catch (e) {
-                console.error("Session load error", e);
+                console.error("Scramble init error:", e);
+            }
+
+            // 폴백 처리
+            if (!targetWords || targetWords.length === 0) {
+                targetWords = defaultWords;
             }
 
             setWords(targetWords);
             setLoading(false);
         };
+
         init();
     }, [searchParams]);
 
-    // 문장을 단어로 섞기
+    // 문제 인덱스 변경 시 문장을 단어 단위로 토큰화하고 셔플
     useEffect(() => {
         if (words.length > 0 && words[currentIndex]) {
-            const sentence = words[currentIndex].english;
-            const wordsArray = sentence.split(' ');
-            const shuffled = [...wordsArray].sort(() => Math.random() - 0.5);
-            setScrambledWords(shuffled);
+            const sentence = words[currentIndex].english.trim();
+            const rawTokens = sentence.split(/\s+/);
+            const tokens: WordToken[] = rawTokens.map((w, idx) => ({
+                id: `${currentIndex}-${idx}-${w}`,
+                text: w,
+            }));
+
+            // 단어 셔플 (원문과 순서가 달라질 때까지 셔플)
+            let shuffled = [...tokens].sort(() => Math.random() - 0.5);
+            if (tokens.length > 2) {
+                let attempts = 0;
+                while (
+                    attempts < 5 &&
+                    shuffled.map((t) => t.text).join(' ') === sentence
+                ) {
+                    shuffled = [...tokens].sort(() => Math.random() - 0.5);
+                    attempts++;
+                }
+            }
+
+            setPoolWords(shuffled);
+            setAssembledWords([]);
+            setIsAnswered(false);
+            setIsCorrect(null);
+            setTimeLeft(35);
         }
     }, [currentIndex, words]);
 
     // 타이머
     useEffect(() => {
         if (!loading && timeLeft > 0 && !isAnswered && words.length > 0) {
-            const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+            const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
             return () => clearTimeout(timer);
-        } else if (timeLeft === 0 && !isAnswered) {
+        } else if (timeLeft === 0 && !isAnswered && words.length > 0) {
             handleSubmit(true);
         }
     }, [timeLeft, isAnswered, words, loading]);
 
-    const handleDragEnd = (result: any) => {
-        if (!result.destination || isAnswered) return;
-
-        const items = Array.from(scrambledWords);
-        const [reorderedItem] = items.splice(result.source.index, 1);
-        items.splice(result.destination.index, 0, reorderedItem);
-
-        setScrambledWords(items);
+    // 풀에서 단어 클릭 -> 조립 영역으로 이동
+    const handleWordClickFromPool = (word: WordToken) => {
+        if (isAnswered) return;
+        playSound('click', soundEnabled);
+        setPoolWords((prev) => prev.filter((w) => w.id !== word.id));
+        setAssembledWords((prev) => [...prev, word]);
     };
 
+    // 조립 영역에서 단어 클릭 -> 다시 풀로 복귀
+    const handleWordClickFromAssembled = (word: WordToken) => {
+        if (isAnswered) return;
+        playSound('click', soundEnabled);
+        setAssembledWords((prev) => prev.filter((w) => w.id !== word.id));
+        setPoolWords((prev) => [...prev, word]);
+    };
+
+    // 한 단어 취소 (Undo)
+    const handleUndo = () => {
+        if (isAnswered || assembledWords.length === 0) return;
+        playSound('click', soundEnabled);
+        const lastWord = assembledWords[assembledWords.length - 1];
+        setAssembledWords((prev) => prev.slice(0, -1));
+        setPoolWords((prev) => [...prev, lastWord]);
+    };
+
+    // 전체 초기화 (Reset)
+    const handleReset = () => {
+        if (isAnswered || assembledWords.length === 0) return;
+        playSound('click', soundEnabled);
+        setPoolWords((prev) => [...prev, ...assembledWords]);
+        setAssembledWords([]);
+    };
+
+    // 진행 상태 세션 저장
     const saveSession = async (idx: number, currentResults: boolean[]) => {
         try {
             const studentInfoStr = localStorage.getItem('user');
@@ -117,6 +276,7 @@ function ScrambleContent() {
 
             await fetch('/api/test/session', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     studentId: studentInfo.id,
                     sessionData: {
@@ -124,117 +284,155 @@ function ScrambleContent() {
                         words,
                         currentIndex: idx,
                         results: currentResults,
-                        // Preserve context
                         itemId: searchParams.get('itemId'),
+                        start: searchParams.get('start'),
+                        end: searchParams.get('end'),
                         curriculumId: searchParams.get('curriculumId'),
-                        scheduledDate: searchParams.get('scheduledDate')
-                    }
-                })
+                        curriculumItemId: searchParams.get('curriculumItemId'),
+                        scheduledDate: searchParams.get('scheduledDate'),
+                    },
+                }),
             });
         } catch (e) {
             console.error("Save session failed", e);
         }
     };
 
-    const handleSubmit = (timeout: boolean) => {
-        if (isAnswered) return; // Prevent double submissions
-        if (!words[currentIndex]) return;
+    // 정답 확인 / 제출
+    const handleSubmit = (timeout = false) => {
+        if (isAnswered || !words[currentIndex]) return;
 
-        const userAnswer = scrambledWords.join(' ');
+        const userAnswer = assembledWords.map((w) => w.text).join(' ');
         const correctAnswer = words[currentIndex].english;
-        const isCorrect = userAnswer === correctAnswer;
+        const correct = !timeout && cleanSentence(userAnswer) === cleanSentence(correctAnswer);
 
-        const newResults = [...results, isCorrect];
+        const newResults = [...results, correct];
         setResults(newResults);
         setIsAnswered(true);
+        setIsCorrect(correct);
+
+        if (correct) {
+            playSound('correct', soundEnabled);
+            setCombo((c) => c + 1);
+        } else {
+            playSound('wrong', soundEnabled);
+            setCombo(0);
+            setShake(true);
+            setTimeout(() => setShake(false), 500);
+        }
 
         saveSession(currentIndex + 1, newResults);
 
+        const delay = correct ? 1200 : 2500;
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
-                setCurrentIndex(currentIndex + 1);
-                setTimeLeft(30);
-                setIsAnswered(false);
+                setCurrentIndex((prev) => prev + 1);
             } else {
                 finishTest(newResults);
             }
-        }, 1500);
+        }, delay);
     };
 
+    // 시험 종료 처리
     const finishTest = async (finalResults: boolean[]) => {
         const studentInfoStr = localStorage.getItem('user');
         if (!studentInfoStr) return;
         const studentInfo = JSON.parse(studentInfoStr);
 
-        const finalCorrectCount = finalResults.filter(r => r).length;
+        const finalCorrectCount = finalResults.filter((r) => r).length;
         const wrongWords = words.filter((_, i) => !finalResults[i]);
         const score = Math.round((finalCorrectCount / words.length) * 100);
 
-        // Save Result to LocalStorage (Legacy support)
+        const itemId = searchParams.get('itemId') || '';
+        const start = searchParams.get('start') || '1';
+        const end = searchParams.get('end') || `${words.length}`;
+        const curriculumId = searchParams.get('curriculumId') || '';
+        const curriculumItemId = searchParams.get('curriculumItemId') || '';
+        const scheduledDate = searchParams.get('scheduledDate') || new Date().toISOString().split('T')[0];
+
+        // 1. LocalStorage 저장 (결과 화면용)
         const testResult = {
             totalQuestions: words.length,
             correctCount: finalCorrectCount,
             wrongCount: words.length - finalCorrectCount,
             score,
-            passed: score >= 80,
-            wrongWords: wrongWords,
+            passed: score === 100,
+            wrongWords,
             timestamp: new Date().toISOString(),
-            testType: 'scramble'
+            testType: 'scramble',
         };
         localStorage.setItem('testResult', JSON.stringify(testResult));
 
-        // Recursive Retry Logic
+        // 2. 오답이 남아있는 경우 -> WRONG_FLASHCARD 루프
         if (wrongWords.length > 0) {
-            // Update Session for Flashcard -> Retry Loop
             await fetch('/api/test/session', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     studentId: studentInfo.id,
                     sessionData: {
-                        type: 'scramble', // Keep type
-                        step: 'WRONG_FLASHCARD', // Set step
-                        wrongWords: wrongWords,
-                        // Context
-                        itemId: searchParams.get('itemId'),
-                        curriculumId: searchParams.get('curriculumId'),
-                        scheduledDate: searchParams.get('scheduledDate')
-                    }
-                })
+                        type: 'scramble',
+                        step: 'WRONG_FLASHCARD',
+                        wrongWords,
+                        itemId,
+                        start,
+                        end,
+                        curriculumId,
+                        curriculumItemId,
+                        scheduledDate,
+                    },
+                }),
             });
 
-            // Redirect to Wrong Flashcard with testType param
-            const params = new URLSearchParams(searchParams.toString());
-            params.set('testType', 'scramble');
-            params.set('mode', 'retry');
-            router.push(`/test/wrong-flashcard?${params.toString()}`);
+            // 결과 요약 페이지를 거쳐 오답 플래시카드로 이동
+            router.push(
+                `/test/result?itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&curriculumItemId=${curriculumItemId}&mode=basic&nextStep=WRONG_FLASHCARD&scheduledDate=${scheduledDate}&testType=scramble`
+            );
         } else {
-            // Success - Go to Result
-            // Clear session or mark complete? 
-            // Usually Result page handles finalization or user clicks "Done".
-            // Since Scramble is standalone-ish, let's just go to result.
-            // But if we want to clear session:
-            await fetch(`/api/test/session?studentId=${studentInfo.id}`, { method: 'DELETE' });
-            router.push('/test/result');
+            // 3. 모든 문제를 100% 맞힌 경우 -> 복습 단계(check_review)로 이동!
+            router.push(
+                `/test/result?nextAction=check_review&scheduledDate=${scheduledDate}&curriculumItemId=${curriculumItemId}&itemId=${itemId}&start=${start}&end=${end}&curriculumId=${curriculumId}&testType=scramble`
+            );
         }
+    };
+
+    // TTS 발음 듣기
+    const speakSentence = (text: string) => {
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
     };
 
     if (loading) {
         return (
             <StudentLayout>
-                <Container size="sm" py={40}><Text>로딩 중...</Text></Container>
+                <Center style={{ minHeight: '80vh' }}>
+                    <Stack align="center" gap="md">
+                        <Loader size="xl" color="yellow" type="dots" />
+                        <Text fw={800} c="white">문제를 준비하는 중입니다...</Text>
+                    </Stack>
+                </Center>
             </StudentLayout>
         );
     }
 
-    if (words.length === 0) {
+    if (!currentWord) {
         return (
-            <Container size="sm" py={40}>
-                <Text>문제를 불러오는 중...</Text>
-            </Container>
+            <StudentLayout>
+                <Container size="sm" py={60}>
+                    <Paper p="xl" style={{ border: '3px solid black', textAlign: 'center' }}>
+                        <Text fw={800} size="lg">출제할 문장 데이터를 찾을 수 없습니다.</Text>
+                        <Button mt="md" onClick={() => router.push('/student/learning')} color="dark">
+                            학습 일정으로 돌아가기
+                        </Button>
+                    </Paper>
+                </Container>
+            </StudentLayout>
         );
     }
-
-    const currentWord = words[currentIndex];
 
     return (
         <StudentLayout>
@@ -245,257 +443,438 @@ function ScrambleContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '20px',
+                    padding: '20px 10px',
                 }}
             >
-                <Container size={700}>
+                <Container size={780}>
                     <div className="animate-fade-in">
-                        {/* 헤더 */}
-                        <Box mb={30} style={{ textAlign: 'center' }}>
-                            <Title
-                                order={1}
-                                style={{
-                                    color: 'white',
-                                    fontWeight: 900,
-                                    fontSize: '2.5rem',
-                                    textShadow: '4px 4px 0px rgba(0, 0, 0, 0.3)',
-                                    marginBottom: '1rem',
-                                }}
-                            >
-                                🔀 문장 섞기 시험
-                            </Title>
-                            <Text
-                                size="xl"
-                                style={{
-                                    color: 'white',
-                                    fontWeight: 600,
-                                    textShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)',
-                                }}
-                            >
-                                단어를 드래그하여 올바른 순서로 배열하세요!
-                            </Text>
-                        </Box>
+                        {/* 헤더 & 음소거 토글 */}
+                        <Group justify="space-between" align="center" mb={16}>
+                            <Group gap="xs">
+                                <Badge
+                                    size="lg"
+                                    color="yellow"
+                                    variant="filled"
+                                    radius={0}
+                                    style={{ border: '2px solid black', color: 'black', fontWeight: 900 }}
+                                >
+                                    🔀 문장 스크램블
+                                </Badge>
+                                {combo >= 2 && (
+                                    <Badge
+                                        size="lg"
+                                        color="orange"
+                                        variant="filled"
+                                        leftSection={<IconFlame size={14} />}
+                                        style={{ border: '2px solid black' }}
+                                    >
+                                        {combo} COMBO!
+                                    </Badge>
+                                )}
+                            </Group>
 
-                        {/* 상태 바 */}
-                        <Group mb={20} justify="space-between">
+                            <Tooltip label={soundEnabled ? '효과음 끄기' : '효과음 켜기'}>
+                                <ActionIcon
+                                    size="lg"
+                                    variant="filled"
+                                    color="dark"
+                                    onClick={() => setSoundEnabled(!soundEnabled)}
+                                    style={{ border: '2px solid white', borderRadius: '0px' }}
+                                >
+                                    {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
+                                </ActionIcon>
+                            </Tooltip>
+                        </Group>
+
+                        {/* 상태 바 (타이머 & 맞힌 개수) */}
+                        <Group mb={16} justify="space-between">
                             <Paper
-                                p="md"
+                                p="sm"
                                 style={{
-                                    border: '4px solid black',
-                                    borderRadius: '12px',
+                                    border: '3px solid black',
+                                    borderRadius: '0px',
                                     background: 'white',
                                     flex: 1,
+                                    boxShadow: '4px 4px 0px black',
                                 }}
                             >
-                                <Group gap="xs">
-                                    <IconClock size={24} color="#7950f2" />
-                                    <Text fw={900} size="xl" c={timeLeft <= 5 ? 'red' : 'violet'}>
-                                        {timeLeft}초
-                                    </Text>
-                                </Group>
-                            </Paper>
-
-                            <Paper
-                                p="md"
-                                style={{
-                                    border: '4px solid black',
-                                    borderRadius: '12px',
-                                    background: 'white',
-                                }}
-                            >
-                                <Group gap="md">
+                                <Group justify="space-between">
                                     <Group gap="xs">
-                                        <IconCheck size={20} color="green" />
-                                        <Text fw={700} c="green">
-                                            {correctCount}
+                                        <IconClock size={22} color={timeLeft <= 5 ? '#EF4444' : '#9333EA'} />
+                                        <Text fw={900} size="lg" c={timeLeft <= 5 ? 'red' : 'violet'}>
+                                            {timeLeft}초
                                         </Text>
                                     </Group>
-                                    <Group gap="xs">
-                                        <IconX size={20} color="red" />
-                                        <Text fw={700} c="red">
-                                            {wrongCount}
-                                        </Text>
+
+                                    <Group gap="md">
+                                        <Group gap={4}>
+                                            <IconCheck size={18} color="#22C55E" />
+                                            <Text fw={900} c="green">{correctCount}</Text>
+                                        </Group>
+                                        <Group gap={4}>
+                                            <IconX size={18} color="#EF4444" />
+                                            <Text fw={900} c="red">{wrongCount}</Text>
+                                        </Group>
                                     </Group>
                                 </Group>
                             </Paper>
                         </Group>
 
-                        {/* 진행률 */}
+                        {/* 진행률 바 */}
                         <Paper
-                            p="md"
-                            mb={20}
+                            p="xs"
+                            mb={16}
                             style={{
-                                border: '4px solid black',
-                                borderRadius: '12px',
+                                border: '3px solid black',
+                                borderRadius: '0px',
                                 background: 'white',
+                                boxShadow: '4px 4px 0px black',
                             }}
                         >
-                            <Group justify="space-between" mb={10}>
-                                <Text fw={700} size="lg">
-                                    진행률
-                                </Text>
-                                <Text fw={900} size="lg" c="violet">
+                            <Group justify="space-between" mb={4}>
+                                <Text fw={800} size="xs" c="dimmed">진행률</Text>
+                                <Text fw={900} size="xs" c="violet">
                                     {currentIndex + 1} / {words.length}
                                 </Text>
                             </Group>
                             <Progress
                                 value={progress}
-                                size="xl"
-                                radius="xl"
+                                size="md"
+                                radius={0}
                                 styles={{
-                                    root: { border: '3px solid black' },
-                                    section: { background: 'linear-gradient(90deg, #FA8BFF 0%, #2BD2FF 100%)' },
+                                    root: { border: '2px solid black' },
+                                    section: { background: 'linear-gradient(90deg, #9333EA 0%, #3B82F6 100%)' },
                                 }}
                             />
                         </Paper>
 
-                        {/* 한글 문장 */}
+                        {/* 1. 문제 카드 (한글 문장 & 발음 듣기) */}
                         <Paper
                             p="xl"
-                            mb={20}
+                            mb={16}
                             style={{
-                                border: '6px solid black',
-                                borderRadius: '20px',
+                                border: '4px solid black',
+                                borderRadius: '0px',
                                 background: 'white',
-                                boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-                                textAlign: 'center',
+                                boxShadow: '8px 8px 0px #FFD93D',
+                                position: 'relative',
                             }}
                         >
-                            <Badge
-                                size="xl"
-                                variant="filled"
-                                color="violet"
-                                style={{
-                                    border: '3px solid black',
-                                    fontSize: '1.2rem',
-                                    padding: '1rem 2rem',
-                                    marginBottom: '1rem',
-                                }}
-                            >
-                                문제 {currentWord.no}
-                            </Badge>
+                            <Group justify="space-between" align="flex-start" mb="xs">
+                                <Badge
+                                    size="lg"
+                                    color="violet"
+                                    variant="filled"
+                                    radius={0}
+                                    style={{ border: '2px solid black' }}
+                                >
+                                    문제 {currentWord.no || currentIndex + 1}
+                                </Badge>
+
+                                <Tooltip label="영어 문장 원어민 발음 듣기">
+                                    <ActionIcon
+                                        size="lg"
+                                        color="yellow"
+                                        variant="filled"
+                                        onClick={() => speakSentence(currentWord.english)}
+                                        style={{ border: '2px solid black', borderRadius: '0px', color: 'black' }}
+                                    >
+                                        <IconVolume size={20} />
+                                    </ActionIcon>
+                                </Tooltip>
+                            </Group>
 
                             <Text
-                                size="3rem"
+                                size="1.6rem"
                                 fw={900}
                                 style={{
-                                    color: '#7950f2',
+                                    color: '#0F172A',
+                                    lineHeight: 1.4,
+                                    letterSpacing: '-0.5px',
                                 }}
                             >
                                 {currentWord.korean}
                             </Text>
+                            <Text size="xs" fw={700} c="dimmed" mt={6}>
+                                💡 아래 단어를 순서대로 클릭하여 올바른 영어 문장을 완성하세요.
+                            </Text>
                         </Paper>
 
-                        {/* 드래그 앤 드롭 영역 */}
+                        {/* 2. 학생 조립 슬롯 (정답 조립 영역) */}
                         <Paper
-                            p="xl"
+                            p="lg"
+                            mb={16}
+                            className={shake ? 'animate-shake' : ''}
                             style={{
-                                border: '6px solid black',
-                                borderRadius: '20px',
+                                border: '4px solid black',
+                                borderRadius: '0px',
                                 background: isAnswered
-                                    ? results[results.length - 1]
-                                        ? '#d3f9d8'
-                                        : '#ffe3e3'
-                                    : 'white',
-                                boxShadow: '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-                                minHeight: '200px',
+                                    ? isCorrect
+                                        ? '#DCFCE7'
+                                        : '#FEE2E2'
+                                    : '#FFFFFF',
+                                boxShadow: '6px 6px 0px black',
+                                minHeight: '130px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s ease',
                             }}
                         >
-                            <DragDropContext onDragEnd={handleDragEnd}>
-                                <Droppable droppableId="words">
-                                    {(provided) => (
-                                        <Stack
-                                            {...provided.droppableProps}
-                                            ref={provided.innerRef}
-                                            gap="sm"
-                                        >
-                                            {scrambledWords.map((word, index) => (
-                                                <Draggable
-                                                    key={`${word}-${index}`}
-                                                    draggableId={`${word}-${index}`}
-                                                    index={index}
-                                                    isDragDisabled={isAnswered}
-                                                >
-                                                    {(provided, snapshot) => (
-                                                        <Paper
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            {...provided.dragHandleProps}
-                                                            p="md"
-                                                            style={{
-                                                                ...provided.draggableProps.style,
-                                                                border: '4px solid black',
-                                                                background: snapshot.isDragging ? '#FFD93D' : 'white',
-                                                                cursor: isAnswered ? 'not-allowed' : 'grab',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '1rem',
-                                                            }}
-                                                        >
-                                                            <IconGripVertical size={24} />
-                                                            <Text size="xl" fw={700}>
-                                                                {word}
-                                                            </Text>
-                                                        </Paper>
-                                                    )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </Stack>
-                                    )}
-                                </Droppable>
-                            </DragDropContext>
+                            <Text size="xs" fw={800} c="dimmed" mb="xs">
+                                ✏️ 내가 조립한 문장 (클릭하면 아래로 돌아갑니다)
+                            </Text>
 
-                            {isAnswered && (
-                                <Box mt="xl" style={{ textAlign: 'center' }}>
-                                    <Text fw={900} size="xl" c={results[results.length - 1] ? 'green' : 'red'}>
-                                        {results[results.length - 1] ? '✅ 정답!' : '❌ 오답!'}
+                            <Box
+                                style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '8px',
+                                    alignItems: 'center',
+                                    minHeight: '52px',
+                                }}
+                            >
+                                {assembledWords.length === 0 && (
+                                    <Text size="sm" c="gray.5" fw={600} style={{ fontStyle: 'italic' }}>
+                                        아래 단어를 클릭하면 여기에 문장이 차례대로 들어갑니다...
                                     </Text>
-                                    {!results[results.length - 1] && (
-                                        <Text fw={700} size="lg" mt="xs">
-                                            정답: {currentWord.english}
+                                )}
+
+                                {assembledWords.map((word) => (
+                                    <button
+                                        key={word.id}
+                                        onClick={() => handleWordClickFromAssembled(word)}
+                                        disabled={isAnswered}
+                                        style={{
+                                            background: '#9333EA',
+                                            color: 'white',
+                                            border: '3px solid black',
+                                            borderRadius: '0px',
+                                            boxShadow: '3px 3px 0px black',
+                                            padding: '8px 16px',
+                                            fontSize: '1.15rem',
+                                            fontWeight: 800,
+                                            cursor: isAnswered ? 'default' : 'pointer',
+                                            animation: 'popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                                            transition: 'transform 0.1s ease',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isAnswered) e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isAnswered) e.currentTarget.style.transform = 'translate(0, 0)';
+                                        }}
+                                    >
+                                        {word.text}
+                                    </button>
+                                ))}
+                            </Box>
+
+                            {/* 정답/오답 판정 배너 */}
+                            {isAnswered && (
+                                <Box mt="md" pt="sm" style={{ borderTop: '2px dashed black' }}>
+                                    {isCorrect ? (
+                                        <Text fw={900} size="lg" c="green" ta="center">
+                                            🎉 정답입니다! 완벽해요!
                                         </Text>
+                                    ) : (
+                                        <Box
+                                            p="md"
+                                            style={{
+                                                background: '#FFF5F5',
+                                                border: '3px solid #EF4444',
+                                                boxShadow: '4px 4px 0px black',
+                                                textAlign: 'center',
+                                            }}
+                                        >
+                                            <Text fw={900} size="md" c="red" mb={4}>
+                                                ❌ 오답입니다! (정답을 확인하세요)
+                                            </Text>
+                                            <Text fw={900} size="1.25rem" style={{ color: '#9333EA', wordBreak: 'break-word' }}>
+                                                {currentWord.english}
+                                            </Text>
+                                        </Box>
                                     )}
                                 </Box>
                             )}
+                        </Paper>
 
-                            {!isAnswered && (
-                                <button
-                                    onClick={() => handleSubmit(false)}
+                        {/* 3. 하단: 단어 선택지 풀 (Word Bank) */}
+                        <Paper
+                            p="lg"
+                            mb={16}
+                            style={{
+                                border: '4px solid black',
+                                borderRadius: '0px',
+                                background: '#1E293B',
+                                boxShadow: '6px 6px 0px #3B82F6',
+                                minHeight: '120px',
+                            }}
+                        >
+                            <Text size="xs" fw={800} c="gray.4" mb="sm">
+                                🔀 단어 선택 풀 (클릭하여 위로 올리세요)
+                            </Text>
+
+                            <Box
+                                style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '10px',
+                                    alignItems: 'center',
+                                    minHeight: '52px',
+                                }}
+                            >
+                                {poolWords.map((word) => (
+                                    <button
+                                        key={word.id}
+                                        onClick={() => handleWordClickFromPool(word)}
+                                        disabled={isAnswered}
+                                        style={{
+                                            background: '#FFFFFF',
+                                            color: '#0F172A',
+                                            border: '3px solid black',
+                                            borderRadius: '0px',
+                                            boxShadow: '4px 4px 0px black',
+                                            padding: '10px 18px',
+                                            fontSize: '1.2rem',
+                                            fontWeight: 800,
+                                            cursor: isAnswered ? 'default' : 'pointer',
+                                            transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isAnswered) {
+                                                e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                                e.currentTarget.style.boxShadow = '6px 6px 0px #FFD93D';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isAnswered) {
+                                                e.currentTarget.style.transform = 'translate(0, 0)';
+                                                e.currentTarget.style.boxShadow = '4px 4px 0px black';
+                                            }
+                                        }}
+                                    >
+                                        {word.text}
+                                    </button>
+                                ))}
+                            </Box>
+                        </Paper>
+
+                        {/* 4. 조작 버튼군 (초기화 / 취소 / 정답 확인) */}
+                        <Group justify="space-between">
+                            <Group gap="xs">
+                                <Button
+                                    variant="default"
+                                    color="gray"
+                                    onClick={handleReset}
+                                    disabled={isAnswered || assembledWords.length === 0}
+                                    leftSection={<IconRotate size={16} />}
                                     style={{
-                                        background: '#7950f2',
+                                        border: '2px solid white',
+                                        borderRadius: '0px',
+                                        background: 'transparent',
                                         color: 'white',
-                                        border: '4px solid black',
-                                        borderRadius: '12px',
-                                        boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)',
-                                        fontSize: '1.2rem',
-                                        fontWeight: 900,
-                                        padding: '1rem 2rem',
-                                        cursor: 'pointer',
-                                        width: '100%',
-                                        marginTop: '1rem',
                                     }}
                                 >
-                                    제출하기
-                                </button>
-                            )}
-                        </Paper>
+                                    전체 초기화
+                                </Button>
+                                <Button
+                                    variant="default"
+                                    color="gray"
+                                    onClick={handleUndo}
+                                    disabled={isAnswered || assembledWords.length === 0}
+                                    leftSection={<IconArrowBackUp size={16} />}
+                                    style={{
+                                        border: '2px solid white',
+                                        borderRadius: '0px',
+                                        background: 'transparent',
+                                        color: 'white',
+                                    }}
+                                >
+                                    한 단어 취소
+                                </Button>
+                            </Group>
+
+                            <button
+                                onClick={() => handleSubmit(false)}
+                                disabled={isAnswered || assembledWords.length === 0}
+                                style={{
+                                    background: isAnswered || assembledWords.length === 0 ? '#64748B' : '#FFD93D',
+                                    color: 'black',
+                                    border: '3px solid black',
+                                    borderRadius: '0px',
+                                    boxShadow: isAnswered || assembledWords.length === 0 ? 'none' : '5px 5px 0px black',
+                                    fontSize: '1.2rem',
+                                    fontWeight: 900,
+                                    padding: '0.9rem 2.5rem',
+                                    cursor: isAnswered || assembledWords.length === 0 ? 'not-allowed' : 'pointer',
+                                    transition: 'transform 0.1s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!isAnswered && assembledWords.length > 0) {
+                                        e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isAnswered && assembledWords.length > 0) {
+                                        e.currentTarget.style.transform = 'translate(0, 0)';
+                                    }
+                                }}
+                            >
+                                정답 확인 (SUBMIT)
+                            </button>
+                        </Group>
                     </div>
                 </Container>
             </Box>
+
+            {/* 흔들림 애니메이션 CSS */}
+            <style jsx global>{`
+                @keyframes popIn {
+                    0% {
+                        opacity: 0;
+                        transform: scale(0.7) translateY(10px);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+                }
+
+                .animate-shake {
+                    animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+                }
+
+                @keyframes shake {
+                    10%, 90% {
+                        transform: translate3d(-2px, 0, 0);
+                    }
+                    20%, 80% {
+                        transform: translate3d(3px, 0, 0);
+                    }
+                    30%, 50%, 70% {
+                        transform: translate3d(-4px, 0, 0);
+                    }
+                    40%, 60% {
+                        transform: translate3d(4px, 0, 0);
+                    }
+                }
+            `}</style>
         </StudentLayout>
     );
 }
 
 export default function ScrambleTestPage() {
     return (
-        <Suspense fallback={
-            <StudentLayout>
-                <Center style={{ minHeight: '100vh', background: '#fff' }}>
-                    <Loader size="xl" color="violet" type="dots" />
-                </Center>
-            </StudentLayout>
-        }>
+        <Suspense
+            fallback={
+                <StudentLayout>
+                    <Center style={{ minHeight: '100vh', background: '#0F172A' }}>
+                        <Loader size="xl" color="yellow" type="dots" />
+                    </Center>
+                </StudentLayout>
+            }
+        >
             <ScrambleContent />
         </Suspense>
     );

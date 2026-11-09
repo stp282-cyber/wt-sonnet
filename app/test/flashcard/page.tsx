@@ -109,13 +109,13 @@ function FlashcardItem({ word, index, onSpeak }: { word: Word; index: number; on
                 <Stack align="center" gap="md" style={{ width: '100%' }}>
                     {/* 영어 단어 */}
                     <Text
-                        size="2.2rem"
+                        size={word.english.length > 30 ? '1.4rem' : word.english.length > 18 ? '1.7rem' : '2.2rem'}
                         fw={900}
                         ta="center"
                         style={{
                             color: 'black',
-                            lineHeight: 1.2,
-                            letterSpacing: '-1px'
+                            lineHeight: 1.25,
+                            letterSpacing: '-0.5px'
                         }}
                     >
                         {word.english}
@@ -244,7 +244,12 @@ function FlashcardContent() {
     const handleStartTest = () => {
         if (countdown > 0) return; // Prevent early click
         const params = new URLSearchParams(searchParams.toString());
-        router.push(`/test/typing?${params.toString()}`);
+        const testType = searchParams.get('testType');
+        if (testType === 'scramble') {
+            router.push(`/test/scramble?${params.toString()}`);
+        } else {
+            router.push(`/test/typing?${params.toString()}`);
+        }
     };
 
     return (

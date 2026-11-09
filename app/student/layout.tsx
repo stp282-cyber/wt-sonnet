@@ -27,6 +27,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         if (typeof window !== 'undefined') {
             const userStr = localStorage.getItem('user');
             if (!userStr) {
+                // 테스트 및 데모 페이지에서는 로그인 없이도 사이드바 메뉴를 확인 가능하도록 허용
+                if (pathname?.includes('/test/')) {
+                    setStudentName('체험 학생');
+                    return;
+                }
                 router.replace('/');
                 return;
             }
@@ -34,8 +39,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             try {
                 const user = JSON.parse(userStr);
 
-                // 학생이 아니면 선생님 대시보드로 리다이렉트
+                // 학생이 아니면 선생님 대시보드로 리다이렉트 (단, 시험/데모 페이지에서는 선생님도 미리보기 가능)
                 if (user.role !== 'student') {
+                    if (pathname?.includes('/test/')) {
+                        setStudentName(`${user.full_name || '선생님'} (미리보기)`);
+                        return;
+                    }
                     router.replace('/teacher/dashboard');
                     return;
                 }

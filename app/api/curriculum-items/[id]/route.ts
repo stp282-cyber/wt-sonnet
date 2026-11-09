@@ -25,6 +25,7 @@ export async function PUT(
         if (body.order_index !== undefined) updateData.sequence = body.order_index;
         if (body.sequence !== undefined) updateData.sequence = body.sequence;
         if (body.item_id !== undefined) updateData.item_id = body.item_id;
+        if (body.test_type !== undefined) updateData.test_type = body.test_type;
 
         const { data: item, error } = await supabase
             .from('curriculum_items')

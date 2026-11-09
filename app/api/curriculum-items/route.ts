@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
             passing_score,
             item_id,
             order_index,
+            test_type,
         } = body;
 
         if (!curriculum_id || !type || !title) {
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
                 item_type: type,
                 title,
                 item_id,
+                test_type: test_type || 'typing',
                 daily_amount_type,
                 daily_word_count,
                 daily_section_amount,

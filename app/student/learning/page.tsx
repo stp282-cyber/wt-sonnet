@@ -606,7 +606,8 @@ export default function StudentLearningPage() {
                                                                                     } else {
                                                                                         const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
                                                                                         if (itemId) {
-                                                                                            router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                            const effectiveTestType = curr.setting_overrides?.test_type || schedule.item?.test_type || 'typing';
+                                                                                            router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}&testType=${effectiveTestType}`);
                                                                                         }
                                                                                     }
                                                                                 }}
@@ -644,7 +645,8 @@ export default function StudentLearningPage() {
                                                                                     } else {
                                                                                         const itemId = schedule.item?.item_details?.id || schedule.item?.item_id;
                                                                                         if (itemId) {
-                                                                                            router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}`);
+                                                                                            const effectiveTestType = curr.setting_overrides?.test_type || schedule.item?.test_type || 'typing';
+                                                                                            router.push(`/test/flashcard?itemId=${itemId}&start=${schedule.progressStart}&end=${schedule.progressEnd}&curriculumId=${curr.curriculums.id}&curriculumItemId=${schedule.item?.id}&scheduledDate=${day.date}&testType=${effectiveTestType}`);
                                                                                         }
                                                                                     }
                                                                                 }}

@@ -39,6 +39,7 @@ interface CurriculumItem {
     section_start?: string;
     time_limit_seconds: number;
     passing_score: number;
+    test_type?: string;
 }
 
 interface Curriculum {
@@ -83,6 +84,7 @@ export default function CurriculumsPage() {
             passing_score: 50,
             word_count: 20,
             section_count: 1,
+            test_type: 'typing',
         },
         validate: {
             title: (value) => (!value ? '학습 항목을 선택해주세요' : null),
@@ -180,6 +182,7 @@ export default function CurriculumsPage() {
                     section_start: item.section_start,
                     time_limit_seconds: item.time_limit_seconds,
                     passing_score: item.passing_score,
+                    test_type: item.test_type || 'typing',
                 }));
             } else {
                 console.warn('Could not fetch items, using empty array');
@@ -310,6 +313,7 @@ export default function CurriculumsPage() {
                 section_start: values.daily_amount_type === 'section' ? values.section_start : null,
                 time_limit_seconds: values.time_limit_seconds,
                 passing_score: values.passing_score,
+                test_type: values.type === 'wordbook' ? (values.test_type || 'typing') : 'multiple_choice',
                 order_index: selectedCurriculum.items.length,
             };
 
@@ -648,15 +652,28 @@ export default function CurriculumsPage() {
                                                                     <Table.Tr key={item.id}>
                                                                         <Table.Td>{index + 1}</Table.Td>
                                                                         <Table.Td>
-                                                                            <Badge
-                                                                                color={item.type === 'wordbook' ? 'blue' : 'green'}
-                                                                                variant="filled"
-                                                                                radius="xs"
-                                                                                size="sm"
-                                                                                style={{ border: '1px solid black' }}
-                                                                            >
-                                                                                {item.type === 'wordbook' ? '단어' : '듣기'}
-                                                                            </Badge>
+                                                                            <Group gap={4}>
+                                                                                <Badge
+                                                                                    color={item.type === 'wordbook' ? 'blue' : 'green'}
+                                                                                    variant="filled"
+                                                                                    radius="xs"
+                                                                                    size="sm"
+                                                                                    style={{ border: '1px solid black' }}
+                                                                                >
+                                                                                    {item.type === 'wordbook' ? '단어' : '듣기'}
+                                                                                </Badge>
+                                                                                {item.type === 'wordbook' && item.test_type === 'scramble' && (
+                                                                                    <Badge
+                                                                                        color="violet"
+                                                                                        variant="filled"
+                                                                                        radius="xs"
+                                                                                        size="sm"
+                                                                                        style={{ border: '1px solid black' }}
+                                                                                    >
+                                                                                        스크램블
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </Group>
                                                                         </Table.Td>
                                                                         <Table.Td style={{ fontWeight: 600 }}>{item.title}</Table.Td>
                                                                         <Table.Td>
@@ -706,6 +723,7 @@ export default function CurriculumsPage() {
                                                                                             passing_score: item.passing_score,
                                                                                             word_count: item.daily_word_count || 20,
                                                                                             section_count: 1,
+                                                                                            test_type: item.test_type || 'typing',
                                                                                         });
                                                                                         setItemModalOpened(true);
                                                                                     }}
@@ -840,6 +858,20 @@ export default function CurriculumsPage() {
                                 clearable
                                 styles={{ input: { border: '2px solid black', borderRadius: '0px' }, dropdown: { border: '2px solid black', borderRadius: '0px' } }}
                             />
+
+                            {itemForm.values.type === 'wordbook' && (
+                                <Select
+                                    label="시험 방식 (Test Type)"
+                                    description="학생에게 커리큘럼 배정 시 이 시험 방식이 기본 적용됩니다."
+                                    data={[
+                                        { value: 'typing', label: '타이핑 시험 (기본)' },
+                                        { value: 'scramble', label: '단어/문장 스크램블 (클릭형)' },
+                                        { value: 'multiple_choice', label: '객관식 (4지선다)' },
+                                    ]}
+                                    {...itemForm.getInputProps('test_type')}
+                                    styles={{ input: { border: '2px solid black', borderRadius: '0px' }, dropdown: { border: '2px solid black', borderRadius: '0px' } }}
+                                />
+                            )}
 
                             <Select
                                 label="일일 학습량 기준"
