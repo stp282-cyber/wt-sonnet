@@ -87,7 +87,7 @@ function ScrambleContent() {
     const [isAnswered, setIsAnswered] = useState(false);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [results, setResults] = useState<boolean[]>([]);
-    const [timeLeft, setTimeLeft] = useState(60);
+    const [timeLeft, setTimeLeft] = useState(90);
     const [loading, setLoading] = useState(true);
     const [combo, setCombo] = useState(0);
     const [soundEnabled, setSoundEnabled] = useState(false);
@@ -217,7 +217,7 @@ function ScrambleContent() {
             setSelectedWordIndex(null);
             setIsAnswered(false);
             setIsCorrect(null);
-            setTimeLeft(60);
+            setTimeLeft(90);
         }
     }, [currentIndex, words]);
 
