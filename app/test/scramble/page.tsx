@@ -28,6 +28,9 @@ import {
     IconFlame,
     IconSparkles,
     IconVolumeOff,
+    IconArrowLeft,
+    IconArrowRight,
+    IconTrash,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import StudentLayout from '../../student/layout';
@@ -74,6 +77,11 @@ function ScrambleContent() {
     // 단어 토큰 상태 (풀 / 조립 영역)
     const [poolWords, setPoolWords] = useState<WordToken[]>([]);
     const [assembledWords, setAssembledWords] = useState<WordToken[]>([]);
+
+    // 대안 1 (중간 삽입 커서 인덱스: null이면 맨 뒤 삽입, 숫자면 해당 위치에 삽입)
+    const [insertIndex, setInsertIndex] = useState<number | null>(null);
+    // 대안 2 (선택된 단어 인덱스: 좌/우 이동 및 즉시 삭제용)
+    const [selectedWordIndex, setSelectedWordIndex] = useState<number | null>(null);
 
     // 시험 진행 상태
     const [isAnswered, setIsAnswered] = useState(false);
@@ -205,6 +213,8 @@ function ScrambleContent() {
 
             setPoolWords(shuffled);
             setAssembledWords([]);
+            setInsertIndex(null);
+            setSelectedWordIndex(null);
             setIsAnswered(false);
             setIsCorrect(null);
             setTimeLeft(60);
@@ -221,20 +231,70 @@ function ScrambleContent() {
         }
     }, [timeLeft, isAnswered, words, loading]);
 
-    // 풀에서 단어 클릭 -> 조립 영역으로 이동
+    // 풀에서 단어 클릭 -> 조립 영역으로 이동 (대안 1: 커서 위치가 있으면 중간 삽입, 없으면 맨 뒤)
     const handleWordClickFromPool = (word: WordToken) => {
         if (isAnswered) return;
         playSound('click', soundEnabled);
         setPoolWords((prev) => prev.filter((w) => w.id !== word.id));
-        setAssembledWords((prev) => [...prev, word]);
+        setAssembledWords((prev) => {
+            if (insertIndex !== null && insertIndex >= 0 && insertIndex <= prev.length) {
+                const updated = [...prev];
+                updated.splice(insertIndex, 0, word);
+                return updated;
+            }
+            return [...prev, word];
+        });
+        // 중간 삽입 후 커서를 다음 위치로 한 칸 이동
+        if (insertIndex !== null) {
+            setInsertIndex((prev) => (prev !== null ? prev + 1 : null));
+        }
     };
 
-    // 조립 영역에서 단어 클릭 -> 다시 풀로 복귀
-    const handleWordClickFromAssembled = (word: WordToken) => {
+    // 조립 영역에서 단어 클릭 -> 선택 토글 (대안 2 연동)
+    const handleWordSelectInAssembled = (index: number) => {
         if (isAnswered) return;
+        setSelectedWordIndex((prev) => (prev === index ? null : index));
+    };
+
+    // 대안 2: 선택된 단어 좌측으로 한 칸 이동
+    const handleMoveLeft = (index: number) => {
+        if (isAnswered || index <= 0) return;
         playSound('click', soundEnabled);
-        setAssembledWords((prev) => prev.filter((w) => w.id !== word.id));
-        setPoolWords((prev) => [...prev, word]);
+        setAssembledWords((prev) => {
+            const next = [...prev];
+            const temp = next[index - 1];
+            next[index - 1] = next[index];
+            next[index] = temp;
+            return next;
+        });
+        setSelectedWordIndex(index - 1);
+    };
+
+    // 대안 2: 선택된 단어 우측으로 한 칸 이동
+    const handleMoveRight = (index: number) => {
+        if (isAnswered || index >= assembledWords.length - 1) return;
+        playSound('click', soundEnabled);
+        setAssembledWords((prev) => {
+            const next = [...prev];
+            const temp = next[index + 1];
+            next[index + 1] = next[index];
+            next[index] = temp;
+            return next;
+        });
+        setSelectedWordIndex(index + 1);
+    };
+
+    // 조립 영역에서 특정 단어 풀로 복귀 (반환/삭제)
+    const handleRemoveFromAssembled = (index: number) => {
+        if (isAnswered || !assembledWords[index]) return;
+        playSound('click', soundEnabled);
+        const removed = assembledWords[index];
+        setAssembledWords((prev) => prev.filter((_, i) => i !== index));
+        setPoolWords((prev) => [...prev, removed]);
+        setSelectedWordIndex(null);
+        if (insertIndex !== null && insertIndex > index) {
+            setInsertIndex(insertIndex - 1);
+        }
     };
 
     // 한 단어 취소 (Undo)
@@ -244,6 +304,8 @@ function ScrambleContent() {
         const lastWord = assembledWords[assembledWords.length - 1];
         setAssembledWords((prev) => prev.slice(0, -1));
         setPoolWords((prev) => [...prev, lastWord]);
+        setSelectedWordIndex(null);
+        setInsertIndex(null);
     };
 
     // 전체 초기화 (Reset)
@@ -252,6 +314,8 @@ function ScrambleContent() {
         playSound('click', soundEnabled);
         setPoolWords((prev) => [...prev, ...assembledWords]);
         setAssembledWords([]);
+        setSelectedWordIndex(null);
+        setInsertIndex(null);
     };
 
     // 진행 상태 세션 저장
@@ -615,15 +679,20 @@ function ScrambleContent() {
                                 transition: 'background-color 0.2s ease',
                             }}
                         >
-                            <Text size="xs" fw={800} c="dimmed" mb="xs">
-                                ✏️ {isSingleWord ? '내가 조립한 단어 (클릭하면 아래로 돌아갑니다)' : '내가 조립한 문장 (클릭하면 아래로 돌아갑니다)'}
-                            </Text>
+                            <Group justify="space-between" mb="xs">
+                                <Text size="xs" fw={800} c="dimmed">
+                                    ✏️ {isSingleWord ? '내가 조립한 단어' : '내가 조립한 문장'}
+                                </Text>
+                                <Text size="xs" fw={700} c="violet">
+                                    {insertIndex !== null ? `📍 ${insertIndex + 1}번째 위치에 끼워넣기 모드` : '단어 클릭 시 순서 이동 / 삭제 가능'}
+                                </Text>
+                            </Group>
 
                             <Box
                                 style={{
                                     display: 'flex',
                                     flexWrap: 'wrap',
-                                    gap: '8px',
+                                    gap: '6px',
                                     alignItems: 'center',
                                     alignContent: 'flex-start',
                                     minHeight: '52px',
@@ -636,36 +705,147 @@ function ScrambleContent() {
                                     </Text>
                                 )}
 
-                                {assembledWords.map((word) => (
+                                {assembledWords.map((word, idx) => {
+                                    const isSelected = selectedWordIndex === idx;
+                                    const isCursorBefore = insertIndex === idx;
+
+                                    return (
+                                        <Group key={word.id} gap={4} align="center" style={{ display: 'inline-flex' }}>
+                                            {/* 대안 A: 단어 앞 삽입 커서 버튼 */}
+                                            {!isAnswered && (
+                                                <button
+                                                    type="button"
+                                                    title={`${idx + 1}번째 자리에 새 단어 끼워넣기`}
+                                                    onClick={() => setInsertIndex(insertIndex === idx ? null : idx)}
+                                                    style={{
+                                                        width: isCursorBefore ? '16px' : '8px',
+                                                        height: '36px',
+                                                        background: isCursorBefore ? '#F97316' : 'transparent',
+                                                        border: isCursorBefore ? '2px solid black' : '1px dashed #CBD5E1',
+                                                        borderRadius: '2px',
+                                                        cursor: 'pointer',
+                                                        padding: 0,
+                                                        transition: 'all 0.15s ease',
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (!isCursorBefore) e.currentTarget.style.background = '#FED7AA';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (!isCursorBefore) e.currentTarget.style.background = 'transparent';
+                                                    }}
+                                                />
+                                            )}
+
+                                            {/* 단어 블록 */}
+                                            <Box style={{ position: 'relative', display: 'inline-block' }}>
+                                                <button
+                                                    onClick={() => handleWordSelectInAssembled(idx)}
+                                                    disabled={isAnswered}
+                                                    style={{
+                                                        background: isSelected ? '#7C3AED' : '#9333EA',
+                                                        color: 'white',
+                                                        border: isSelected ? '3px solid #FACC15' : '3px solid black',
+                                                        borderRadius: '0px',
+                                                        boxShadow: isSelected ? '0 0 0 2px black, 4px 4px 0px black' : '3px 3px 0px black',
+                                                        padding: isSingleWord ? '8px 14px' : '8px 16px',
+                                                        minWidth: isSingleWord ? '42px' : 'auto',
+                                                        textAlign: 'center',
+                                                        fontSize: '1.15rem',
+                                                        fontWeight: 800,
+                                                        cursor: isAnswered ? 'default' : 'pointer',
+                                                        animation: 'popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                                                        transition: 'all 0.1s ease',
+                                                    }}
+                                                >
+                                                    {word.text}
+                                                </button>
+
+                                                {/* 대안 B: 선택 시 노출되는 좌/우 이동 & 삭제 컨트롤 바 */}
+                                                {isSelected && !isAnswered && (
+                                                    <Group
+                                                        gap={2}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            bottom: '-32px',
+                                                            left: '50%',
+                                                            transform: 'translateX(-50%)',
+                                                            background: 'white',
+                                                            border: '2px solid black',
+                                                            padding: '2px 4px',
+                                                            boxShadow: '2px 2px 0px black',
+                                                            zIndex: 20,
+                                                            whiteSpace: 'nowrap',
+                                                        }}
+                                                    >
+                                                        <ActionIcon
+                                                            size="xs"
+                                                            color="dark"
+                                                            variant="subtle"
+                                                            disabled={idx === 0}
+                                                            title="왼쪽으로 이동"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleMoveLeft(idx);
+                                                            }}
+                                                        >
+                                                            <IconArrowLeft size={12} />
+                                                        </ActionIcon>
+                                                        <ActionIcon
+                                                            size="xs"
+                                                            color="red"
+                                                            variant="subtle"
+                                                            title="아래 풀로 반환"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleRemoveFromAssembled(idx);
+                                                            }}
+                                                        >
+                                                            <IconTrash size={12} />
+                                                        </ActionIcon>
+                                                        <ActionIcon
+                                                            size="xs"
+                                                            color="dark"
+                                                            variant="subtle"
+                                                            disabled={idx === assembledWords.length - 1}
+                                                            title="오른쪽으로 이동"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleMoveRight(idx);
+                                                            }}
+                                                        >
+                                                            <IconArrowRight size={12} />
+                                                        </ActionIcon>
+                                                    </Group>
+                                                )}
+                                            </Box>
+                                        </Group>
+                                    );
+                                })}
+
+                                {/* 맨 끝 삽입 커서 버튼 */}
+                                {assembledWords.length > 0 && !isAnswered && (
                                     <button
-                                        key={word.id}
-                                        onClick={() => handleWordClickFromAssembled(word)}
-                                        disabled={isAnswered}
+                                        type="button"
+                                        title="맨 끝에 추가하기"
+                                        onClick={() => setInsertIndex(null)}
                                         style={{
-                                            background: '#9333EA',
-                                            color: 'white',
-                                            border: '3px solid black',
-                                            borderRadius: '0px',
-                                            boxShadow: '3px 3px 0px black',
-                                            padding: isSingleWord ? '8px 14px' : '8px 16px',
-                                            minWidth: isSingleWord ? '42px' : 'auto',
-                                            textAlign: 'center',
-                                            fontSize: '1.15rem',
-                                            fontWeight: 800,
-                                            cursor: isAnswered ? 'default' : 'pointer',
-                                            animation: 'popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-                                            transition: 'transform 0.1s ease',
+                                            width: insertIndex === null ? '12px' : '8px',
+                                            height: '36px',
+                                            background: insertIndex === null ? '#22C55E' : 'transparent',
+                                            border: insertIndex === null ? '2px solid black' : '1px dashed #CBD5E1',
+                                            borderRadius: '2px',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            transition: 'all 0.15s ease',
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (!isAnswered) e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                                            if (insertIndex !== null) e.currentTarget.style.background = '#BBF7D0';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (!isAnswered) e.currentTarget.style.transform = 'translate(0, 0)';
+                                            if (insertIndex !== null) e.currentTarget.style.background = 'transparent';
                                         }}
-                                    >
-                                        {word.text}
-                                    </button>
-                                ))}
+                                    />
+                                )}
                             </Box>
 
                             {/* 정답/오답 판정 배너 */}
