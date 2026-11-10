@@ -54,6 +54,16 @@ function cleanSentence(s: string): string {
     return s.trim().replace(/[.,!?;:'"’‘“”]/g, '').toLowerCase().replace(/\s+/g, ' ');
 }
 
+// 문제(단어) 목록 셔플 함수 (Fisher-Yates)
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
 function ScrambleContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -116,7 +126,8 @@ function ScrambleContent() {
 
                 // 1. 오답 재시험 모드 (Retry)
                 if (isRetry && sessionData?.wrongWords && sessionData.wrongWords.length > 0) {
-                    targetWords = sessionData.wrongWords;
+                    // 재시험 신규 시작 시 문제 순서 랜덤 셔플
+                    targetWords = isResume ? sessionData.wrongWords : shuffleArray(sessionData.wrongWords);
                     if (isResume) {
                         setCurrentIndex(sessionData.currentRetryIndex || 0);
                         setResults(sessionData.retryResults || []);
@@ -136,7 +147,9 @@ function ScrambleContent() {
                     if (res.ok) {
                         const data = await res.json();
                         const allWords: Word[] = data.wordbook?.words || [];
-                        targetWords = allWords.slice(start - 1, end);
+                        const sliced = allWords.slice(start - 1, end);
+                        // 예습(플래시카드)과 달리 실제 시험 문제는 랜덤 순서로 출제
+                        targetWords = shuffleArray(sliced);
                     }
                 }
             } catch (e) {
