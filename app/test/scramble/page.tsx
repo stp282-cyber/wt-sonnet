@@ -574,18 +574,6 @@ function ScrambleContent() {
                                 >
                                     문제 {currentWord.no || currentIndex + 1}
                                 </Badge>
-
-                                <Tooltip label="영어 문장 원어민 발음 듣기">
-                                    <ActionIcon
-                                        size="lg"
-                                        color="yellow"
-                                        variant="filled"
-                                        onClick={() => speakSentence(currentWord.english)}
-                                        style={{ border: '2px solid black', borderRadius: '0px', color: 'black' }}
-                                    >
-                                        <IconVolume size={20} />
-                                    </ActionIcon>
-                                </Tooltip>
                             </Group>
 
                             <Text
