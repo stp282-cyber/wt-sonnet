@@ -659,6 +659,7 @@ function ScrambleContent() {
                         {/* 2. 학생 조립 슬롯 (정답 조립 영역) */}
                         <Paper
                             p="lg"
+                            pt="xl"
                             mb={16}
                             className={shake ? 'animate-shake' : ''}
                             style={{
@@ -760,60 +761,64 @@ function ScrambleContent() {
                                                     {word.text}
                                                 </button>
 
-                                                {/* 대안 B: 선택 시 노출되는 좌/우 이동 & 삭제 컨트롤 바 */}
+                                                {/* 대안 B: 선택 시 노출되는 좌/우 이동 & 삭제 컨트롤 바 (단어를 덮지 않도록 상단에 가로로 큼직하게 배치) */}
                                                 {isSelected && !isAnswered && (
                                                     <Group
-                                                        gap={2}
+                                                        gap={4}
+                                                        wrap="nowrap"
                                                         style={{
                                                             position: 'absolute',
-                                                            bottom: '-32px',
+                                                            bottom: 'calc(100% + 8px)',
                                                             left: '50%',
                                                             transform: 'translateX(-50%)',
-                                                            background: 'white',
-                                                            border: '2px solid black',
-                                                            padding: '2px 4px',
-                                                            boxShadow: '2px 2px 0px black',
-                                                            zIndex: 20,
+                                                            background: '#FFFFFF',
+                                                            border: '3px solid black',
+                                                            padding: '4px 6px',
+                                                            boxShadow: '4px 4px 0px black',
+                                                            zIndex: 50,
                                                             whiteSpace: 'nowrap',
                                                         }}
                                                     >
                                                         <ActionIcon
-                                                            size="xs"
+                                                            size="md"
                                                             color="dark"
-                                                            variant="subtle"
+                                                            variant="light"
                                                             disabled={idx === 0}
                                                             title="왼쪽으로 이동"
+                                                            style={{ border: '1px solid black', borderRadius: '0px' }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleMoveLeft(idx);
                                                             }}
                                                         >
-                                                            <IconArrowLeft size={12} />
+                                                            <IconArrowLeft size={16} stroke={2.5} />
                                                         </ActionIcon>
                                                         <ActionIcon
-                                                            size="xs"
+                                                            size="md"
                                                             color="red"
-                                                            variant="subtle"
+                                                            variant="filled"
                                                             title="아래 풀로 반환"
+                                                            style={{ border: '1px solid black', borderRadius: '0px' }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleRemoveFromAssembled(idx);
                                                             }}
                                                         >
-                                                            <IconTrash size={12} />
+                                                            <IconTrash size={16} stroke={2.5} />
                                                         </ActionIcon>
                                                         <ActionIcon
-                                                            size="xs"
+                                                            size="md"
                                                             color="dark"
-                                                            variant="subtle"
+                                                            variant="light"
                                                             disabled={idx === assembledWords.length - 1}
                                                             title="오른쪽으로 이동"
+                                                            style={{ border: '1px solid black', borderRadius: '0px' }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleMoveRight(idx);
                                                             }}
                                                         >
-                                                            <IconArrowRight size={12} />
+                                                            <IconArrowRight size={16} stroke={2.5} />
                                                         </ActionIcon>
                                                     </Group>
                                                 )}
