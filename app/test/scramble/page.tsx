@@ -19,7 +19,6 @@ import {
     Tooltip,
 } from '@mantine/core';
 import {
-    IconClock,
     IconCheck,
     IconX,
     IconVolume,
@@ -87,7 +86,6 @@ function ScrambleContent() {
     const [isAnswered, setIsAnswered] = useState(false);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [results, setResults] = useState<boolean[]>([]);
-    const [timeLeft, setTimeLeft] = useState(90);
     const [loading, setLoading] = useState(true);
     const [combo, setCombo] = useState(0);
     const [soundEnabled, setSoundEnabled] = useState(false);
@@ -217,19 +215,8 @@ function ScrambleContent() {
             setSelectedWordIndex(null);
             setIsAnswered(false);
             setIsCorrect(null);
-            setTimeLeft(90);
         }
     }, [currentIndex, words]);
-
-    // 타이머
-    useEffect(() => {
-        if (!loading && timeLeft > 0 && !isAnswered && words.length > 0) {
-            const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
-            return () => clearTimeout(timer);
-        } else if (timeLeft === 0 && !isAnswered && words.length > 0) {
-            handleSubmit(true);
-        }
-    }, [timeLeft, isAnswered, words, loading]);
 
     // 풀에서 단어 클릭 -> 조립 영역으로 이동 (대안 1: 커서 위치가 있으면 중간 삽입, 없으면 맨 뒤)
     const handleWordClickFromPool = (word: WordToken) => {
@@ -355,7 +342,7 @@ function ScrambleContent() {
     };
 
     // 정답 확인 / 제출
-    const handleSubmit = (timeout = false) => {
+    const handleSubmit = () => {
         if (isAnswered || !words[currentIndex]) return;
 
         const joinChar = isSingleWord ? '' : ' ';
@@ -363,7 +350,7 @@ function ScrambleContent() {
         const correctAnswer = words[currentIndex].english;
         // 단어/문장의 전체 조각이 모두 채워졌을 때만 정답 검사 수행 (조각이 덜 채워진 상태는 미완성 오답)
         const isComplete = poolWords.length === 0 && assembledWords.length > 0;
-        const correct = !timeout && isComplete && cleanSentence(userAnswer) === cleanSentence(correctAnswer);
+        const correct = isComplete && cleanSentence(userAnswer) === cleanSentence(correctAnswer);
 
         const newResults = [...results, correct];
         setResults(newResults);
@@ -382,7 +369,8 @@ function ScrambleContent() {
 
         saveSession(currentIndex + 1, newResults);
 
-        const delay = correct ? 1200 : 2500;
+        // 정답 시 1.2초, 오답 시 정답을 충분히 확인할 수 있도록 3.5초(기존 2.5초 + 1초) 대기
+        const delay = correct ? 1200 : 3500;
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
                 setCurrentIndex((prev) => prev + 1);
@@ -554,7 +542,7 @@ function ScrambleContent() {
                             </Group>
                         </Group>
 
-                        {/* 상태 바 (타이머 & 맞힌 개수) */}
+                        {/* 상태 바 (제한시간 안내 & 맞힌 개수) */}
                         <Group mb={16} justify="space-between">
                             <Paper
                                 p="sm"
@@ -567,12 +555,9 @@ function ScrambleContent() {
                                 }}
                             >
                                 <Group justify="space-between">
-                                    <Group gap="xs">
-                                        <IconClock size={22} color={timeLeft <= 5 ? '#EF4444' : '#9333EA'} />
-                                        <Text fw={900} size="lg" c={timeLeft <= 5 ? 'red' : 'violet'}>
-                                            {timeLeft}초
-                                        </Text>
-                                    </Group>
+                                    <Text fw={800} size="sm" c="dimmed">
+                                        💡 시간 제한 없음
+                                    </Text>
 
                                     <Group gap="md">
                                         <Group gap={4}>
@@ -990,7 +975,7 @@ function ScrambleContent() {
                             </Group>
 
                             <button
-                                onClick={() => handleSubmit(false)}
+                                onClick={handleSubmit}
                                 disabled={isAnswered || assembledWords.length === 0}
                                 style={{
                                     background: isAnswered || assembledWords.length === 0 ? '#64748B' : '#FFD93D',

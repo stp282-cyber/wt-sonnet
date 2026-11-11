@@ -280,8 +280,8 @@ export default function ScrambleDemoPage() {
             }
         }
 
-        // [핵심] 오답 시에는 학생이 정답 문장을 충분히 읽을 수 있도록 2.5초(2500ms) 대기!
-        const delay = correct ? 1200 : 2500;
+        // [핵심] 오답 시에는 학생이 정답 문장을 충분히 읽을 수 있도록 3.5초(3500ms) 대기!
+        const delay = correct ? 1200 : 3500;
 
         setTimeout(() => {
             if (currentIndex < sentences.length - 1) {
